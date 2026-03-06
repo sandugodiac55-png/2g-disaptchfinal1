@@ -748,11 +748,11 @@ function lateTag(ld,pm,paid){if(paid)return`<span class="late-tag ok">✓ Paid</
 function calcOverMin(loads,driver){
   if(!driver||!driver.minRate)return 0;
   let total=0;
-  loads.forEach(l=>{const rpm=l.miles>0?l.rate/l.miles:0;const over=(rpm-(+driver.minRate||0))*l.miles;if(over>0)total+=over});
+  loads.forEach(l=>{const rpm=l.miles>0?l.rate/l.miles:0;total+=(rpm-(+driver.minRate||0))*(+l.miles||0);});
   return total;
 }
 function tripRPM(trip){return trip.miles>0?(trip.gross/trip.miles):0}
-function tripOverMin(trip,driver){if(!driver||!driver.minRate)return 0;const rpm=tripRPM(trip);const over=(rpm-(+driver.minRate||0))*trip.miles;return over>0?over:0}
+function tripOverMin(trip,driver){if(!driver||!driver.minRate)return 0;const rpm=tripRPM(trip);return(rpm-(+driver.minRate||0))*(+trip.miles||0);}
 
 /* ══ LOCKED ══ */
 function isLocked(drvName){const d=DRIVERS.find(x=>x.name===drvName);return d&&d.weekLocked===curW}
@@ -907,7 +907,7 @@ function renderDispatch(){
         <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dl.length}</div></div>
         <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
         <div class="dc-s"><div class="dc-sl">Miles</div><div class="dc-sv">${dm.toLocaleString()}</div></div>
-        <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:${overMin>0?'var(--green)':'var(--text3)'}">${fK(overMin)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:${overMin>0?'var(--green)':overMin<0?'var(--red)':'var(--text3)'}">${overMin<0?'-':''}${fK(Math.abs(overMin))}</div></div>
       </div>
       <div class="dc-bar">
         <div class="dc-barlabel"><span>Rate/Mile</span><span style="color:${rpmOk?'var(--green)':'var(--red)'};font-weight:700">$${rpm.toFixed(2)} / min $${d.minRate||'—'}</span></div>
@@ -942,11 +942,17 @@ function renderDriverPage(){
       <div class="drv-meta">
         <div class="drv-badge">Min: $${curDrv.minRate||'—'}/mi</div>
         <div class="drv-badge" style="color:var(--green)">Gross: ${fK(gross)}</div>
-        <div class="drv-badge" style="color:var(--orange)">Over min: ${fK(overMin)}</div>
+        <div class="drv-badge" style="color:${overMin>=0?'var(--orange)':'var(--red)'}">Over min: ${overMin<0?'-':''}${fK(Math.abs(overMin))}</div>
         ${locked?`<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Week Locked</div>`:''}
       </div>
     </div>
-    ${ROLE==='admin'||ROLE==='dispatcher'?`<button class="btn btn-sm ${locked?'btn-danger':'btn-ghost'}" onclick="toggleLock('${curDrv.id}')">${locked?'🔒 Unlock Week':'🔓 Lock Week'}</button>`:''}`;
+    <div style="display:flex;gap:6px">
+    ${ROLE==='admin'||ROLE==='dispatcher'?(!locked
+      ?`<button class="btn btn-sm btn-ghost" onclick="closeWeek('${curDrv.id}')">📅 Close Week</button>`
+      :`<button class="btn btn-sm btn-danger" onclick="toggleLock('${curDrv.id}')">🔒 Unlock</button>
+        <button class="btn btn-sm btn-teal" onclick="openNewWeek('${curDrv.id}')">▶ Open New Week</button>`
+    ):''}
+    </div>;
   document.getElementById('drv-pg-title').textContent=`${curDrv.name} — Week Loads`;
   // render trips for this driver this week
   renderDrvTrips(wLoads);
@@ -973,7 +979,7 @@ function renderDrvTrips(wLoads){
         <div class="trip-route">${t.loadIds?.length||0} loads · ${(+t.miles||0).toLocaleString()} mi</div>
         <div class="trip-gross">${fK(tGross)}</div>
         <div class="trip-rpm ${rpmClass}">$${rpm.toFixed(2)}/mi</div>
-        ${overMin>0?`<div style="font-size:10px;color:var(--green);font-weight:700;background:#ecfdf5;padding:3px 8px;border-radius:5px">+${fK(overMin)}</div>`:''}
+        ${overMin>0?`<div style="font-size:10px;color:var(--green);font-weight:700;background:#ecfdf5;padding:3px 8px;border-radius:5px">+${fK(overMin)}</div>`:overMin<0?`<div style="font-size:10px;color:var(--red);font-weight:700;background:#fef2f2;padding:3px 8px;border-radius:5px">-${fK(Math.abs(overMin))}</div>`:''}
         ${t.underMinComment?`<div style="font-size:10px;color:var(--red);background:#fef2f2;padding:3px 8px;border-radius:5px;max-width:150px;overflow:hidden;text-overflow:ellipsis">⚠ ${t.underMinComment}</div>`:''}
         ${!locked?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delTrip('${t.id}')" style="margin-left:auto">🗑</button>`:''}
       </div>
@@ -990,16 +996,28 @@ function renderDrvTrips(wLoads){
       </div>
     </div>`;
   }).join(''):``;
-  // solo loads table
+  // ALL LOADS table (loads stay visible even if in a trip)
   const tb=document.getElementById('drv-load-tb');
-  document.getElementById('drv-load-cnt').textContent=`${solo.length} load${solo.length!==1?'s':''}`;
-  if(!solo.length){tb.innerHTML=`<tr><td colspan="9"><div class="em"><div class="e">📋</div><p>No individual loads — add loads and group them into trips.</p></div></td></tr>`;return}
+  const trippedIds=new Set(drvTrips.flatMap(t=>t.loadIds||[]));
+  document.getElementById('drv-load-cnt').textContent=`${wLoads.length} load${wLoads.length!==1?'s':''}`;
+  if(!wLoads.length){tb.innerHTML=`<tr><td colspan="9"><div class="em"><div class="e">📋</div><p>No loads this week.</p></div></td></tr>`;return}
   const statOrder=['Assigned','Picked Up','Delivered','Invoiced'];
-  tb.innerHTML=solo.map(l=>{
+  const grossTotal=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const sepRow=locked?`<tr style="background:var(--navy)">
+    <td colspan="9" style="padding:10px 14px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <span style="color:#fff;font-size:12px;font-weight:800;font-family:var(--mono)">📅 WEEK CLOSED — ${wLbl(curW)}</span>
+        <span style="color:var(--green);font-size:14px;font-weight:800;font-family:var(--mono)">GROSS: $${fmt(grossTotal)}</span>
+        <span style="color:rgba(255,255,255,.5);font-size:11px">${wLoads.length} loads</span>
+      </div>
+    </td>
+  </tr>`:'';
+  tb.innerHTML=sepRow+wLoads.map(l=>{
+    const inTrip=trippedIds.has(l.id);
     const ci=statOrder.indexOf(l.status||'Assigned'),ns=statOrder[ci+1];
     const statusBtn=ns&&!locked?`<button class="sf-btn sf-${ns.toLowerCase().replace(' ','-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`:`<span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span>`;
-    return`<tr>
-      <td class="bold">${l.orderId||'—'}</td>
+    return`<tr style="${inTrip?'background:#f8f9fc':''}">
+      <td class="bold">${l.orderId||'—'}${inTrip?`<span style="font-size:9px;color:var(--teal);font-weight:700;margin-left:4px">●TRIP</span>`:''}</td>
       <td>${l.origin||'—'} → ${l.dest||'—'}</td>
       <td class="money">$${fmt(+l.rate||0)}</td>
       <td style="font-size:11px">${l.payMethod||'—'}</td>
@@ -1007,7 +1025,7 @@ function renderDrvTrips(wLoads){
       <td>${statusBtn}</td>
       <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
       <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
-      <td><div style="display:flex;gap:4px">${!locked?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</div></td>
+      <td><div style="display:flex;gap:4px">${!locked&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</div></td>
     </tr>`;
   }).join('');
 }
@@ -1170,12 +1188,28 @@ async function delLoad(id){
 }
 async function toggleLock(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
-  const locked=d.weekLocked===curW;
-  if(locked&&ROLE!=='admin'){notify('Only admin can unlock','err');return}
-  if(!locked&&!confirm(`Lock week for ${d.name}?`))return;
+  if(ROLE!=='admin'){notify('Only admin can unlock','err');return}
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:locked?'':curW});
-  await loadMeta();notify(locked?'Unlocked':'Week Locked 🔒');
+  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:''});
+  await loadMeta();notify('Week unlocked');
+}
+async function closeWeek(drvId){
+  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
+  const wLoads=LOADS.filter(l=>l.driver===d.name&&inW(l.date,curW));
+  const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  if(!confirm('Close week for '+d.name+'?\nGross: $'+fmt(gross)+'\n\nLoadurile raman vizibile dar blocate.'))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:curW,weekClosedGross:gross,weekClosedAt:new Date().toISOString()});
+  await loadMeta();
+  notify('Week closed! Gross: $'+fmt(gross)+' 🔒');
+}
+async function openNewWeek(drvId){
+  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:''});
+  await loadMeta();
+  nextWeek();
+  notify('New week started for '+d.name+' ▶');
 }
 
 /* ══ KPI CALENDAR ══ */
