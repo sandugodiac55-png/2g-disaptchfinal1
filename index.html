@@ -1044,14 +1044,33 @@ function renderDrvTrips(allDrvLoads){
     // Load rows for this week
     wk.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(l=>{
       const inTrip=trippedIds.has(l.id);
-      const ci=statOrder.indexOf(l.status||'Assigned'),ns=statOrder[ci+1];
+      const isCODCOP=l.payMethod==='COD'||l.payMethod==='COP';
+      // COD/COP: Assigned → Picked Up only (no Delivered, no Invoiced)
+      // Others:  Assigned → Picked Up → Delivered → Invoiced
+      const statOrder=isCODCOP
+        ?['Assigned','Picked Up']
+        :['Assigned','Picked Up','Delivered','Invoiced'];
+      const ci=statOrder.indexOf(l.status||'Assigned');
+      const ns=statOrder[ci+1]||null; // null when at last step
       const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
-      // Status button with date
+
+      // Date label shown on pill when status is final or locked
+      const getDateLabel=(l)=>{
+        if(l.status==='Delivered'&&l.deliveredDate)return l.deliveredDate;
+        if(l.status==='Invoiced'&&l.invoicedDate)return l.invoicedDate;
+        if(l.status==='Picked Up'&&l.pickedDate)return l.pickedDate;
+        return '';
+      };
+      const dateLabel=getDateLabel(l);
+
+      // Build status HTML
       let statusHtml;
       if(ns&&canEdit){
-        statusHtml=`<button class="sf-btn sf-${(l.status||'assigned').toLowerCase().replace(/ /g,'-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`;
+        // Show next-step button — always show current status as pill + next button
+        const curPill=`<span class="pill ${sC(l.status)}" style="margin-right:4px">${l.status||'Assigned'}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
+        statusHtml=curPill+`<button class="sf-btn sf-${ns.toLowerCase().replace(/ /g,'-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`;
       } else {
-        const dateLabel=l.status==='Delivered'&&l.deliveredDate?` ${l.deliveredDate}`:l.status==='Invoiced'&&l.invoicedDate?` ${l.invoicedDate}`:l.status==='Picked Up'&&l.pickedDate?` ${l.pickedDate}`:'';
+        // Final state or locked — just show pill with date
         statusHtml=`<span class="pill ${sC(l.status)}">${l.status||'Assigned'}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
       }
       html+=`<tr style="${inTrip?'background:#f8f9fc':''}${locked?'opacity:.9':''}">
@@ -1213,15 +1232,21 @@ async function saveLoad(){
   }catch(e){notify('Error: '+e.message,'err')}
 }
 async function advStat(id,next){
+  const load=LOADS.find(l=>l.id===id);
+  const isCODCOP=load&&(load.payMethod==='COD'||load.payMethod==='COP');
+  // Double-check: COD/COP cannot go to Delivered or Invoiced
+  if(isCODCOP&&(next==='Delivered'||next==='Invoiced')){
+    notify('COD/COP: no Delivered or Invoiced step','err');return;
+  }
   if(!confirm('Mark as "'+next+'"? Cannot undo.'))return;
-  const{updateDoc,doc,serverTimestamp}=window._fb;
+  const{updateDoc,doc}=window._fb;
   const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const upd={status:next};
   if(next==='Delivered')upd.deliveredDate=ts;
   if(next==='Invoiced')upd.invoicedDate=ts;
   if(next==='Picked Up')upd.pickedDate=ts;
   await updateDoc(doc(window._db,'loads',id),upd);
-  notify('→ '+next);
+  notify('→ '+next+' ('+ts+')');
 }
 async function tgPaid(id,v,locked){
   if(locked){notify('Week locked','err');return}
