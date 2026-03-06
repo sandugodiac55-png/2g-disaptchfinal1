@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G-Dispatch TMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- FIREBASE — Replace with YOUR config -->
+<script type="module">
+import { initializeApp }                                from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut,
+         onAuthStateChanged }                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs,
+         updateDoc, deleteDoc, doc, query, where,
+         orderBy, onSnapshot, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDLnywW0Gxpf7XAFs6CojJ0kiewTjqTI5s",
+  authDomain:        "gdisaptch-final.firebaseapp.com",
+  projectId:         "gdisaptch-final",
+  storageBucket:     "gdisaptch-final.firebasestorage.app",
+  messagingSenderId: "1044545328129",
+  appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
+};
+
+const app  = initializeApp(firebaseConfig);
+window._auth = getAuth(app);
+window._db   = getFirestore(app);
+window._fb   = { signInWithEmailAndPassword, signOut, onAuthStateChanged,
+                 collection, addDoc, getDocs, updateDoc, deleteDoc, doc,
+                 query, where, orderBy, onSnapshot, serverTimestamp, getDoc };
+</script>
+
+<style>
+/* ═══════════════ TOKENS ═══════════════ */
+:root {
+  --bg:       #f4f6f9;
+  --bg2:      #eef0f5;
+  --surface:  #ffffff;
+  --surface2: #f8f9fc;
+  --border:   #e2e6ef;
+  --border2:  #d0d6e4;
+
+  --navy:     #1a2540;
+  --navy2:    #243055;
+  --orange:   #f26522;
+  --orange2:  #ff7a35;
+  --silver:   #8a9ab8;
+  --blue:     #3b82f6;
+  --green:    #10b981;
+  --red:      #ef4444;
+  --yellow:   #f59e0b;
+  --purple:   #8b5cf6;
+
+  --text:     #1a2540;
+  --text2:    #4a5578;
+  --text3:    #8a9ab8;
+
+  --shadow:   0 1px 4px rgba(26,37,64,.07), 0 4px 16px rgba(26,37,64,.05);
+  --shadow2:  0 2px 8px rgba(26,37,64,.1), 0 8px 32px rgba(26,37,64,.08);
+
+  --r:        10px;
+  --font:     'Plus Jakarta Sans', sans-serif;
+  --mono:     'IBM Plex Mono', monospace;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box }
+html, body { height:100%; scroll-behavior:smooth }
+body { font-family:var(--font); background:var(--bg); color:var(--text); font-size:14px; -webkit-font-smoothing:antialiased }
+
+/* ═══════════ LOADING ═══════════ */
+#loading {
+  position:fixed; inset:0; background:var(--navy);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:9999;
+}
+.logo-spin { width:64px; height:64px; animation:pulse 1.5s ease-in-out infinite }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(.95)} }
+#loading p { font-family:var(--mono); font-size:12px; color:rgba(255,255,255,.4); letter-spacing:2px }
+
+/* ═══════════ LOGIN ═══════════ */
+#login-page {
+  min-height:100vh; display:none; background:var(--bg);
+}
+.login-wrap {
+  min-height:100vh; display:flex;
+}
+.login-left {
+  width:420px; background:var(--navy); display:flex; flex-direction:column;
+  justify-content:center; padding:60px 50px; position:relative; overflow:hidden; flex-shrink:0;
+}
+.login-left::before {
+  content:''; position:absolute; width:400px; height:400px; border-radius:50%;
+  background:radial-gradient(circle, rgba(242,101,34,.15) 0%, transparent 70%);
+  bottom:-100px; right:-100px; pointer-events:none;
+}
+.ll-logo { display:flex; align-items:center; gap:14px; margin-bottom:56px }
+.ll-logo-icon {
+  width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+}
+.ll-logo-icon svg { width:48px; height:48px }
+.ll-logo-name { font-size:22px; font-weight:800; color:#fff; letter-spacing:-.5px }
+.ll-logo-tag { font-size:10px; color:rgba(255,255,255,.35); letter-spacing:2px; margin-top:2px; font-family:var(--mono) }
+.ll-title { font-size:32px; font-weight:800; color:#fff; line-height:1.2; margin-bottom:16px }
+.ll-title span { color:var(--orange) }
+.ll-desc { font-size:14px; color:rgba(255,255,255,.45); line-height:1.7 }
+
+.login-right {
+  flex:1; display:flex; align-items:center; justify-content:center; padding:40px;
+}
+.login-form-wrap { width:100%; max-width:400px }
+.login-form-wrap h2 { font-size:26px; font-weight:800; margin-bottom:8px; color:var(--navy) }
+.login-form-wrap p { color:var(--text3); font-size:14px; margin-bottom:36px }
+.lf { display:flex; flex-direction:column; gap:6px; margin-bottom:16px }
+.lf label { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.8px }
+.lf input {
+  background:var(--surface2); border:1.5px solid var(--border); color:var(--text);
+  padding:13px 16px; border-radius:9px; font-family:var(--font); font-size:14px; outline:none;
+  transition:all .2s;
+}
+.lf input:focus { border-color:var(--orange); background:#fff; box-shadow:0 0 0 3px rgba(242,101,34,.1) }
+.btn-login {
+  width:100%; padding:14px; background:var(--navy); color:#fff; border:none; border-radius:9px;
+  font-family:var(--font); font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; margin-top:8px;
+}
+.btn-login:hover { background:var(--navy2); transform:translateY(-1px); box-shadow:0 8px 20px rgba(26,37,64,.25) }
+.login-err {
+  background:#fef2f2; border:1px solid #fecaca; color:var(--red);
+  padding:11px 14px; border-radius:8px; font-size:13px; margin-top:12px; display:none;
+}
+
+/* ═══════════ APP ═══════════ */
+#app { display:none; min-height:100vh; flex-direction:column }
+#app.show { display:flex }
+
+/* SIDEBAR */
+.layout { display:flex; flex:1; overflow:hidden }
+.sidebar {
+  width:240px; background:var(--navy); display:flex; flex-direction:column;
+  flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.sb-logo {
+  display:flex; align-items:center; gap:12px; padding:24px 20px; border-bottom:1px solid rgba(255,255,255,.07);
+}
+.sb-logo-icon { width:36px; height:36px; flex-shrink:0 }
+.sb-logo-name { font-size:17px; font-weight:800; color:#fff; letter-spacing:-.3px }
+.sb-logo-tag { font-size:9px; color:rgba(255,255,255,.3); letter-spacing:1.5px; font-family:var(--mono) }
+
+.sb-user {
+  display:flex; align-items:center; gap:10px; padding:16px 20px;
+  border-bottom:1px solid rgba(255,255,255,.07); margin-bottom:8px;
+}
+.sb-av {
+  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#fff; flex-shrink:0; background:var(--orange);
+}
+.sb-uname { font-size:13px; font-weight:600; color:#fff }
+.sb-urole { font-size:10px; color:rgba(255,255,255,.35); text-transform:uppercase; letter-spacing:.8px; font-family:var(--mono) }
+
+.sb-section { font-size:9px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:1.5px; padding:12px 20px 6px; font-family:var(--mono) }
+.sni {
+  display:flex; align-items:center; gap:10px; padding:10px 20px; margin:1px 8px; border-radius:8px;
+  font-size:13px; font-weight:500; color:rgba(255,255,255,.55); cursor:pointer; transition:all .15s;
+}
+.sni:hover { background:rgba(255,255,255,.08); color:rgba(255,255,255,.85) }
+.sni.on { background:rgba(242,101,34,.15); color:#fff; font-weight:600 }
+.sni.on .sni-dot { background:var(--orange) }
+.sni-icon { width:18px; height:18px; opacity:.7; flex-shrink:0 }
+.sni.on .sni-icon { opacity:1 }
+
+.sb-bottom { margin-top:auto; padding:16px; border-top:1px solid rgba(255,255,255,.07) }
+.btn-signout {
+  width:100%; padding:9px; background:rgba(255,255,255,.06); color:rgba(255,255,255,.5);
+  border:1px solid rgba(255,255,255,.1); border-radius:8px; font-family:var(--font); font-size:12px;
+  cursor:pointer; transition:all .15s; font-weight:500;
+}
+.btn-signout:hover { background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3); color:#fca5a5 }
+
+/* TOPBAR */
+.topbar {
+  height:58px; background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 24px; gap:16px; position:sticky; top:0; z-index:100;
+  box-shadow:0 1px 0 var(--border);
+}
+.tb-title { font-size:17px; font-weight:700; color:var(--navy) }
+.tb-sub { font-size:12px; color:var(--text3); margin-top:1px }
+.tb-right { margin-left:auto; display:flex; align-items:center; gap:10px }
+
+/* MAIN */
+.content { flex:1; overflow-y:auto; padding:24px }
+.pg { display:none }
+.pg.show { display:block }
+
+/* PAGE HEADER */
+.ph { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap }
+.ph-t { font-size:20px; font-weight:800; color:var(--navy) }
+.ph-s { font-size:12px; color:var(--text3); margin-top:3px }
+.ph-a { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; white-space:nowrap }
+.btn-primary { background:var(--navy); color:#fff }
+.btn-primary:hover { background:var(--navy2); box-shadow:0 4px 12px rgba(26,37,64,.2) }
+.btn-orange { background:var(--orange); color:#fff }
+.btn-orange:hover { background:var(--orange2) }
+.btn-ghost { background:transparent; color:var(--text2); border:1.5px solid var(--border2) }
+.btn-ghost:hover { background:var(--bg); border-color:var(--silver) }
+.btn-sm { padding:5px 11px; font-size:12px }
+.btn-danger { background:#fef2f2; color:var(--red); border:1px solid #fecaca }
+.btn-danger:hover { background:#fee2e2 }
+.btn-success { background:#ecfdf5; color:var(--green); border:1px solid #a7f3d0 }
+
+/* INPUTS */
+.inp { background:var(--surface); border:1.5px solid var(--border); color:var(--text); padding:7px 12px; border-radius:8px; font-family:var(--font); font-size:13px; outline:none; transition:all .15s }
+.inp:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(242,101,34,.08) }
+.sel { background:var(--surface); border:1.5px solid var(--border); color:var(--text2); padding:7px 10px; border-radius:8px; font-family:var(--mono); font-size:11px; outline:none; cursor:pointer }
+
+/* KPI CARDS */
+.kr { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px }
+.kc {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+  padding:20px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+}
+.kc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--border) }
+.kc.o::before { background:var(--orange) }
+.kc.g::before { background:var(--green) }
+.kc.b::before { background:var(--blue) }
+.kc.p::before { background:var(--purple) }
+.kl { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px }
+.kv { font-size:28px; font-weight:800; color:var(--navy); font-family:var(--mono); letter-spacing:-1px; line-height:1 }
+.kh { font-size:11px; color:var(--text3); margin-top:5px }
+
+/* TABLE CARD */
+.tc { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow) }
+.tc-top { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; background:var(--surface2) }
+.tc-title { font-size:14px; font-weight:700; color:var(--navy) }
+.mla { margin-left:auto }
+.tw { overflow-x:auto }
+table { width:100%; border-collapse:collapse; min-width:900px }
+thead th { padding:10px 14px; text-align:left; font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--border); background:var(--surface2); white-space:nowrap }
+tbody tr { border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer }
+tbody tr:hover { background:var(--bg) }
+tbody tr:last-child { border-bottom:none }
+td { padding:11px 14px; color:var(--text2); font-size:13px; white-space:nowrap }
+td.bold { color:var(--navy); font-weight:700; font-family:var(--mono) }
+td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
+
+/* STATUS PILLS */
+.pill { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.3px; white-space:nowrap }
+.pill::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0 }
+.s-assigned  { background:#eff6ff; color:#3b82f6 }
+.s-picked    { background:#fffbeb; color:#d97706 }
+.s-delivered { background:#ecfdf5; color:#059669 }
+.s-invoiced  { background:#f5f3ff; color:#7c3aed }
+
+/* ONE-WAY STATUS BTN */
+.status-flow { display:flex; gap:4px; align-items:center }
+.sf-btn {
+  padding:4px 10px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer;
+  border:1.5px solid; transition:all .15s; white-space:nowrap;
+}
+.sf-btn.done { opacity:.5; cursor:not-allowed; pointer-events:none }
+.sf-assigned  { border-color:#bfdbfe; color:#3b82f6; background:#eff6ff }
+.sf-picked    { border-color:#fde68a; color:#d97706; background:#fffbeb }
+.sf-delivered { border-color:#a7f3d0; color:#059669; background:#ecfdf5 }
+.sf-invoiced  { border-color:#ddd6fe; color:#7c3aed; background:#f5f3ff }
+.sf-btn:not(.done):hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,.1) }
+
+/* PAY BUTTONS */
+.pb { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; transition:all .15s; border:none; white-space:nowrap }
+.pb.paid   { background:#ecfdf5; color:var(--green) }
+.pb.unpaid { background:#fef2f2; color:var(--red) }
+.pb:hover { opacity:.8 }
+.pb.locked { cursor:not-allowed; opacity:.6 }
+
+/* TOGGLE */
+.sw { width:38px; height:21px; background:var(--border2); border-radius:11px; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0 }
+.sw.on { background:var(--green) }
+.sw::after { content:''; position:absolute; top:2px; left:2px; width:17px; height:17px; background:#fff; border-radius:50%; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.2) }
+.sw.on::after { left:19px }
+
+/* TABS */
+.tabs { display:flex; gap:2px; background:var(--bg); padding:3px; border-radius:9px; border:1px solid var(--border); width:fit-content; margin-bottom:20px }
+.tab { padding:7px 18px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; color:var(--text3); transition:all .15s }
+.tab:hover { color:var(--text2) }
+.tab.on { background:var(--surface); color:var(--navy); box-shadow:var(--shadow) }
+.cpill { display:inline-block; font-size:10px; font-family:var(--mono); padding:1px 6px; border-radius:10px; margin-left:5px; font-weight:700; background:var(--orange); color:#fff }
+.cpill.g { background:var(--green) }
+
+/* MODAL */
+.ov { position:fixed; inset:0; background:rgba(26,37,64,.45); backdrop-filter:blur(6px); z-index:500; display:none; align-items:center; justify-content:center; padding:20px }
+.ov.open { display:flex }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:860px; max-width:100%; max-height:92vh; overflow-y:auto; box-shadow:var(--shadow2); animation:mIn .2s ease }
+.modal.sm { width:520px }
+.modal.xs { width:440px }
+@keyframes mIn { from{opacity:0;transform:scale(.96) translateY(-10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.mhd { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:14px 14px 0 0 }
+.mhd-t { font-size:16px; font-weight:800; color:var(--navy) }
+.mcl { width:32px; height:32px; background:var(--bg); border:1px solid var(--border); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--text3); transition:all .15s }
+.mcl:hover { background:var(--bg2); color:var(--text) }
+.mbd { padding:24px }
+.mft { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; background:var(--surface2) }
+
+/* FORM */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px }
+.full { grid-column:1/-1 }
+.fsep { grid-column:1/-1; border-top:1px solid var(--border); margin:4px 0 }
+.ftitle { grid-column:1/-1; font-size:11px; font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1px; padding-top:4px }
+.fg { display:flex; flex-direction:column; gap:6px }
+.fg label { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.7px }
+.fg input, .fg select, .fg textarea {
+  background:var(--bg); border:1.5px solid var(--border); color:var(--text);
+  padding:10px 13px; border-radius:8px; font-family:var(--font); font-size:13px; outline:none; transition:all .15s; width:100%;
+}
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color:var(--orange); background:#fff; box-shadow:0 0 0 3px rgba(242,101,34,.08) }
+.fg textarea { resize:vertical; min-height:80px }
+.fg input[readonly] { color:var(--blue); background:#f0f7ff; border-color:#bfdbfe }
+.trow { display:flex; align-items:center; gap:12px; background:var(--bg); border:1.5px solid var(--border); border-radius:8px; padding:11px 14px }
+.trow-l { flex:1; font-size:13px; color:var(--text2); font-weight:500 }
+
+/* LEADERBOARD */
+.lb { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow) }
+.lb-hd { padding:16px 20px; border-bottom:1px solid var(--border); font-size:15px; font-weight:800; color:var(--navy); display:flex; align-items:center; justify-content:space-between; background:var(--surface2) }
+.lb-th, .lb-row { display:grid; grid-template-columns:46px 1fr 80px 130px 110px 130px 140px; padding:12px 20px; gap:10px; align-items:center }
+.lb-th { background:var(--surface2); border-bottom:1px solid var(--border); font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px }
+.lb-row { border-bottom:1px solid var(--border); transition:background .1s }
+.lb-row:last-child { border-bottom:none }
+.lb-row:hover { background:var(--bg) }
+.lb-row.r1 { background:#fffbeb; border-left:3px solid var(--yellow) }
+.lb-row.r2 { border-left:3px solid #94a3b8 }
+.lb-row.r3 { border-left:3px solid #b45309 }
+.rk { font-family:var(--mono); font-size:16px; font-weight:800 }
+.rk.g1{color:var(--yellow)}.rk.g2{color:#64748b}.rk.g3{color:#b45309}
+.lb-nm { font-size:14px; font-weight:700; color:var(--navy) }
+.lb-co { font-size:11px; color:var(--text3) }
+.bw { background:var(--bg2); height:5px; border-radius:3px; margin-top:5px; overflow:hidden }
+.bf { height:100%; border-radius:3px; transition:width .6s ease }
+.bonus { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:10px; font-weight:700 }
+.bonus.win { background:#fffbeb; color:#d97706; border:1px solid #fde68a }
+.bonus.eff { background:#ecfdf5; color:#059669; border:1px solid #a7f3d0 }
+.bonus.none { background:var(--bg); color:var(--text3); border:1px solid var(--border) }
+
+/* DRIVER CARD */
+.driver-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px }
+.driver-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+  padding:18px; box-shadow:var(--shadow); cursor:pointer; transition:all .2s;
+}
+.driver-card:hover { border-color:var(--orange); transform:translateY(-2px); box-shadow:var(--shadow2) }
+.dc-head { display:flex; align-items:center; gap:12px; margin-bottom:14px }
+.dc-av { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#fff; background:var(--navy); flex-shrink:0 }
+.dc-name { font-size:14px; font-weight:700; color:var(--navy) }
+.dc-company { font-size:11px; color:var(--text3) }
+.dc-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px }
+.dc-s { background:var(--bg); border-radius:7px; padding:10px }
+.dc-sl { font-size:10px; color:var(--text3); font-weight:600; margin-bottom:3px; text-transform:uppercase; letter-spacing:.5px }
+.dc-sv { font-size:16px; font-weight:800; color:var(--navy); font-family:var(--mono) }
+.dc-locked { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; background:#fef2f2; color:var(--red); border:1px solid #fecaca; margin-top:10px }
+
+/* COMPANY CARDS */
+.co-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px }
+.co-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; box-shadow:var(--shadow); border-top:3px solid var(--orange) }
+.co-name { font-size:15px; font-weight:800; color:var(--navy); margin-bottom:12px }
+.co-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px }
+
+/* ADMIN */
+.ag { display:grid; grid-template-columns:1fr 1fr; gap:16px }
+.ac { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow) }
+.ach { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface2) }
+.act { font-size:14px; font-weight:700; color:var(--navy) }
+.ur { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--border); transition:background .1s }
+.ur:last-child { border-bottom:none }
+.ur:hover { background:var(--bg) }
+.ua { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff; flex-shrink:0; background:var(--navy) }
+.un { font-size:13px; font-weight:600; color:var(--navy) }
+.ue { font-size:11px; color:var(--text3) }
+.rt { margin-left:auto; padding:3px 9px; border-radius:4px; font-size:10px; font-weight:700 }
+.rt.dispatcher { background:#eff6ff; color:var(--blue) }
+.rt.accounting  { background:#f5f3ff; color:var(--purple) }
+.rt.owner       { background:#fffbeb; color:var(--yellow) }
+.rt.admin       { background:#fef2f2; color:var(--red) }
+.rt.manager     { background:#ecfdf5; color:var(--green) }
+
+/* WEEK NAV */
+.wk-nav { display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:5px 8px }
+.wk-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; border:none; background:transparent; color:var(--text2); font-size:16px; transition:all .15s }
+.wk-btn:hover { background:var(--bg); color:var(--navy) }
+.wk-lbl { font-size:12px; font-weight:600; color:var(--navy); font-family:var(--mono); min-width:140px; text-align:center }
+
+/* LATE TAG */
+.late-tag { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; font-size:10px; font-weight:700 }
+.late-tag.ok     { background:#ecfdf5; color:var(--green) }
+.late-tag.warn   { background:#fffbeb; color:var(--yellow) }
+.late-tag.danger { background:#fef2f2; color:var(--red); animation:blink 1.5s ease-in-out infinite }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+/* ACC COMMENT INPUT */
+.ai { background:var(--bg); border:1.5px solid var(--border); color:var(--text); padding:6px 10px; border-radius:6px; font-family:var(--font); font-size:12px; outline:none; width:100%; min-width:160px; transition:all .15s }
+.ai:focus { border-color:var(--orange); background:#fff }
+
+/* DETAIL */
+.dg { display:grid; grid-template-columns:1fr 1fr; gap:14px }
+.di .dl { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px }
+.di .dv { font-size:14px; color:var(--navy) }
+.cb { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; font-size:13px; color:var(--text2); margin-top:14px }
+.cb.acc { border-color:#ddd6fe; background:#f5f3ff; color:var(--purple) }
+
+/* NOTIF */
+.nf { position:fixed; bottom:22px; right:22px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:13px 18px; font-size:13px; z-index:9999; box-shadow:var(--shadow2); animation:nIn .3s ease; max-width:340px; display:flex; align-items:center; gap:10px; color:var(--navy) }
+@keyframes nIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.nf.ok  { border-left:3px solid var(--green) }
+.nf.err { border-left:3px solid var(--red) }
+.nf.inf { border-left:3px solid var(--orange) }
+
+/* EMPTY */
+.em { text-align:center; padding:56px 20px; color:var(--text3) }
+.em .e { font-size:40px; margin-bottom:10px }
+.em p { font-size:13px }
+
+/* PASSWORD PAGE */
+.pw-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px }
+.pw-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:20px; box-shadow:var(--shadow); cursor:pointer; transition:all .2s }
+.pw-card:hover { border-color:var(--orange); transform:translateY(-2px); box-shadow:var(--shadow2) }
+.pw-card-hd { display:flex; align-items:center; gap:12px; margin-bottom:16px }
+.pw-icon { width:40px; height:40px; border-radius:8px; background:var(--navy); display:flex; align-items:center; justify-content:center; font-size:18px }
+.pw-name { font-size:14px; font-weight:700; color:var(--navy) }
+.pw-field { display:flex; flex-direction:column; gap:4px; margin-bottom:10px }
+.pw-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.7px }
+.pw-val { font-size:13px; color:var(--navy); font-family:var(--mono); background:var(--bg); border-radius:5px; padding:5px 10px }
+
+/* SALARY TABLE */
+.sal-row { display:grid; grid-template-columns:1fr 80px 80px 80px 80px 100px 100px 100px; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:13px }
+.sal-head { background:var(--surface2); font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px }
+
+.hidden { display:none!important }
+
+/* AVATAR COLORS */
+.av-o { background:var(--orange) }
+.av-n { background:var(--navy) }
+.av-g { background:var(--green) }
+.av-b { background:var(--blue) }
+.av-p { background:var(--purple) }
+
+@media(max-width:1024px){
+  .sidebar { width:200px }
+  .kr { grid-template-columns:1fr 1fr }
+  .driver-grid,.co-grid { grid-template-columns:1fr 1fr }
+  .ag { grid-template-columns:1fr }
+  .lb-th,.lb-row { grid-template-columns:36px 1fr 70px 110px 90px 110px }
+  .lb-th>*:nth-child(7),.lb-row>*:nth-child(7) { display:none }
+}
+@media(max-width:768px){
+  .sidebar { position:fixed; left:-240px; z-index:300; transition:left .3s }
+  .sidebar.open { left:0 }
+  .layout { flex-direction:column }
+  .content { padding:16px }
+  .kr { grid-template-columns:1fr 1fr }
+  .driver-grid,.co-grid { grid-template-columns:1fr }
+  .pw-grid { grid-template-columns:1fr }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <svg class="logo-spin" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
+    <path d="M72 50 L50 28 L28 50 L40 50 L40 62 L60 62 L60 50 Z" fill="#b0bec5"/>
+    <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
+    <path d="M50 28 L72 50 L60 50 L60 62 L50 62 L50 50 L60 50 L50 28 Z" fill="#cfd8e3"/>
+  </svg>
+  <p>LOADING G-DISPATCH…</p>
+</div>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-wrap">
+    <div class="login-left">
+      <div class="ll-logo">
+        <div class="ll-logo-icon">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="50,3 97,26 97,74 50,97 3,74 3,26" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+            <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
+            <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
+            <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="ll-logo-name">G-Dispatch</div>
+          <div class="ll-logo-tag">TRANSPORT MANAGEMENT</div>
+        </div>
+      </div>
+      <div class="ll-title">Smart dispatch.<br><span>Powered results.</span></div>
+      <div class="ll-desc">Manage loads, track KPIs, and streamline your entire dispatch operation from one platform.</div>
+    </div>
+    <div class="login-right">
+      <div class="login-form-wrap">
+        <h2>Welcome back</h2>
+        <p>Sign in to your G-Dispatch account</p>
+        <div class="lf"><label>Email Address</label><input type="email" id="li-e" placeholder="you@company.com" autocomplete="email"></div>
+        <div class="lf"><label>Password</label><input type="password" id="li-p" placeholder="••••••••" autocomplete="current-password"></div>
+        <button class="btn-login" onclick="doLogin()">Sign In →</button>
+        <div class="le" id="li-err"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-logo">
+        <svg class="sb-logo-icon" viewBox="0 0 100 100" fill="none">
+          <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
+          <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
+          <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
+        </svg>
+        <div>
+          <div class="sb-logo-name">G-Dispatch</div>
+          <div class="sb-logo-tag">TMS PLATFORM</div>
+        </div>
+      </div>
+      <div class="sb-user">
+        <div class="sb-av av-o" id="sb-av">?</div>
+        <div>
+          <div class="sb-uname" id="sb-uname">—</div>
+          <div class="sb-urole" id="sb-urole">—</div>
+        </div>
+      </div>
+      <nav id="sb-nav"></nav>
+      <div class="sb-bottom">
+        <button class="btn-signout" onclick="doLogout()">← Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <header class="topbar">
+        <div>
+          <div class="tb-title" id="tb-title">Dashboard</div>
+          <div class="tb-sub" id="tb-sub">—</div>
+        </div>
+        <div class="tb-right">
+          <div class="wk-nav" id="wk-nav-top">
+            <button class="wk-btn" onclick="prevWeek()">‹</button>
+            <div class="wk-lbl" id="wk-lbl-top">—</div>
+            <button class="wk-btn" onclick="nextWeek()">›</button>
+            <button class="wk-btn" onclick="goToday()" title="This week" style="font-size:12px;font-weight:700;color:var(--orange)">•</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- DISPATCHER PAGE -->
+        <div class="pg" id="pg-dispatcher">
+          <div class="ph">
+            <div><div class="ph-t">My Loads</div><div class="ph-s" id="d-wlbl">—</div></div>
+            <div class="ph-a">
+              <button class="btn btn-orange" onclick="openLoadModal()">＋ Add Load</button>
+            </div>
+          </div>
+          <div class="kr">
+            <div class="kc o"><div class="kl">Total Loads</div><div class="kv" id="dk-l">0</div><div class="kh">this week</div></div>
+            <div class="kc g"><div class="kl">Gross Revenue</div><div class="kv" id="dk-g">$0</div><div class="kh">total rate</div></div>
+            <div class="kc b"><div class="kl">Avg Rate / Mile</div><div class="kv" id="dk-r">$0.00</div><div class="kh">efficiency</div></div>
+            <div class="kc p"><div class="kl">Total Miles</div><div class="kv" id="dk-m">0</div><div class="kh">this week</div></div>
+          </div>
+
+          <!-- DRIVER CARDS -->
+          <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px">My Drivers</div>
+          <div class="driver-grid" id="d-drivers"></div>
+
+          <div class="tc">
+            <div class="tc-top">
+              <div class="tc-title">Load Board</div>
+              <input class="inp" placeholder="Search…" oninput="dSrch=this.value;renderD()" style="width:180px">
+              <select class="sel" onchange="dStF=this.value;renderD()">
+                <option value="">All Statuses</option>
+                <option>Assigned</option><option>Picked Up</option><option>Delivered</option><option>Invoiced</option>
+              </select>
+              <div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="d-cnt">0 loads</div>
+            </div>
+            <div class="tw"><table>
+              <thead><tr>
+                <th>ORDER ID</th><th>ORIGIN → DEST</th><th>DRIVER</th><th>BROKER</th>
+                <th>MILES</th><th>RATE</th><th>$/MILE</th><th>PAY METHOD</th>
+                <th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th>
+              </tr></thead>
+              <tbody id="d-tb"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- ACCOUNTING PAGE -->
+        <div class="pg" id="pg-accounting">
+          <div class="ph">
+            <div><div class="ph-t">Accounting</div><div class="ph-s">Manage payments by company → driver</div></div>
+            <div class="ph-a">
+              <select class="sel" id="acc-co-sel" onchange="accSelectCo(this.value)">
+                <option value="">All Companies</option>
+              </select>
+              <select class="sel" id="acc-dr-sel" onchange="renderAcc()">
+                <option value="">All Drivers</option>
+              </select>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on" onclick="setAccTab('pending',this)">Pending <span class="cpill" id="acc-np">0</span></div>
+            <div class="tab"    onclick="setAccTab('paid',this)">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
+            <div class="tab"    onclick="setAccTab('overdue',this)">⚠️ Overdue</div>
+            <div class="tab"    onclick="setAccTab('all',this)">All Loads</div>
+          </div>
+          <div class="tc">
+            <div class="tc-top">
+              <div class="tc-title" id="acc-tt">Pending Payment</div>
+              <input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:180px">
+              <div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0 loads</div>
+            </div>
+            <div class="tw"><table>
+              <thead><tr>
+                <th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>COMPANY</th>
+                <th>ROUTE</th><th>RATE</th><th>$/MILE</th><th>PAY METHOD</th>
+                <th>STATUS</th><th>PAID</th><th>OWNER PAID</th><th>DATE</th><th>DUE DATE</th><th>COMMENT</th>
+              </tr></thead>
+              <tbody id="acc-tb"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- KPI PAGE -->
+        <div class="pg" id="pg-kpi">
+          <div class="ph">
+            <div><div class="ph-t">KPI Leaderboard</div><div class="ph-s">Weekly performance rankings</div></div>
+          </div>
+          <div class="kr">
+            <div class="kc o"><div class="kl">Team Loads</div><div class="kv" id="kk-l">0</div></div>
+            <div class="kc g"><div class="kl">Team Gross</div><div class="kv" id="kk-g">$0</div></div>
+            <div class="kc b"><div class="kl">Best $/Mile</div><div class="kv" id="kk-r">$0.00</div></div>
+            <div class="kc p"><div class="kl">Over Minimum</div><div class="kv" id="kk-ov">$0</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)">
+              <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">🏆 Gross Winner</div>
+              <div id="kpi-gw" style="font-size:22px;font-weight:800;color:var(--yellow)">—</div>
+              <div id="kpi-gw-val" style="font-size:12px;color:var(--text3);font-family:var(--mono)">—</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)">
+              <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">⚡ Over Minimum Winner</div>
+              <div id="kpi-ew" style="font-size:22px;font-weight:800;color:var(--green)">—</div>
+              <div id="kpi-ew-val" style="font-size:12px;color:var(--text3);font-family:var(--mono)">—</div>
+            </div>
+          </div>
+          <div class="lb">
+            <div class="lb-hd">Dispatcher Rankings <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400" id="kpi-wr"></span></div>
+            <div class="lb-th"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>MILES</div><div>AVG $/MILE</div><div>BONUS</div></div>
+            <div id="kpi-body"></div>
+          </div>
+        </div>
+
+        <!-- OWNER PAGE -->
+        <div class="pg" id="pg-owner">
+          <div class="ph">
+            <div><div class="ph-t">Owner Dashboard</div><div class="ph-s">Full company overview</div></div>
+          </div>
+          <div class="kr">
+            <div class="kc o"><div class="kl">Total Loads</div><div class="kv" id="ow-l">0</div></div>
+            <div class="kc g"><div class="kl">Total Revenue</div><div class="kv" id="ow-g">$0</div></div>
+            <div class="kc b"><div class="kl">Payments Received</div><div class="kv" id="ow-p">$0</div></div>
+            <div class="kc p"><div class="kl">Pending Payment</div><div class="kv" id="ow-pn">$0</div></div>
+          </div>
+          <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px">Companies</div>
+          <div class="co-grid" id="ow-cog"></div>
+          <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px">Drivers Overview</div>
+          <div class="driver-grid" id="ow-drivers"></div>
+        </div>
+
+        <!-- PASSWORDS PAGE -->
+        <div class="pg" id="pg-passwords">
+          <div class="ph">
+            <div><div class="ph-t">Company Passwords</div><div class="ph-s">Central Dispatch credentials & contacts</div></div>
+            <button class="btn btn-primary" onclick="openPwModal()">＋ Add Company Creds</button>
+          </div>
+          <div class="pw-grid" id="pw-grid"></div>
+        </div>
+
+        <!-- SALARY PAGE (Admin only) -->
+        <div class="pg" id="pg-salary">
+          <div class="ph">
+            <div><div class="ph-t">Salary Calculator</div><div class="ph-s">Configure rates & export payroll</div></div>
+            <button class="btn btn-orange" onclick="exportSalaryXLS()">⬇ Export Excel</button>
+          </div>
+          <div class="tc">
+            <div class="tc-top"><div class="tc-title">Driver Salary Config & Results</div></div>
+            <div id="sal-table"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN PAGE -->
+        <div class="pg" id="pg-admin">
+          <div class="ph">
+            <div><div class="ph-t">Admin Panel</div><div class="ph-s">Manage users · drivers · companies</div></div>
+            <button class="btn btn-primary" onclick="openUserModal()">＋ Add User</button>
+          </div>
+          <div class="ag">
+            <div class="ac">
+              <div class="ach"><div class="act">👥 Platform Users</div></div>
+              <div id="adm-u"></div>
+            </div>
+            <div class="ac">
+              <div class="ach">
+                <div class="act">🚛 Dispatchers & Drivers</div>
+                <button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button>
+              </div>
+              <div id="adm-d"></div>
+            </div>
+            <div class="ac">
+              <div class="ach">
+                <div class="act">🏢 Companies</div>
+                <button class="btn btn-ghost btn-sm" onclick="openCompModal()">＋ Add</button>
+              </div>
+              <div id="adm-c"></div>
+            </div>
+            <div class="ac">
+              <div class="ach"><div class="act">📊 Quick Stats</div></div>
+              <div id="adm-s" style="padding:18px"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- LOAD MODAL -->
+<div class="ov" id="m-load">
+  <div class="modal">
+    <div class="mhd"><div class="mhd-t" id="m-load-t">Add New Load</div><div class="mcl" onclick="cm('m-load')">×</div></div>
+    <div class="mbd"><div class="g2">
+      <div class="ftitle">📦 Load Information</div><div></div>
+      <div class="fg"><label>Order ID *</label><input id="fl-oid" placeholder="LD-001"></div>
+      <div class="fg"><label>Date</label><input type="date" id="fl-date"></div>
+      <div class="fg"><label>Pickup Location</label><input id="fl-ori" placeholder="Chicago, IL"></div>
+      <div class="fg"><label>Delivery Location</label><input id="fl-dst" placeholder="Dallas, TX"></div>
+
+      <div class="fsep"></div><div class="ftitle">📏 Rate & Miles</div><div></div>
+      <div class="fg"><label>Miles</label><input type="number" id="fl-mi" placeholder="0" oninput="calcRPM()"></div>
+      <div class="fg"><label>Total Rate ($)</label><input type="number" id="fl-rt" placeholder="0.00" step="0.01" oninput="calcRPM()"></div>
+      <div class="fg"><label>Rate / Mile (auto)</label><input id="fl-rpm" readonly placeholder="$0.00"></div>
+      <div class="fg"><label>Payment Method *</label>
+        <select id="fl-pay">
+          <option value="">— Select —</option>
+          <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
+          <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
+          <option>15 B. Days</option><option>21 B. Days</option><option>30 B. Days</option>
+          <option>Factoring</option>
+        </select>
+      </div>
+
+      <div class="fsep"></div><div class="ftitle">🏢 Broker Info</div><div></div>
+      <div class="fg"><label>Broker Name</label><input id="fl-br" placeholder="Echo Global Logistics"></div>
+      <div class="fg"><label>Broker Email</label><input type="email" id="fl-be" placeholder="broker@company.com"></div>
+      <div class="fg"><label>Broker Phone</label><input id="fl-bp" placeholder="+1 555 000 0000"></div>
+      <div class="fg"><label>Broker Fee ($)</label><input type="number" id="fl-bf" placeholder="0.00" step="0.01"></div>
+
+      <div class="fsep"></div><div class="ftitle">🚛 Driver</div><div></div>
+      <div class="fg"><label>Driver</label><select id="fl-drv"><option value="">— Select Driver —</option></select></div>
+      <div class="fg"><label>Week</label><input id="fl-wk" readonly></div>
+
+      <div class="trow full"><span class="trow-l">Broker Fee Paid</span><div class="sw" id="sw-bf" onclick="this.classList.toggle('on')"></div></div>
+      <div class="fg full"><label>Notes</label><textarea id="fl-nt" placeholder="Any additional notes about this load…"></textarea></div>
+    </div></div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-load')">Cancel</button>
+      <button class="btn btn-orange" onclick="saveLoad()">💾 Save Load</button>
+    </div>
+  </div>
+</div>
+
+<!-- USER MODAL -->
+<div class="ov" id="m-user">
+  <div class="modal sm">
+    <div class="mhd"><div class="mhd-t">Add Platform User</div><div class="mcl" onclick="cm('m-user')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <div class="fg"><label>Full Name</label><input id="u-nm" placeholder="John Smith"></div>
+      <div class="fg"><label>Email</label><input type="email" id="u-em" placeholder="john@company.com"></div>
+      <div class="fg"><label>Temp Password</label><input type="password" id="u-pw" placeholder="Min 6 chars"></div>
+      <div class="fg"><label>Role</label>
+        <select id="u-rl">
+          <option value="dispatcher">Dispatcher</option>
+          <option value="accounting">Accounting / Bookkeeper</option>
+          <option value="manager">Manager</option>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="fg"><label>Company</label><select id="u-co"><option value="">— None —</option></select></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPANY MODAL -->
+<div class="ov" id="m-co">
+  <div class="modal xs">
+    <div class="mhd"><div class="mhd-t">Add Company</div><div class="mcl" onclick="cm('m-co')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <div class="fg"><label>Company Name *</label><input id="co-nm" placeholder="ABC Trucking LLC"></div>
+      <div class="fg"><label>MC Number</label><input id="co-mc" placeholder="MC-123456"></div>
+      <div class="fg"><label>DOT Number</label><input id="co-dt" placeholder="DOT-789012"></div>
+      <div class="fg"><label>Email</label><input type="email" id="co-em" placeholder="company@gmail.com"></div>
+      <div class="fg"><label>Phone</label><input id="co-ph" placeholder="+1 555 000 0000"></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-co')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveComp()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVER MODAL -->
+<div class="ov" id="m-drv">
+  <div class="modal xs">
+    <div class="mhd"><div class="mhd-t">Add Driver</div><div class="mcl" onclick="cm('m-drv')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <div class="fg"><label>Driver Name *</label><input id="dr-nm" placeholder="Mike Johnson"></div>
+      <div class="fg"><label>Phone</label><input id="dr-ph" placeholder="+1 555 000 0000"></div>
+      <div class="fg"><label>Company</label><select id="dr-co"><option value="">— None —</option></select></div>
+      <div class="fg"><label>Assigned Dispatcher</label><select id="dr-dp"><option value="">— None —</option></select></div>
+      <div class="fg"><label>Minimum Rate/Mile ($) <span style="color:var(--orange)">*</span></label><input type="number" id="dr-min" placeholder="2.50" step="0.01"></div>
+      <div class="fg"><label>Salary % (admin only)</label><input type="number" id="dr-sal" placeholder="8" step="0.1"></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-drv')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDrv()">Save Driver</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="ov" id="m-pw">
+  <div class="modal sm">
+    <div class="mhd"><div class="mhd-t">Add Company Credentials</div><div class="mcl" onclick="cm('m-pw')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <div class="fg"><label>Company</label><select id="pw-co"><option value="">— Select —</option></select></div>
+      <div class="fg"><label>Platform Name</label><input id="pw-pl" placeholder="Central Dispatch"></div>
+      <div class="fg"><label>Username / Email</label><input id="pw-us" placeholder="username@email.com"></div>
+      <div class="fg"><label>Password</label><input id="pw-ps" placeholder="password123"></div>
+      <div class="fg"><label>Notes</label><textarea id="pw-nt" placeholder="Any extra info…" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-pw')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePw()">Save Credentials</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="ov" id="m-det">
+  <div class="modal sm">
+    <div class="mhd"><div class="mhd-t" id="m-det-t">Load Details</div><div class="mcl" onclick="cm('m-det')">×</div></div>
+    <div class="mbd" id="m-det-b"></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-det')">Close</button></div>
+  </div>
+</div>
+
+<script>
+/* ══ STATE ══ */
+let CU,CP,ROLE,LOADS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[],editId=null,unsub=null;
+let accTab='pending',accSrch='',dSrch='',dStF='',accCo='',accDr='';
+
+/* ══ WEEK ══ */
+const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1)),wk=Math.ceil((((d-yr)/86400000)+1)/7);return`${d.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`};
+let curW=CW();
+function wRange(ws){try{const[y,w]=ws.split('-W'),jan4=new Date(+y,0,4),mo=new Date(jan4);mo.setDate(jan4.getDate()-((jan4.getDay()+6)%7)+(parseInt(w)-1)*7);const su=new Date(mo);su.setDate(mo.getDate()+6);return{start:mo,end:su}}catch{return{start:new Date(),end:new Date()}}}
+function inW(ds,ws){if(!ds||!ws)return false;const d=new Date(ds+'T00:00:00'),{start,end}=wRange(ws);return d>=start&&d<=end}
+function wLbl(ws){try{const{start,end}=wRange(ws);return`${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`}catch{return ws}}
+function prevWeek(){const[y,w]=curW.split('-W');const d=new Date(wRange(curW).start);d.setDate(d.getDate()-7);curW=CW_from(d);updateWkLabel();renderCur()}
+function nextWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()+7);curW=CW_from(d);updateWkLabel();renderCur()}
+function goToday(){curW=CW();updateWkLabel();renderCur()}
+function CW_from(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dy=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-dy);const yr=new Date(Date.UTC(dt.getUTCFullYear(),0,1)),wk=Math.ceil((((dt-yr)/86400000)+1)/7);return`${dt.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`}
+function updateWkLabel(){document.getElementById('wk-lbl-top').textContent=wLbl(curW)}
+
+/* ══ UTILS ══ */
+function fmt(n){return(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fK(n){return n>=1000?'$'+(n/1000).toFixed(1)+'k':'$'+fmt(n)}
+function avL(n){if(!n)return'?';return n.trim().split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)}
+function sC(s){const m={assigned:'s-assigned','picked up':'s-picked',pickedup:'s-picked',delivered:'s-delivered',invoiced:'s-invoiced'};return m[(s||'').toLowerCase().replace(' ','')]||'s-assigned'}
+function swV(id){return document.getElementById(id)?.classList.contains('on')}
+function setSw(id,v){document.getElementById(id)?.classList.toggle('on',!!v)}
+function cm(id){document.getElementById(id)?.classList.remove('open');if(id==='m-load')editId=null}
+function om(id){document.getElementById(id)?.classList.add('open')}
+function calcRPM(){const m=parseFloat(document.getElementById('fl-mi')?.value)||0,r=parseFloat(document.getElementById('fl-rt')?.value)||0,el=document.getElementById('fl-rpm');if(el)el.value=(m>0&&r>0)?'$'+(r/m).toFixed(2):''}
+function escQ(s){return(s||'').replace(/"/g,'&quot;')}
+function notify(msg,t='ok'){const el=document.createElement('div');el.className=`nf ${t}`;el.innerHTML=`<span>${t==='ok'?'✅':t==='err'?'❌':'ℹ️'}</span>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),4000)}
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+
+/* ══ DUE DATE CALC ══ */
+function getDueDate(loadDate, payMethod){
+  if(!loadDate||!payMethod) return null;
+  const days={'QP':5,'COD':5,'COP':5,'SuperPay':5,'5 B. Days':10,'7 B. Days':15,'10 B. Days':20,'15 B. Days':25,'21 B. Days':32,'30 B. Days':45,'Factoring':5};
+  const d=days[payMethod];
+  if(!d) return null;
+  const dt=new Date(loadDate+'T00:00:00');
+  dt.setDate(dt.getDate()+d);
+  return dt;
+}
+function lateTag(loadDate, payMethod, paid){
+  if(paid) return `<span class="late-tag ok">✓ Paid</span>`;
+  const due=getDueDate(loadDate,payMethod);
+  if(!due) return '';
+  const today=new Date(); today.setHours(0,0,0,0);
+  const diff=Math.floor((today-due)/86400000);
+  if(diff<0) return `<span class="late-tag ok">Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
+  if(diff<=3) return `<span class="late-tag warn">⚠ ${diff}d late</span>`;
+  return `<span class="late-tag danger">🔴 ${diff}d OVERDUE</span>`;
+}
+
+/* ══ KPI OVER MINIMUM ══ */
+function calcOverMin(loads, drivers){
+  // For each load, find driver's min rate, calc (actualRPM - minRPM) * miles
+  let total=0;
+  loads.forEach(l=>{
+    const drv=drivers.find(d=>d.name===l.driver);
+    if(!drv||!drv.minRate) return;
+    const actualRPM=l.miles>0?l.rate/l.miles:0;
+    const over=(actualRPM-(+drv.minRate||0))*l.miles;
+    if(over>0) total+=over;
+  });
+  return total;
+}
+
+/* ══ AUTH ══ */
+async function doLogin(){
+  const e=document.getElementById('li-e').value.trim(),p=document.getElementById('li-p').value,err=document.getElementById('li-err');
+  err.style.display='none';
+  if(!e||!p){err.textContent='Enter email and password.';err.style.display='block';return}
+  try{await window._fb.signInWithEmailAndPassword(window._auth,e,p)}
+  catch{err.textContent='Incorrect email or password.';err.style.display='block'}
+}
+async function doLogout(){if(unsub)unsub();await window._fb.signOut(window._auth)}
+['li-e','li-p'].forEach(id=>document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
+
+window.addEventListener('load',()=>{
+  window._fb.onAuthStateChanged(window._auth,async user=>{
+    document.getElementById('loading').style.display='none';
+    if(user){await boot(user)}
+    else{document.getElementById('login-page').style.display='block';document.getElementById('app').classList.remove('show')}
+  });
+});
+
+/* ══ BOOT ══ */
+async function boot(user){
+  CU=user;
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app').classList.add('show');
+  const{getDocs,collection,query,where}=window._fb;
+  const snap=await getDocs(query(collection(window._db,'users'),where('email','==',user.email)));
+  CP=snap.empty?{name:user.email,role:'dispatcher'}:{id:snap.docs[0].id,...snap.docs[0].data()};
+  ROLE=CP.role||'dispatcher';
+  const av=document.getElementById('sb-av');
+  av.textContent=avL(CP.name);
+  document.getElementById('sb-uname').textContent=CP.name||user.email;
+  document.getElementById('sb-urole').textContent=ROLE.toUpperCase();
+  buildNav();
+  await loadMeta();
+  subLoads();
+  updateWkLabel();
+  const def={dispatcher:'dispatcher',accounting:'accounting',manager:'kpi',owner:'owner',admin:'admin'};
+  showPg(def[ROLE]||'dispatcher');
+}
+
+function buildNav(){
+  const maps={
+    dispatcher:[
+      {id:'dispatcher',icon:'📋',l:'My Loads'},
+      {id:'kpi',icon:'📊',l:'KPI Leaderboard'},
+      {id:'passwords',icon:'🔐',l:'Passwords'},
+    ],
+    accounting:[
+      {id:'accounting',icon:'💰',l:'Accounting'},
+      {id:'kpi',icon:'📊',l:'KPI'},
+    ],
+    manager:[
+      {id:'kpi',icon:'📊',l:'KPI'},
+      {id:'accounting',icon:'💰',l:'Accounting'},
+      {id:'owner',icon:'🏠',l:'Dashboard'},
+    ],
+    owner:[
+      {id:'owner',icon:'🏠',l:'Dashboard'},
+      {id:'kpi',icon:'📊',l:'KPI'},
+      {id:'accounting',icon:'💰',l:'Accounting'},
+    ],
+    admin:[
+      {id:'dispatcher',icon:'📋',l:'Loads'},
+      {id:'accounting',icon:'💰',l:'Accounting'},
+      {id:'kpi',icon:'📊',l:'KPI'},
+      {id:'owner',icon:'🏠',l:'Owner View'},
+      {id:'passwords',icon:'🔐',l:'Passwords'},
+      {id:'salary',icon:'💵',l:'Salary'},
+      {id:'admin',icon:'⚙️',l:'Admin'},
+    ],
+  };
+  const items=maps[ROLE]||maps.dispatcher;
+  document.getElementById('sb-nav').innerHTML=
+    `<div class="sb-section">NAVIGATION</div>`+
+    items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.icon} ${i.l}</div>`).join('');
+}
+
+/* ══ META ══ */
+async function loadMeta(){
+  const{getDocs,collection}=window._fb,db=window._db;
+  const[us,ds,cs,pws]=await Promise.all([
+    getDocs(collection(db,'users')),
+    getDocs(collection(db,'drivers')),
+    getDocs(collection(db,'companies')),
+    getDocs(collection(db,'passwords')),
+  ]);
+  USERS=us.docs.map(d=>({id:d.id,...d.data()}));
+  DRIVERS=ds.docs.map(d=>({id:d.id,...d.data()}));
+  COMPANIES=cs.docs.map(d=>({id:d.id,...d.data()}));
+  PASSWORDS=pws.docs.map(d=>({id:d.id,...d.data()}));
+  fillAccSelects();
+}
+
+function fillAccSelects(){
+  const coSel=document.getElementById('acc-co-sel');
+  if(coSel) coSel.innerHTML=`<option value="">All Companies</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function accSelectCo(coId){
+  accCo=coId;
+  const drSel=document.getElementById('acc-dr-sel');
+  const drivers=coId?DRIVERS.filter(d=>d.companyId===coId||d.company===COMPANIES.find(c=>c.id===coId)?.name):DRIVERS;
+  drSel.innerHTML=`<option value="">All Drivers</option>`+drivers.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');
+  accDr='';
+  renderAcc();
+}
+
+/* ══ REALTIME ══ */
+function subLoads(){
+  if(unsub)unsub();
+  const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
+  const q=ROLE==='dispatcher'
+    ?query(collection(db,'loads'),where('dispEmail','==',CU.email),orderBy('createdAt','desc'))
+    :query(collection(db,'loads'),orderBy('createdAt','desc'));
+  unsub=onSnapshot(q,snap=>{LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));renderCur()});
+}
+
+/* ══ ROUTING ══ */
+const pgTitles={dispatcher:'My Loads',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary Calculator',admin:'Admin Panel'};
+function showPg(pg){
+  document.querySelectorAll('.pg').forEach(e=>e.classList.remove('show'));
+  document.querySelectorAll('.sni').forEach(e=>e.classList.remove('on'));
+  document.getElementById(`pg-${pg}`)?.classList.add('show');
+  document.querySelector(`[data-pg="${pg}"]`)?.classList.add('on');
+  document.getElementById('tb-title').textContent=pgTitles[pg]||pg;
+  document.getElementById('tb-sub').textContent=wLbl(curW);
+  renderPg(pg);
+}
+function renderCur(){const v=document.querySelector('.pg.show');if(v)renderPg(v.id.replace('pg-',''))}
+function renderPg(pg){
+  if(pg==='dispatcher')renderD();
+  if(pg==='accounting')renderAcc();
+  if(pg==='kpi')renderKPI();
+  if(pg==='owner')renderOwner();
+  if(pg==='passwords')renderPasswords();
+  if(pg==='salary')renderSalary();
+  if(pg==='admin')renderAdmin();
+}
+
+/* ══ DISPATCHER ══ */
+function renderD(){
+  const isAll=['admin','owner','manager','accounting'].includes(ROLE);
+  const loads=LOADS.filter(l=>(isAll||l.dispEmail===CU.email)&&inW(l.date,curW));
+  document.getElementById('d-wlbl').textContent=wLbl(curW);
+  const gross=loads.reduce((s,l)=>s+(+l.rate||0),0),miles=loads.reduce((s,l)=>s+(+l.miles||0),0);
+  document.getElementById('dk-l').textContent=loads.length;
+  document.getElementById('dk-g').textContent=fK(gross);
+  document.getElementById('dk-r').textContent=miles>0?'$'+(gross/miles).toFixed(2):'$0.00';
+  document.getElementById('dk-m').textContent=miles.toLocaleString();
+  const myDrivers=isAll?DRIVERS:DRIVERS.filter(d=>d.dispatcherEmail===CU.email);
+  renderDriverCards(myDrivers,'d-drivers',true);
+  let fl=loads.slice();
+  if(dSrch){const q=dSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.broker||'').toLowerCase().includes(q))}
+  if(dStF)fl=fl.filter(l=>l.status===dStF);
+  document.getElementById('d-cnt').textContent=`${fl.length} load${fl.length!==1?'s':''}`;
+  renderTbl(fl,'d-tb',isAll);
+}
+
+function renderDriverCards(drivers,cid,myView){
+  const el=document.getElementById(cid);if(!el)return;
+  if(!drivers.length){el.innerHTML=`<div class="em"><div class="e">🚛</div><p>No drivers assigned yet.</p></div>`;return}
+  el.innerHTML=drivers.map(d=>{
+    const dLoads=LOADS.filter(l=>l.driver===d.name&&inW(l.date,curW));
+    const dGross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const dMiles=dLoads.reduce((s,l)=>s+(+l.miles||0),0);
+    const isLocked=d.weekLocked&&d.weekLocked===curW;
+    const overMin=calcOverMin(dLoads,[d]);
+    return`<div class="driver-card" onclick="filterByDriver('${d.name}')">
+      <div class="dc-head">
+        <div class="dc-av">${avL(d.name)}</div>
+        <div>
+          <div class="dc-name">${d.name}</div>
+          <div class="dc-company">${d.company||'—'} · Min: $${d.minRate||'0.00'}/mi</div>
+        </div>
+        ${myView&&(ROLE==='dispatcher'||ROLE==='admin')?`<button class="btn btn-sm ${isLocked?'btn-danger':'btn-ghost'}" style="margin-left:auto" onclick="event.stopPropagation();toggleWeekLock('${d.id}','${d.name}')">${isLocked?'🔒 Locked':'🔓 Lock Week'}</button>`:''}
+      </div>
+      <div class="dc-stats">
+        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dLoads.length}</div></div>
+        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dGross)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Miles</div><div class="dc-sv">${dMiles.toLocaleString()}</div></div>
+        <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:var(--orange)">${fK(overMin)}</div></div>
+      </div>
+      ${isLocked?`<div class="dc-locked">🔒 Week Locked</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function filterByDriver(name){dSrch=name;renderD();window.scrollTo(0,500)}
+
+async function toggleWeekLock(drvId,drvName){
+  const drv=DRIVERS.find(d=>d.id===drvId);if(!drv)return;
+  const isLocked=drv.weekLocked===curW;
+  if(isLocked&&ROLE!=='admin'){notify('Only admin can unlock a week','err');return}
+  if(!isLocked&&!confirm(`Lock week ${wLbl(curW)} for ${drvName}? Dispatcher won't be able to edit loads.`))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:isLocked?'':curW});
+  await loadMeta();renderCur();
+  notify(isLocked?'Week unlocked':'Week locked 🔒');
+}
+
+function isWeekLocked(driverName){
+  const drv=DRIVERS.find(d=>d.name===driverName);
+  return drv&&drv.weekLocked===curW;
+}
+
+/* ══ TABLE ══ */
+function renderTbl(loads,tbid,showD){
+  const tb=document.getElementById(tbid);
+  if(!loads.length){tb.innerHTML=`<tr><td colspan="14"><div class="em"><div class="e">📋</div><p>No loads found.</p></div></td></tr>`;return}
+  tb.innerHTML=loads.map(l=>{
+    const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
+    const sc=sC(l.status);
+    const dc=showD?`<td style="color:var(--blue);font-size:12px;font-weight:600">${l.dispName||'—'}</td>`:'';
+    const locked=isWeekLocked(l.driver)&&ROLE!=='admin';
+    const statOrder=['Assigned','Picked Up','Delivered','Invoiced'];
+    const curIdx=statOrder.indexOf(l.status||'Assigned');
+    const nextStatus=statOrder[curIdx+1];
+    const statusBtn=nextStatus&&!locked
+      ?`<button class="sf-btn sf-${nextStatus.toLowerCase().replace(' ','-')}" onclick="advanceStatus(event,'${l.id}','${nextStatus}')">${nextStatus} →</button>`
+      :`<span class="pill ${sc}">${l.status||'Assigned'}</span>`;
+    return`<tr onclick="openDet('${l.id}')">
+      <td class="bold">${l.orderId||'—'}</td>
+      ${dc}
+      <td>${l.origin||'—'} → ${l.dest||'—'}</td>
+      <td>${l.driver||'—'}</td>
+      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis">${l.broker||'—'}</td>
+      <td style="font-family:var(--mono)">${(+l.miles||0).toLocaleString()}</td>
+      <td class="money">$${fmt(+l.rate||0)}</td>
+      <td style="font-family:var(--mono);color:var(--blue)">$${rpm}</td>
+      <td style="font-size:11px">${l.payMethod||'—'}</td>
+      <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee)+' '+(l.bfPaid?'✓':'✗'):'—'}</td>
+      <td>${statusBtn}</td>
+      <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid(event,'${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
+      <td style="color:var(--text3);font-size:11px">${l.date||'—'}</td>
+      ${!locked||ROLE==='admin'?`<td><div style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm" onclick="editLoad(event,'${l.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="delLoad(event,'${l.id}')">🗑</button>
+      </div></td>`:`<td><span style="font-size:10px;color:var(--text3)">🔒</span></td>`}
+    </tr>`;
+  }).join('');
+}
+
+async function advanceStatus(e,id,nextStatus){
+  e.stopPropagation();
+  if(!confirm(`Mark as "${nextStatus}"? This cannot be undone.`))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',id),{status:nextStatus});
+  notify(`Status → ${nextStatus}`);
+}
+
+/* ══ LOAD MODAL ══ */
+function openLoadModal(){
+  editId=null;
+  document.getElementById('m-load-t').textContent='Add New Load';
+  ['fl-oid','fl-ori','fl-dst','fl-mi','fl-rt','fl-rpm','fl-br','fl-be','fl-bp','fl-nt','fl-bf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  document.getElementById('fl-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fl-pay').value='';
+  document.getElementById('fl-wk').value=wLbl(curW);
+  setSw('sw-bf',false);
+  fillDrvSel();om('m-load');
+}
+function editLoad(e,id){
+  e.stopPropagation();
+  const l=LOADS.find(x=>x.id===id);if(!l)return;
+  if(isWeekLocked(l.driver)&&ROLE!=='admin'){notify('Week is locked. Admin only.','err');return}
+  editId=id;
+  document.getElementById('m-load-t').textContent='Edit Load';
+  document.getElementById('fl-oid').value=l.orderId||'';
+  document.getElementById('fl-date').value=l.date||'';
+  document.getElementById('fl-ori').value=l.origin||'';
+  document.getElementById('fl-dst').value=l.dest||'';
+  document.getElementById('fl-mi').value=l.miles||'';
+  document.getElementById('fl-rt').value=l.rate||'';
+  document.getElementById('fl-br').value=l.broker||'';
+  document.getElementById('fl-be').value=l.brokerEmail||'';
+  document.getElementById('fl-bp').value=l.brokerPhone||'';
+  document.getElementById('fl-bf').value=l.brokerFee||'';
+  document.getElementById('fl-nt').value=l.notes||'';
+  document.getElementById('fl-pay').value=l.payMethod||'';
+  document.getElementById('fl-wk').value=wLbl(l.week||curW);
+  setSw('sw-bf',!!l.bfPaid);
+  fillDrvSel(l.driver);calcRPM();om('m-load');
+}
+function fillDrvSel(sel=''){
+  const el=document.getElementById('fl-drv');if(!el)return;
+  const drvs=ROLE==='dispatcher'?DRIVERS.filter(d=>d.dispatcherEmail===CU.email):DRIVERS;
+  el.innerHTML=`<option value="">— Select Driver —</option>`+drvs.map(d=>`<option value="${d.name}"${d.name===sel?' selected':''}>${d.name}${d.company?' ('+d.company+')':''}</option>`).join('');
+}
+async function saveLoad(){
+  const oid=document.getElementById('fl-oid').value.trim(),pay=document.getElementById('fl-pay').value;
+  if(!oid){notify('Order ID is required','err');return}
+  if(!pay){notify('Payment Method is required','err');return}
+  const miles=parseFloat(document.getElementById('fl-mi').value)||0,rate=parseFloat(document.getElementById('fl-rt').value)||0;
+  const drvName=document.getElementById('fl-drv').value;
+  if(isWeekLocked(drvName)&&ROLE!=='admin'){notify('Week is locked for this driver','err');return}
+  const data={
+    orderId:oid,date:document.getElementById('fl-date').value,
+    origin:document.getElementById('fl-ori').value.trim(),dest:document.getElementById('fl-dst').value.trim(),
+    miles,rate,ratePerMile:miles>0?rate/miles:0,
+    broker:document.getElementById('fl-br').value.trim(),
+    brokerEmail:document.getElementById('fl-be').value.trim(),
+    brokerPhone:document.getElementById('fl-bp').value.trim(),
+    brokerFee:parseFloat(document.getElementById('fl-bf').value)||0,
+    bfPaid:swV('sw-bf'),payMethod:pay,
+    status:editId?undefined:'Assigned',
+    paid:editId?undefined:false,
+    driver:drvName,notes:document.getElementById('fl-nt').value.trim(),
+    dispEmail:CU.email,dispName:CP.name||CU.email,
+    company:CP.company||'',week:curW,
+  };
+  if(editId){delete data.status;delete data.paid}
+  const{addDoc,updateDoc,doc,collection,serverTimestamp}=window._fb,db=window._db;
+  try{
+    if(editId){await updateDoc(doc(db,'loads',editId),{...data,updatedAt:serverTimestamp()})}
+    else{await addDoc(collection(db,'loads'),{...data,createdAt:serverTimestamp()})}
+    notify(editId?'Load updated ✓':'Load added ✓');cm('m-load');
+  }catch(e){notify('Error: '+e.message,'err')}
+}
+async function tgPaid(e,id,v,locked){
+  e.stopPropagation();
+  if(locked){notify('Week is locked','err');return}
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',id),{paid:v});
+  notify(v?'✓ Marked as PAID':'Marked as UNPAID');
+}
+async function delLoad(e,id){
+  e.stopPropagation();
+  const l=LOADS.find(x=>x.id===id);
+  if(isWeekLocked(l?.driver)&&ROLE!=='admin'){notify('Week is locked','err');return}
+  if(!confirm('Delete this load?'))return;
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'loads',id));notify('Load deleted','inf');
+}
+
+/* ══ ACCOUNTING ══ */
+function setAccTab(k,el){accTab=k;document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('acc-tt').textContent={pending:'Pending Payment',paid:'Paid Loads ✓',overdue:'Overdue Loads',all:'All Loads'}[k];renderAcc()}
+function renderAcc(){
+  let loads=LOADS.filter(l=>inW(l.date,curW));
+  const accDrVal=document.getElementById('acc-dr-sel')?.value||'';
+  if(accCo){const co=COMPANIES.find(c=>c.id===accCo);if(co)loads=loads.filter(l=>l.company===co.name||l.company===co.id)}
+  if(accDrVal)loads=loads.filter(l=>l.driver===accDrVal);
+  document.getElementById('acc-np').textContent=loads.filter(l=>!l.paid).length;
+  document.getElementById('acc-pp').textContent=loads.filter(l=>l.paid).length;
+  let fil=accTab==='pending'?loads.filter(l=>!l.paid)
+    :accTab==='paid'?loads.filter(l=>l.paid)
+    :accTab==='overdue'?loads.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);if(!due)return false;return new Date()>due})
+    :loads;
+  if(accSrch){const q=accSrch.toLowerCase();fil=fil.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q)||(l.broker||'').toLowerCase().includes(q))}
+  document.getElementById('acc-cnt').textContent=`${fil.length} load${fil.length!==1?'s':''}`;
+  renderAccTbl(fil);
+}
+function renderAccTbl(loads){
+  const tb=document.getElementById('acc-tb');
+  if(!loads.length){tb.innerHTML=`<tr><td colspan="14"><div class="em"><div class="e">💰</div><p>No loads.</p></div></td></tr>`;return}
+  tb.innerHTML=loads.map(l=>{
+    const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
+    const sc=sC(l.status);
+    const due=getDueDate(l.date,l.payMethod);
+    const dueStr=due?due.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+    const lTag=lateTag(l.date,l.payMethod,l.paid);
+    const canEdit=ROLE==='accounting'||ROLE==='admin';
+    return`<tr>
+      <td class="bold">${l.orderId||'—'}</td>
+      <td style="color:var(--blue);font-size:12px">${l.dispName||'—'}</td>
+      <td style="font-weight:600">${l.driver||'—'}</td>
+      <td style="font-size:11px">${l.company||'—'}</td>
+      <td>${l.origin||'—'} → ${l.dest||'—'}</td>
+      <td class="money">$${fmt(+l.rate||0)}</td>
+      <td style="font-family:var(--mono);color:var(--blue)">$${rpm}</td>
+      <td style="font-size:11px">${l.payMethod||'—'}</td>
+      <td><span class="pill ${sc}">${l.status||'Assigned'}</span></td>
+      <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accTP('${l.id}',${!l.paid},'${l.payMethod||''}')">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
+      <td>${l.ownerPaid?`<span style="font-size:11px;color:var(--green);font-weight:700">✓ Owner OK</span>`:`<span style="font-size:11px;color:var(--text3)">Pending</span>`}</td>
+      <td style="font-size:11px">${l.date||'—'}</td>
+      <td>${lTag}</td>
+      <td>${canEdit?`<input class="ai" placeholder="Note…" value="${escQ(l.accComment||'')}" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()" style="min-width:120px">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+    </tr>`;
+  }).join('');
+}
+async function accTP(id,v,method){
+  const{updateDoc,doc}=window._fb;
+  let note='';
+  if(v){note=prompt('Payment note (e.g. "Received via ACH on Mar 6")')||''}
+  await updateDoc(doc(window._db,'loads',id),{paid:v,accComment:note||undefined,paidDate:v?new Date().toISOString():null});
+  notify(v?'✓ Moved to Paid':'Moved to Pending');
+}
+async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
+
+/* ══ KPI ══ */
+function renderKPI(){
+  document.getElementById('kpi-wr').textContent=wLbl(curW);
+  const loads=LOADS.filter(l=>inW(l.date,curW));
+  const disps=USERS.filter(u=>u.role==='dispatcher');
+  const stats=disps.map(d=>{
+    const dl=loads.filter(l=>l.dispEmail===d.email);
+    const g=dl.reduce((s,l)=>s+(+l.rate||0),0),m=dl.reduce((s,l)=>s+(+l.miles||0),0);
+    const myDrivers=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
+    const overMin=calcOverMin(dl,myDrivers);
+    return{...d,loads:dl.length,gross:g,miles:m,rpm:m>0?g/m:0,overMin};
+  }).sort((a,b)=>b.gross-a.gross);
+  const tG=loads.reduce((s,l)=>s+(+l.rate||0),0),tM=loads.reduce((s,l)=>s+(+l.miles||0),0);
+  const tOv=stats.reduce((s,d)=>s+d.overMin,0);
+  const bRPM=stats.length?Math.max(...stats.map(s=>s.rpm)):0;
+  document.getElementById('kk-l').textContent=loads.length;
+  document.getElementById('kk-g').textContent=fK(tG);
+  document.getElementById('kk-r').textContent='$'+(bRPM||0).toFixed(2);
+  document.getElementById('kk-ov').textContent=fK(tOv);
+  // winners
+  const gW=stats.find(s=>s.gross>0);
+  const eW=[...stats].sort((a,b)=>b.overMin-a.overMin).find(s=>s.overMin>0);
+  document.getElementById('kpi-gw').textContent=gW?.name||'—';
+  document.getElementById('kpi-gw-val').textContent=gW?`$${fmt(gW.gross)} gross`:'No data';
+  document.getElementById('kpi-ew').textContent=eW?.name||'—';
+  document.getElementById('kpi-ew-val').textContent=eW?`$${fmt(eW.overMin)} over minimum`:'No data';
+  renderLB(stats,'kpi-body',bRPM);
+}
+function renderLB(stats,cid){
+  const el=document.getElementById(cid);if(!el)return;
+  if(!stats.length){el.innerHTML=`<div class="em"><div class="e">📊</div><p>No data.</p></div>`;return}
+  const maxG=stats[0]?.gross||1,gW=stats.find(s=>s.gross>0),eW=[...stats].sort((a,b)=>b.overMin-a.overMin).find(s=>s.overMin>0);
+  const rc=['g1','g2','g3'],rr=['r1','r2','r3'];
+  el.innerHTML=stats.map((s,i)=>{
+    const isG=gW&&s.email===gW.email&&s.gross>0,isE=eW&&s.email===eW.email&&s.overMin>0&&!isG;
+    const bTag=isG?`<span class="bonus win">🏆 Gross Winner</span>`:isE?`<span class="bonus eff">⚡ Over Min Winner</span>`:`<span class="bonus none">—</span>`;
+    return`<div class="lb-row ${rr[i]||''}">
+      <div><span class="rk ${rc[i]||''}">${i+1}</span></div>
+      <div><div class="lb-nm">${s.name||s.email}</div><div class="lb-co">${s.company||''}</div>
+        <div class="bw"><div class="bf" style="width:${maxG>0?(s.gross/maxG*100):0}%;background:${i===0?'var(--yellow)':'var(--orange)'}"></div></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:13px">${s.loads}</div>
+      <div style="font-family:var(--mono);font-size:13px;color:var(--green);font-weight:700">$${fmt(s.gross)}</div>
+      <div style="font-family:var(--mono);font-size:13px">${s.miles.toLocaleString()}</div>
+      <div style="font-family:var(--mono);font-size:13px;color:var(--blue);font-weight:600">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
+      <div>${bTag}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══ OWNER ══ */
+function renderOwner(){
+  const loads=LOADS.filter(l=>inW(l.date,curW));
+  const g=loads.reduce((s,l)=>s+(+l.rate||0),0),pa=loads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+  document.getElementById('ow-l').textContent=loads.length;
+  document.getElementById('ow-g').textContent=fK(g);
+  document.getElementById('ow-p').textContent=fK(pa);
+  document.getElementById('ow-pn').textContent=fK(g-pa);
+  const cols=['var(--orange)','var(--blue)','var(--green)','var(--purple)','var(--yellow)','var(--red)'];
+  document.getElementById('ow-cog').innerHTML=COMPANIES.length?COMPANIES.map((co,i)=>{
+    const cl=loads.filter(l=>l.company===co.name||l.company===co.id);
+    const cg=cl.reduce((s,l)=>s+(+l.rate||0),0),cp=cl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    return`<div class="co-card" style="border-top-color:${cols[i%6]}">
+      <div class="co-name">${co.name}</div>
+      <div class="co-stats">
+        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${cl.length}</div></div>
+        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(cg)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Paid</div><div class="dc-sv" style="color:var(--blue)">${fK(cp)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Pending</div><div class="dc-sv" style="color:var(--red)">${fK(cg-cp)}</div></div>
+      </div>
+    </div>`;
+  }).join(''):`<div class="em" style="grid-column:1/-1"><div class="e">🏢</div><p>No companies.</p></div>`;
+  renderDriverCards(DRIVERS,'ow-drivers',false);
+}
+
+/* ══ PASSWORDS ══ */
+function renderPasswords(){
+  const grid=document.getElementById('pw-grid');
+  if(!PASSWORDS.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🔐</div><p>No credentials saved yet.</p></div>`;return}
+  grid.innerHTML=PASSWORDS.map(p=>{
+    const co=COMPANIES.find(c=>c.id===p.companyId||c.name===p.company);
+    return`<div class="pw-card">
+      <div class="pw-card-hd">
+        <div class="pw-icon">🔐</div>
+        <div>
+          <div class="pw-name">${co?.name||p.company||'Unknown Company'}</div>
+          <div style="font-size:11px;color:var(--text3)">${p.platform||'Central Dispatch'}</div>
+        </div>
+        ${ROLE==='admin'?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="delPw('${p.id}')">🗑</button>`:''}
+      </div>
+      <div class="pw-field"><div class="pw-label">Username</div><div class="pw-val">${p.username||'—'}</div></div>
+      <div class="pw-field"><div class="pw-label">Password</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="pw-val" id="pw-${p.id}" style="flex:1">••••••••</div>
+          <button class="btn btn-ghost btn-sm" onclick="togglePw('${p.id}','${escQ(p.password||'')}')">👁</button>
+        </div>
+      </div>
+      ${p.notes?`<div class="pw-field"><div class="pw-label">Notes</div><div style="font-size:12px;color:var(--text2)">${p.notes}</div></div>`:''}
+    </div>`;
+  }).join('');
+}
+function togglePw(id,val){const el=document.getElementById('pw-'+id);if(el)el.textContent=el.textContent==='••••••••'?val:'••••••••'}
+function openPwModal(){
+  document.getElementById('pw-co').innerHTML=`<option value="">— Select —</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  ['pw-pl','pw-us','pw-ps','pw-nt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  om('m-pw');
+}
+async function savePw(){
+  const co=document.getElementById('pw-co').value,us=document.getElementById('pw-us').value.trim(),ps=document.getElementById('pw-ps').value.trim();
+  if(!co||!us){notify('Company and username required','err');return}
+  const{addDoc,collection}=window._fb;
+  const coObj=COMPANIES.find(c=>c.id===co);
+  await addDoc(collection(window._db,'passwords'),{
+    companyId:co,company:coObj?.name||'',platform:document.getElementById('pw-pl').value.trim(),
+    username:us,password:ps,notes:document.getElementById('pw-nt').value.trim()
+  });
+  notify('Credentials saved ✓');await loadMeta();renderPasswords();cm('m-pw');
+}
+async function delPw(id){
+  if(!confirm('Delete these credentials?'))return;
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'passwords',id));
+  notify('Deleted','inf');await loadMeta();renderPasswords();
+}
+
+/* ══ SALARY ══ */
+function renderSalary(){
+  const loads=LOADS.filter(l=>inW(l.date,curW));
+  const rows=DRIVERS.map(d=>{
+    const dl=loads.filter(l=>l.driver===d.name);
+    const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+    const salPct=+(d.salaryPct||0)/100;
+    const salary=gross*salPct;
+    const overMin=calcOverMin(dl,[d]);
+    return{...d,loads:dl.length,gross,salary,overMin};
+  });
+  const table=document.getElementById('sal-table');
+  table.innerHTML=`
+    <div class="sal-row sal-head">
+      <div>Driver</div><div>Loads</div><div>Gross</div><div>Min $/mi</div>
+      <div>Over Min</div><div>Salary %</div><div>Salary</div><div>Total</div>
+    </div>
+    ${rows.map(r=>`<div class="sal-row">
+      <div style="font-weight:600">${r.name}</div>
+      <div style="font-family:var(--mono)">${r.loads}</div>
+      <div style="font-family:var(--mono);color:var(--green)">$${fmt(r.gross)}</div>
+      <div style="font-family:var(--mono)">$${r.minRate||'—'}</div>
+      <div style="font-family:var(--mono);color:var(--orange)">$${fmt(r.overMin)}</div>
+      <div>${ROLE==='admin'?`<input type="number" value="${r.salaryPct||''}" placeholder="%" style="width:60px;border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:12px;font-family:var(--mono)" onblur="saveSalPct('${r.id}',this.value)">`:r.salaryPct?r.salaryPct+'%':'—'}</div>
+      <div style="font-family:var(--mono);color:var(--blue)">$${fmt(r.salary)}</div>
+      <div style="font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(r.salary+r.overMin)}</div>
+    </div>`).join('')}
+    <div class="sal-row" style="font-weight:700;background:var(--surface2);border-top:2px solid var(--border)">
+      <div>TOTAL</div><div>${rows.reduce((s,r)=>s+r.loads,0)}</div>
+      <div style="color:var(--green);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.gross,0))}</div>
+      <div></div>
+      <div style="color:var(--orange);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.overMin,0))}</div>
+      <div></div>
+      <div style="color:var(--blue);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary,0))}</div>
+      <div style="color:var(--navy);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary+r.overMin,0))}</div>
+    </div>`;
+}
+async function saveSalPct(id,val){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',id),{salaryPct:parseFloat(val)||0});
+  await loadMeta();notify('Salary % saved');
+}
+function exportSalaryXLS(){
+  const loads=LOADS.filter(l=>inW(l.date,curW));
+  let csv='Driver,Loads,Gross,Min $/Mile,Over Minimum,Salary %,Salary,Total\n';
+  DRIVERS.forEach(d=>{
+    const dl=loads.filter(l=>l.driver===d.name);
+    const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+    const sal=gross*(+(d.salaryPct||0)/100);
+    const over=calcOverMin(dl,[d]);
+    csv+=`"${d.name}",${dl.length},$${fmt(gross)},$${d.minRate||0},${fmt(over)},${d.salaryPct||0}%,$${fmt(sal)},$${fmt(sal+over)}\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`salary_${curW}.csv`;a.click();
+  notify('Excel exported ✓');
+}
+
+/* ══ ADMIN ══ */
+function renderAdmin(){
+  document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`<div class="ur"><div class="ua">${avL(u.name)}</div><div><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div><span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span></div>`).join(''):`<div class="em" style="padding:24px"><p>No users.</p></div>`;
+  const disps=USERS.filter(u=>u.role==='dispatcher');
+  document.getElementById('adm-d').innerHTML=disps.length?disps.map(d=>{
+    const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
+    return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;align-items:center;gap:10px;width:100%"><div class="ua">${avL(d.name)}</div><div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div></div>
+      <div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0;display:flex;align-items:center;gap:8px">🚛 ${dr.name} <span style="color:var(--text3);font-family:var(--mono);font-size:10px">${dr.company||''} · Min: $${dr.minRate||'—'}/mi · ${dr.salaryPct||'—'}%</span></div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div>
+    </div>`;
+  }).join(''):`<div class="em" style="padding:24px"><p>No dispatchers.</p></div>`;
+  document.getElementById('adm-c').innerHTML=COMPANIES.length?COMPANIES.map(co=>`<div class="ur"><div style="font-size:22px">🏢</div><div><div class="un">${co.name}</div><div class="ue">${co.email||co.mc||'—'}</div></div></div>`).join(''):`<div class="em" style="padding:24px"><p>No companies.</p></div>`;
+  document.getElementById('adm-s').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="dc-s"><div class="dc-sl">Users</div><div class="dc-sv">${USERS.length}</div></div>
+    <div class="dc-s"><div class="dc-sl">Dispatchers</div><div class="dc-sv">${USERS.filter(u=>u.role==='dispatcher').length}</div></div>
+    <div class="dc-s"><div class="dc-sl">Drivers</div><div class="dc-sv">${DRIVERS.length}</div></div>
+    <div class="dc-s"><div class="dc-sl">Companies</div><div class="dc-sv">${COMPANIES.length}</div></div>
+    <div class="dc-s"><div class="dc-sl">Total Loads</div><div class="dc-sv">${LOADS.length}</div></div>
+    <div class="dc-s"><div class="dc-sl">Paid</div><div class="dc-sv" style="color:var(--green)">${LOADS.filter(l=>l.paid).length}</div></div>
+  </div>`;
+}
+
+/* ══ ADMIN MODALS ══ */
+function openUserModal(){
+  ['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  document.getElementById('u-co').innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  om('m-user');
+}
+async function saveUser(){
+  const nm=document.getElementById('u-nm').value.trim(),em=document.getElementById('u-em').value.trim(),pw=document.getElementById('u-pw').value;
+  if(!nm||!em){notify('Name and email required','err');return}
+  const{addDoc,collection}=window._fb;
+  await addDoc(collection(window._db,'users'),{name:nm,email:em,role:document.getElementById('u-rl').value,company:document.getElementById('u-co').value,createdAt:new Date().toISOString()});
+  notify(`Profile saved. ⚠️ Also create "${em}" in Firebase Auth with password: ${pw||'(set manually)'}`, 'inf');
+  await loadMeta();renderAdmin();cm('m-user');
+}
+function openCompModal(){['co-nm','co-mc','co-dt','co-em','co-ph'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});om('m-co')}
+async function saveComp(){
+  const nm=document.getElementById('co-nm').value.trim();if(!nm){notify('Name required','err');return}
+  const{addDoc,collection}=window._fb;
+  await addDoc(collection(window._db,'companies'),{name:nm,mc:document.getElementById('co-mc').value.trim(),dot:document.getElementById('co-dt').value.trim(),email:document.getElementById('co-em').value.trim(),phone:document.getElementById('co-ph').value.trim()});
+  notify('Company added ✓');await loadMeta();renderAdmin();cm('m-co');
+}
+function openDriverModal(){
+  ['dr-nm','dr-ph','dr-min','dr-sal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  document.getElementById('dr-co').innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('dr-dp').innerHTML=`<option value="">— None —</option>`+USERS.filter(u=>u.role==='dispatcher').map(d=>`<option value="${d.email}">${d.name||d.email}</option>`).join('');
+  om('m-drv');
+}
+async function saveDrv(){
+  const nm=document.getElementById('dr-nm').value.trim();if(!nm){notify('Driver name required','err');return}
+  const{addDoc,collection}=window._fb;
+  await addDoc(collection(window._db,'drivers'),{
+    name:nm,phone:document.getElementById('dr-ph').value.trim(),
+    company:document.getElementById('dr-co').value,
+    dispatcherEmail:document.getElementById('dr-dp').value,
+    minRate:parseFloat(document.getElementById('dr-min').value)||0,
+    salaryPct:parseFloat(document.getElementById('dr-sal').value)||0,
+  });
+  notify('Driver added ✓');await loadMeta();renderAdmin();cm('m-drv');
+}
+
+/* ══ DETAIL ══ */
+function openDet(id){
+  const l=LOADS.find(x=>x.id===id);if(!l)return;
+  const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
+  document.getElementById('m-det-t').textContent=`Load: ${l.orderId||'?'}`;
+  document.getElementById('m-det-b').innerHTML=`
+    <div class="dg">
+      <div class="di"><div class="dl">Order ID</div><div class="dv" style="font-family:var(--mono);font-weight:800;font-size:16px;color:var(--navy)">${l.orderId||'—'}</div></div>
+      <div class="di"><div class="dl">Date</div><div class="dv">${l.date||'—'}</div></div>
+      <div class="di"><div class="dl">Pickup</div><div class="dv">${l.origin||'—'}</div></div>
+      <div class="di"><div class="dl">Delivery</div><div class="dv">${l.dest||'—'}</div></div>
+      <div class="di"><div class="dl">Driver</div><div class="dv" style="font-weight:600">${l.driver||'—'}</div></div>
+      <div class="di"><div class="dl">Dispatcher</div><div class="dv">${l.dispName||'—'}</div></div>
+      <div class="di"><div class="dl">Miles</div><div class="dv" style="font-family:var(--mono)">${(+l.miles||0).toLocaleString()}</div></div>
+      <div class="di"><div class="dl">Total Rate</div><div class="dv" style="font-family:var(--mono);color:var(--green);font-size:22px;font-weight:800">$${fmt(+l.rate||0)}</div></div>
+      <div class="di"><div class="dl">Rate / Mile</div><div class="dv" style="font-family:var(--mono);color:var(--blue);font-weight:700;font-size:16px">$${rpm}</div></div>
+      <div class="di"><div class="dl">Pay Method</div><div class="dv">${l.payMethod||'—'}</div></div>
+      <div class="di"><div class="dl">Broker</div><div class="dv">${l.broker||'—'}</div></div>
+      <div class="di"><div class="dl">Broker Email</div><div class="dv" style="font-size:12px">${l.brokerEmail||'—'}</div></div>
+      <div class="di"><div class="dl">Broker Phone</div><div class="dv" style="font-size:12px">${l.brokerPhone||'—'}</div></div>
+      <div class="di"><div class="dl">Broker Fee</div><div class="dv" style="font-family:var(--mono)">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'} <span style="color:${l.bfPaid?'var(--green)':'var(--red)'}">${l.bfPaid?'Paid':'Unpaid'}</span></div></div>
+      <div class="di"><div class="dl">Status</div><div class="dv"><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></div></div>
+      <div class="di"><div class="dl">Payment</div><div class="dv" style="color:${l.paid?'var(--green)':'var(--red)'}">● ${l.paid?'PAID':'UNPAID'}</div></div>
+    </div>
+    ${l.notes?`<div class="cb">${l.notes}</div>`:''}
+    ${l.accComment?`<div class="cb acc">💬 Accounting: ${l.accComment}</div>`:''}
+  `;
+  om('m-det');
+}
+</script>
+</body>
+</html>
