@@ -1042,33 +1042,6 @@ function renderDrvTrips(allDrvLoads){
       </td>
     </tr>`;
 
-    // Trip cards for this week (above loads)
-    if(wTrips.length&&canEdit!==undefined){
-      const canEditTrips=(ROLE==='dispatcher'||ROLE==='admin')&&!locked;
-      wTrips.forEach(t=>{
-        const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id));
-        const tGross=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
-        const tRpm=t.miles>0?tGross/t.miles:0;
-        const minR=+(curDrv?.minRate||0);
-        const rpmOk=minR>0?tRpm>=minR:true;
-        html+=`<tr>
-          <td colspan="10" style="padding:6px 16px 4px;background:${rpmOk?'#f0fdf4':'#fff5f5'}">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <span style="font-size:11px;font-weight:800;color:${rpmOk?'var(--teal)':'var(--red)'}">🗂 Trip #${t.tripNum||'?'}</span>
-              <span style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--green)">$${fmt(tGross)}</span>
-              <span style="font-size:11px;color:var(--text3)">${(+t.miles||0).toLocaleString()} mi</span>
-              <span style="font-size:11px;font-weight:700;color:${rpmOk?'var(--blue)':'var(--red)'}">$${tRpm.toFixed(2)}/mi${rpmOk?'':' ⚠ below min'}</span>
-              <span style="font-size:10px;color:var(--text3)">${tLoads.length} loads: ${tLoads.map(l=>l.orderId||'?').join(', ')}</span>
-              ${t.underMinComment?`<span style="font-size:10px;color:var(--orange);font-style:italic">"${t.underMinComment}"</span>`:''}
-              ${canEditTrips?`<div class="mla" style="display:flex;gap:6px">
-                <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEditTrip('${t.id}')">✏️ Edit</button>
-              </div>`:''}
-            </div>
-          </td>
-        </tr>`;
-      });
-    }
-
     // Load rows for this week
     wk.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(l=>{
       const inTrip=trippedIds.has(l.id);
@@ -1098,8 +1071,19 @@ function renderDrvTrips(allDrvLoads){
       } else {
         statusHtml=`<span class="pill ${sC(effectiveStatus)}">${effectiveStatus}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
       }
+      // Find this load's trip info
+      const loadTrip=inTrip?wTrips.find(t=>t.loadIds?.includes(l.id)):null;
+      const tripRpmOk=loadTrip?((+(curDrv?.minRate||0))>0?(loadTrip.miles>0?((loadTrip.gross||0)/loadTrip.miles)>=(+(curDrv?.minRate||0)):true):true):true;
+      const canEditTrip=canEdit&&loadTrip&&!locked;
+      const tripBadge=loadTrip
+        ?`<span style="display:inline-flex;align-items:center;gap:3px;background:${tripRpmOk?'#e0fdf4':'#fef2f2'};border:1px solid ${tripRpmOk?'var(--teal)':'var(--red)'};color:${tripRpmOk?'var(--teal)':'var(--red)'};border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;cursor:${canEditTrip?'pointer':'default'};white-space:nowrap" ${canEditTrip?`onclick="event.stopPropagation();openEditTrip('${loadTrip.id}')" title="Edit Trip #${loadTrip.tripNum||'?'}"`:''}
+          >🗂 T#${loadTrip.tripNum||'?'}&nbsp;<span style="font-family:var(--mono);font-size:9px;color:${tripRpmOk?'var(--blue)':'var(--red)'}">$${(loadTrip.miles>0?(loadTrip.gross||0)/loadTrip.miles:0).toFixed(2)}/mi</span>${canEditTrip?'&nbsp;✏️':''}</span>`
+        :'';
       html+=`<tr style="${inTrip?'background:#f8f9fc':''}${locked?'opacity:.9':''}">
-        <td class="bold" style="font-size:12px">${l.orderId||'—'}${inTrip?'<span style="font-size:9px;color:var(--teal);font-weight:700;margin-left:4px">●T</span>':''}</td>
+        <td class="bold" style="font-size:12px">
+          <div>${l.orderId||'—'}</div>
+          ${tripBadge?`<div style="margin-top:3px">${tripBadge}</div>`:''}
+        </td>
         <td style="font-size:12px">${l.origin||'—'} → ${l.dest||'—'}</td>
         <td class="money">$${fmt(+l.rate||0)}</td>
         <td style="font-size:11px">${l.payMethod||'—'}</td>
@@ -1108,7 +1092,7 @@ function renderDrvTrips(allDrvLoads){
         <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
         <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
         <td style="font-size:11px;color:var(--text3);max-width:120px;white-space:normal">${l.notes||''}</td>
-        <td><div style="display:flex;gap:4px">${canEdit&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</div></td>
+        <td><div style="display:flex;gap:4px">${canEdit&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:canEdit&&inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`:''}</div></td>
       </tr>`;
     });
   });
