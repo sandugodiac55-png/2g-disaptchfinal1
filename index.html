@@ -825,15 +825,28 @@ function subLoads(){
   if(unsub)unsub();
   const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
   const isAll=['admin','owner','manager','accounting'].includes(ROLE);
-  const q=isAll?query(collection(db,'loads'),orderBy('createdAt','desc')):query(collection(db,'loads'),where('dispEmail','==',CU.email),orderBy('createdAt','desc'));
-  unsub=onSnapshot(q,snap=>{LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));renderCur()});
+  // Avoid composite index requirement: no orderBy with where, sort in JS
+  const q=isAll
+    ?query(collection(db,'loads'),orderBy('createdAt','desc'))
+    :query(collection(db,'loads'),where('dispEmail','==',CU.email));
+  unsub=onSnapshot(q,snap=>{
+    LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    renderCur();
+  });
 }
 function subTrips(){
   if(unsubTrips)unsubTrips();
   const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
   const isAll=['admin','owner','manager','accounting'].includes(ROLE);
-  const q=isAll?query(collection(db,'trips'),orderBy('createdAt','desc')):query(collection(db,'trips'),where('dispEmail','==',CU.email),orderBy('createdAt','desc'));
-  unsubTrips=onSnapshot(q,snap=>{TRIPS=snap.docs.map(d=>({id:d.id,...d.data()}));renderCur()});
+  const q=isAll
+    ?query(collection(db,'trips'),orderBy('createdAt','desc'))
+    :query(collection(db,'trips'),where('dispEmail','==',CU.email));
+  unsubTrips=onSnapshot(q,snap=>{
+    TRIPS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    TRIPS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    renderCur();
+  });
 }
 
 /* ══ ROUTING ══ */
