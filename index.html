@@ -6,14 +6,10 @@
 <title>G-Dispatch TMS</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<!-- FIREBASE — Replace with YOUR config -->
 <script type="module">
-import { initializeApp }                                from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut,
-         onAuthStateChanged }                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs,
-         updateDoc, deleteDoc, doc, query, where,
-         orderBy, onSnapshot, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDLnywW0Gxpf7XAFs6CojJ0kiewTjqTI5s",
@@ -24,485 +20,394 @@ const firebaseConfig = {
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
 
-const app  = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
 window._fb   = { signInWithEmailAndPassword, signOut, onAuthStateChanged,
                  collection, addDoc, getDocs, updateDoc, deleteDoc, doc,
-                 query, where, orderBy, onSnapshot, serverTimestamp, getDoc };
+                 query, where, orderBy, onSnapshot, serverTimestamp };
 </script>
 
 <style>
-/* ═══════════════ TOKENS ═══════════════ */
 :root {
-  --bg:       #f4f6f9;
-  --bg2:      #eef0f5;
-  --surface:  #ffffff;
-  --surface2: #f8f9fc;
-  --border:   #e2e6ef;
-  --border2:  #d0d6e4;
+  --bg:#f4f6f9; --bg2:#eef0f5; --surface:#fff; --surface2:#f8f9fc;
+  --border:#e2e6ef; --border2:#d0d6e4;
+  --navy:#1a2540; --navy2:#243055; --orange:#f26522; --orange2:#ff7a35;
+  --silver:#8a9ab8; --blue:#3b82f6; --green:#10b981; --red:#ef4444;
+  --yellow:#f59e0b; --purple:#8b5cf6; --teal:#0d9488;
+  --text:#1a2540; --text2:#4a5578; --text3:#8a9ab8;
+  --shadow:0 1px 4px rgba(26,37,64,.07),0 4px 16px rgba(26,37,64,.05);
+  --shadow2:0 2px 8px rgba(26,37,64,.1),0 8px 32px rgba(26,37,64,.08);
+  --r:10px; --font:'Plus Jakarta Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased}
 
-  --navy:     #1a2540;
-  --navy2:    #243055;
-  --orange:   #f26522;
-  --orange2:  #ff7a35;
-  --silver:   #8a9ab8;
-  --blue:     #3b82f6;
-  --green:    #10b981;
-  --red:      #ef4444;
-  --yellow:   #f59e0b;
-  --purple:   #8b5cf6;
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999}
+.logo-pulse{width:64px;height:64px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.95)}}
+#loading p{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.35);letter-spacing:2px}
 
-  --text:     #1a2540;
-  --text2:    #4a5578;
-  --text3:    #8a9ab8;
+/* LOGIN */
+#login-page{min-height:100vh;display:none}
+.lw{min-height:100vh;display:flex}
+.ll{width:420px;background:var(--navy);display:flex;flex-direction:column;justify-content:center;padding:60px 50px;position:relative;overflow:hidden;flex-shrink:0}
+.ll::before{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(242,101,34,.15) 0%,transparent 70%);bottom:-100px;right:-100px}
+.ll-logo{display:flex;align-items:center;gap:14px;margin-bottom:56px}
+.ll-logo svg{width:48px;height:48px}
+.ll-logo-name{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.ll-logo-tag{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:2px;margin-top:2px;font-family:var(--mono)}
+.ll-title{font-size:32px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:16px}
+.ll-title span{color:var(--orange)}
+.ll-desc{font-size:14px;color:rgba(255,255,255,.45);line-height:1.7}
+.lr{flex:1;display:flex;align-items:center;justify-content:center;padding:40px}
+.lfw{width:100%;max-width:400px}
+.lfw h2{font-size:26px;font-weight:800;margin-bottom:8px;color:var(--navy)}
+.lfw p{color:var(--text3);font-size:14px;margin-bottom:36px}
+.lf{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.lf label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px}
+.lf input{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);padding:13px 16px;border-radius:9px;font-family:var(--font);font-size:14px;outline:none;transition:all .2s}
+.lf input:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(242,101,34,.1)}
+.btn-login{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-login:hover{background:var(--navy2);transform:translateY(-1px);box-shadow:0 8px 20px rgba(26,37,64,.25)}
+.login-err{background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:11px 14px;border-radius:8px;font-size:13px;margin-top:12px;display:none}
 
-  --shadow:   0 1px 4px rgba(26,37,64,.07), 0 4px 16px rgba(26,37,64,.05);
-  --shadow2:  0 2px 8px rgba(26,37,64,.1), 0 8px 32px rgba(26,37,64,.08);
-
-  --r:        10px;
-  --font:     'Plus Jakarta Sans', sans-serif;
-  --mono:     'IBM Plex Mono', monospace;
-}
-
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box }
-html, body { height:100%; scroll-behavior:smooth }
-body { font-family:var(--font); background:var(--bg); color:var(--text); font-size:14px; -webkit-font-smoothing:antialiased }
-
-/* ═══════════ LOADING ═══════════ */
-#loading {
-  position:fixed; inset:0; background:var(--navy);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:9999;
-}
-.logo-spin { width:64px; height:64px; animation:pulse 1.5s ease-in-out infinite }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(.95)} }
-#loading p { font-family:var(--mono); font-size:12px; color:rgba(255,255,255,.4); letter-spacing:2px }
-
-/* ═══════════ LOGIN ═══════════ */
-#login-page {
-  min-height:100vh; display:none; background:var(--bg);
-}
-.login-wrap {
-  min-height:100vh; display:flex;
-}
-.login-left {
-  width:420px; background:var(--navy); display:flex; flex-direction:column;
-  justify-content:center; padding:60px 50px; position:relative; overflow:hidden; flex-shrink:0;
-}
-.login-left::before {
-  content:''; position:absolute; width:400px; height:400px; border-radius:50%;
-  background:radial-gradient(circle, rgba(242,101,34,.15) 0%, transparent 70%);
-  bottom:-100px; right:-100px; pointer-events:none;
-}
-.ll-logo { display:flex; align-items:center; gap:14px; margin-bottom:56px }
-.ll-logo-icon {
-  width:48px; height:48px; display:flex; align-items:center; justify-content:center;
-}
-.ll-logo-icon svg { width:48px; height:48px }
-.ll-logo-name { font-size:22px; font-weight:800; color:#fff; letter-spacing:-.5px }
-.ll-logo-tag { font-size:10px; color:rgba(255,255,255,.35); letter-spacing:2px; margin-top:2px; font-family:var(--mono) }
-.ll-title { font-size:32px; font-weight:800; color:#fff; line-height:1.2; margin-bottom:16px }
-.ll-title span { color:var(--orange) }
-.ll-desc { font-size:14px; color:rgba(255,255,255,.45); line-height:1.7 }
-
-.login-right {
-  flex:1; display:flex; align-items:center; justify-content:center; padding:40px;
-}
-.login-form-wrap { width:100%; max-width:400px }
-.login-form-wrap h2 { font-size:26px; font-weight:800; margin-bottom:8px; color:var(--navy) }
-.login-form-wrap p { color:var(--text3); font-size:14px; margin-bottom:36px }
-.lf { display:flex; flex-direction:column; gap:6px; margin-bottom:16px }
-.lf label { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.8px }
-.lf input {
-  background:var(--surface2); border:1.5px solid var(--border); color:var(--text);
-  padding:13px 16px; border-radius:9px; font-family:var(--font); font-size:14px; outline:none;
-  transition:all .2s;
-}
-.lf input:focus { border-color:var(--orange); background:#fff; box-shadow:0 0 0 3px rgba(242,101,34,.1) }
-.btn-login {
-  width:100%; padding:14px; background:var(--navy); color:#fff; border:none; border-radius:9px;
-  font-family:var(--font); font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; margin-top:8px;
-}
-.btn-login:hover { background:var(--navy2); transform:translateY(-1px); box-shadow:0 8px 20px rgba(26,37,64,.25) }
-.login-err {
-  background:#fef2f2; border:1px solid #fecaca; color:var(--red);
-  padding:11px 14px; border-radius:8px; font-size:13px; margin-top:12px; display:none;
-}
-
-/* ═══════════ APP ═══════════ */
-#app { display:none; min-height:100vh; flex-direction:column }
-#app.show { display:flex }
+/* APP */
+#app{display:none;min-height:100vh;flex-direction:column}
+#app.show{display:flex}
+.layout{display:flex;flex:1;overflow:hidden}
 
 /* SIDEBAR */
-.layout { display:flex; flex:1; overflow:hidden }
-.sidebar {
-  width:240px; background:var(--navy); display:flex; flex-direction:column;
-  flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto;
-}
-.sb-logo {
-  display:flex; align-items:center; gap:12px; padding:24px 20px; border-bottom:1px solid rgba(255,255,255,.07);
-}
-.sb-logo-icon { width:36px; height:36px; flex-shrink:0 }
-.sb-logo-name { font-size:17px; font-weight:800; color:#fff; letter-spacing:-.3px }
-.sb-logo-tag { font-size:9px; color:rgba(255,255,255,.3); letter-spacing:1.5px; font-family:var(--mono) }
-
-.sb-user {
-  display:flex; align-items:center; gap:10px; padding:16px 20px;
-  border-bottom:1px solid rgba(255,255,255,.07); margin-bottom:8px;
-}
-.sb-av {
-  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  font-size:13px; font-weight:700; color:#fff; flex-shrink:0; background:var(--orange);
-}
-.sb-uname { font-size:13px; font-weight:600; color:#fff }
-.sb-urole { font-size:10px; color:rgba(255,255,255,.35); text-transform:uppercase; letter-spacing:.8px; font-family:var(--mono) }
-
-.sb-section { font-size:9px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:1.5px; padding:12px 20px 6px; font-family:var(--mono) }
-.sni {
-  display:flex; align-items:center; gap:10px; padding:10px 20px; margin:1px 8px; border-radius:8px;
-  font-size:13px; font-weight:500; color:rgba(255,255,255,.55); cursor:pointer; transition:all .15s;
-}
-.sni:hover { background:rgba(255,255,255,.08); color:rgba(255,255,255,.85) }
-.sni.on { background:rgba(242,101,34,.15); color:#fff; font-weight:600 }
-.sni.on .sni-dot { background:var(--orange) }
-.sni-icon { width:18px; height:18px; opacity:.7; flex-shrink:0 }
-.sni.on .sni-icon { opacity:1 }
-
-.sb-bottom { margin-top:auto; padding:16px; border-top:1px solid rgba(255,255,255,.07) }
-.btn-signout {
-  width:100%; padding:9px; background:rgba(255,255,255,.06); color:rgba(255,255,255,.5);
-  border:1px solid rgba(255,255,255,.1); border-radius:8px; font-family:var(--font); font-size:12px;
-  cursor:pointer; transition:all .15s; font-weight:500;
-}
-.btn-signout:hover { background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3); color:#fca5a5 }
+.sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-logo{display:flex;align-items:center;gap:12px;padding:20px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-logo svg{width:34px;height:34px;flex-shrink:0}
+.sb-logo-name{font-size:17px;font-weight:800;color:#fff}
+.sb-logo-tag{font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1.5px;font-family:var(--mono)}
+.sb-user{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:6px}
+.sb-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;background:var(--orange)}
+.sb-uname{font-size:13px;font-weight:600;color:#fff}
+.sb-urole{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono)}
+.sb-sec{font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 5px;font-family:var(--mono)}
+.sni{display:flex;align-items:center;gap:10px;padding:9px 20px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all .15s}
+.sni:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85)}
+.sni.on{background:rgba(242,101,34,.15);color:#fff;font-weight:600}
+.sb-bottom{margin-top:auto;padding:14px;border-top:1px solid rgba(255,255,255,.07)}
+.btn-so{width:100%;padding:9px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);border-radius:8px;font-family:var(--font);font-size:12px;cursor:pointer;transition:all .15s;font-weight:500}
+.btn-so:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fca5a5}
 
 /* TOPBAR */
-.topbar {
-  height:58px; background:var(--surface); border-bottom:1px solid var(--border);
-  display:flex; align-items:center; padding:0 24px; gap:16px; position:sticky; top:0; z-index:100;
-  box-shadow:0 1px 0 var(--border);
-}
-.tb-title { font-size:17px; font-weight:700; color:var(--navy) }
-.tb-sub { font-size:12px; color:var(--text3); margin-top:1px }
-.tb-right { margin-left:auto; display:flex; align-items:center; gap:10px }
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:100}
+.tb-back{display:none;width:32px;height:32px;border-radius:8px;background:var(--bg);border:1px solid var(--border);cursor:pointer;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all .15s;flex-shrink:0}
+.tb-back:hover{background:var(--bg2)}
+.tb-back.show{display:flex}
+.tb-title{font-size:16px;font-weight:700;color:var(--navy)}
+.tb-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.wk-nav{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 8px}
+.wk-btn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-size:15px;transition:all .15s}
+.wk-btn:hover{background:var(--bg);color:var(--navy)}
+.wk-lbl{font-size:11px;font-weight:600;color:var(--navy);font-family:var(--mono);min-width:130px;text-align:center}
 
-/* MAIN */
-.content { flex:1; overflow-y:auto; padding:24px }
-.pg { display:none }
-.pg.show { display:block }
-
-/* PAGE HEADER */
-.ph { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap }
-.ph-t { font-size:20px; font-weight:800; color:var(--navy) }
-.ph-s { font-size:12px; color:var(--text3); margin-top:3px }
-.ph-a { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:22px}
+.pg{display:none}
+.pg.show{display:block}
 
 /* BUTTONS */
-.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; white-space:nowrap }
-.btn-primary { background:var(--navy); color:#fff }
-.btn-primary:hover { background:var(--navy2); box-shadow:0 4px 12px rgba(26,37,64,.2) }
-.btn-orange { background:var(--orange); color:#fff }
-.btn-orange:hover { background:var(--orange2) }
-.btn-ghost { background:transparent; color:var(--text2); border:1.5px solid var(--border2) }
-.btn-ghost:hover { background:var(--bg); border-color:var(--silver) }
-.btn-sm { padding:5px 11px; font-size:12px }
-.btn-danger { background:#fef2f2; color:var(--red); border:1px solid #fecaca }
-.btn-danger:hover { background:#fee2e2 }
-.btn-success { background:#ecfdf5; color:var(--green); border:1px solid #a7f3d0 }
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy2);box-shadow:0 4px 12px rgba(26,37,64,.2)}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-orange:hover{background:var(--orange2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border2)}
+.btn-ghost:hover{background:var(--bg);border-color:var(--silver)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-danger{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.btn-success{background:#ecfdf5;color:var(--green);border:1px solid #a7f3d0}
+.btn-teal{background:var(--teal);color:#fff}
 
-/* INPUTS */
-.inp { background:var(--surface); border:1.5px solid var(--border); color:var(--text); padding:7px 12px; border-radius:8px; font-family:var(--font); font-size:13px; outline:none; transition:all .15s }
-.inp:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(242,101,34,.08) }
-.sel { background:var(--surface); border:1.5px solid var(--border); color:var(--text2); padding:7px 10px; border-radius:8px; font-family:var(--mono); font-size:11px; outline:none; cursor:pointer }
+/* PAGE HEADER */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.ph-t{font-size:20px;font-weight:800;color:var(--navy)}
+.ph-s{font-size:12px;color:var(--text3);margin-top:3px}
+.ph-a{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
 /* KPI CARDS */
-.kr { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px }
-.kc {
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
-  padding:20px; box-shadow:var(--shadow); position:relative; overflow:hidden;
-}
-.kc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--border) }
-.kc.o::before { background:var(--orange) }
-.kc.g::before { background:var(--green) }
-.kc.b::before { background:var(--blue) }
-.kc.p::before { background:var(--purple) }
-.kl { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px }
-.kv { font-size:28px; font-weight:800; color:var(--navy); font-family:var(--mono); letter-spacing:-1px; line-height:1 }
-.kh { font-size:11px; color:var(--text3); margin-top:5px }
+.kr{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.kc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--border)}
+.kc.o::before{background:var(--orange)}.kc.g::before{background:var(--green)}.kc.b::before{background:var(--blue)}.kc.p::before{background:var(--purple)}
+.kl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.kv{font-size:26px;font-weight:800;color:var(--navy);font-family:var(--mono);letter-spacing:-1px;line-height:1}
+.kh{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* DRIVER GRID */
+.driver-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.driver-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;position:relative}
+.driver-card:hover{border-color:var(--orange);transform:translateY(-2px);box-shadow:var(--shadow2)}
+.driver-card.locked{border-color:#fecaca;background:#fffafa}
+.dc-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.dc-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;background:var(--navy);flex-shrink:0}
+.dc-name{font-size:14px;font-weight:700;color:var(--navy)}
+.dc-co{font-size:11px;color:var(--text3)}
+.dc-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dc-s{background:var(--bg);border-radius:7px;padding:10px}
+.dc-sl{font-size:10px;color:var(--text3);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.dc-sv{font-size:15px;font-weight:800;color:var(--navy);font-family:var(--mono)}
+.dc-bar{margin-top:10px}
+.dc-barlabel{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px}
+.dc-bartrack{height:5px;background:var(--bg2);border-radius:3px;overflow:hidden}
+.dc-barfill{height:100%;border-radius:3px;transition:width .6s ease}
+.lock-badge{position:absolute;top:12px;right:12px;background:#fef2f2;color:var(--red);border:1px solid #fecaca;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700}
+
+/* ═══ DRIVER DETAIL PAGE ═══ */
+#pg-driver{display:none}
+#pg-driver.show{display:block}
+.drv-hd{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:18px;box-shadow:var(--shadow)}
+.drv-av-big{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;background:var(--navy);flex-shrink:0}
+.drv-title{font-size:20px;font-weight:800;color:var(--navy)}
+.drv-co{font-size:13px;color:var(--text3)}
+.drv-meta{display:flex;gap:12px;margin-top:6px;flex-wrap:wrap}
+.drv-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--border);color:var(--text2)}
+
+/* TRIP CARD */
+.trips-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.trip-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
+.trip-card:hover{border-color:var(--orange)}
+.trip-hd{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;background:var(--surface2)}
+.trip-color{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.trip-id{font-size:13px;font-weight:800;color:var(--navy);font-family:var(--mono)}
+.trip-route{font-size:12px;color:var(--text3);flex:1}
+.trip-gross{font-size:16px;font-weight:800;color:var(--green);font-family:var(--mono)}
+.trip-rpm{font-size:11px;font-family:var(--mono);padding:3px 8px;border-radius:5px;font-weight:700}
+.trip-rpm.ok{background:#ecfdf5;color:var(--green)}
+.trip-rpm.low{background:#fef2f2;color:var(--red)}
+.trip-rpm.warn{background:#fffbeb;color:var(--yellow)}
+.trip-loads{padding:0 18px 14px;display:flex;flex-direction:column;gap:6px}
+.load-row{display:grid;grid-template-columns:100px 1fr 80px 80px 100px 80px auto;gap:10px;align-items:center;padding:8px 12px;background:var(--bg);border-radius:7px;font-size:12px}
+.load-row.selecting{cursor:pointer;transition:all .15s}
+.load-row.selecting:hover{background:#fff7ed;border:1px solid var(--orange)}
+.load-row.selected{background:#fff7ed;border:1px solid var(--orange)}
+
+/* LOAD SELECTOR */
+.load-selector{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.ls-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px}
+.ls-items{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+.ls-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;background:var(--bg);cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+.ls-item:hover{background:#fff7ed;border-color:rgba(242,101,34,.3)}
+.ls-item.sel{background:#fff7ed;border-color:var(--orange)}
+.ls-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.ls-item.sel .ls-check{background:var(--orange);border-color:var(--orange);color:#fff}
 
 /* TABLE CARD */
-.tc { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow) }
-.tc-top { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; background:var(--surface2) }
-.tc-title { font-size:14px; font-weight:700; color:var(--navy) }
-.mla { margin-left:auto }
-.tw { overflow-x:auto }
-table { width:100%; border-collapse:collapse; min-width:900px }
-thead th { padding:10px 14px; text-align:left; font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--border); background:var(--surface2); white-space:nowrap }
-tbody tr { border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer }
-tbody tr:hover { background:var(--bg) }
-tbody tr:last-child { border-bottom:none }
-td { padding:11px 14px; color:var(--text2); font-size:13px; white-space:nowrap }
-td.bold { color:var(--navy); font-weight:700; font-family:var(--mono) }
-td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:18px;box-shadow:var(--shadow)}
+.tc-top{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface2)}
+.tc-title{font-size:14px;font-weight:700;color:var(--navy)}
+.mla{margin-left:auto}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+thead th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:var(--bg)}
+tbody tr:last-child{border-bottom:none}
+td{padding:10px 14px;color:var(--text2);font-size:13px;white-space:nowrap}
+td.bold{color:var(--navy);font-weight:700;font-family:var(--mono)}
+td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
-/* STATUS PILLS */
-.pill { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.3px; white-space:nowrap }
-.pill::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0 }
-.s-assigned  { background:#eff6ff; color:#3b82f6 }
-.s-picked    { background:#fffbeb; color:#d97706 }
-.s-delivered { background:#ecfdf5; color:#059669 }
-.s-invoiced  { background:#f5f3ff; color:#7c3aed }
+/* STATUS FLOW */
+.sf-btn{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all .15s;white-space:nowrap}
+.sf-btn.done{opacity:.5;cursor:not-allowed;pointer-events:none}
+.sf-assigned{border-color:#bfdbfe;color:#3b82f6;background:#eff6ff}
+.sf-picked{border-color:#fde68a;color:#d97706;background:#fffbeb}
+.sf-delivered{border-color:#a7f3d0;color:#059669;background:#ecfdf5}
+.sf-invoiced{border-color:#ddd6fe;color:#7c3aed;background:#f5f3ff}
 
-/* ONE-WAY STATUS BTN */
-.status-flow { display:flex; gap:4px; align-items:center }
-.sf-btn {
-  padding:4px 10px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer;
-  border:1.5px solid; transition:all .15s; white-space:nowrap;
-}
-.sf-btn.done { opacity:.5; cursor:not-allowed; pointer-events:none }
-.sf-assigned  { border-color:#bfdbfe; color:#3b82f6; background:#eff6ff }
-.sf-picked    { border-color:#fde68a; color:#d97706; background:#fffbeb }
-.sf-delivered { border-color:#a7f3d0; color:#059669; background:#ecfdf5 }
-.sf-invoiced  { border-color:#ddd6fe; color:#7c3aed; background:#f5f3ff }
-.sf-btn:not(.done):hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,.1) }
+/* PAY BUTTON */
+.pb{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;border:none;white-space:nowrap}
+.pb.paid{background:#ecfdf5;color:var(--green)}.pb.unpaid{background:#fef2f2;color:var(--red)}
+.pb:hover{opacity:.8}.pb.locked{cursor:not-allowed;opacity:.6}
 
-/* PAY BUTTONS */
-.pb { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; transition:all .15s; border:none; white-space:nowrap }
-.pb.paid   { background:#ecfdf5; color:var(--green) }
-.pb.unpaid { background:#fef2f2; color:var(--red) }
-.pb:hover { opacity:.8 }
-.pb.locked { cursor:not-allowed; opacity:.6 }
+/* PILL */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.s-assigned{background:#eff6ff;color:#3b82f6}.s-picked{background:#fffbeb;color:#d97706}.s-delivered{background:#ecfdf5;color:#059669}.s-invoiced{background:#f5f3ff;color:#7c3aed}
 
-/* TOGGLE */
-.sw { width:38px; height:21px; background:var(--border2); border-radius:11px; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0 }
-.sw.on { background:var(--green) }
-.sw::after { content:''; position:absolute; top:2px; left:2px; width:17px; height:17px; background:#fff; border-radius:50%; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.2) }
-.sw.on::after { left:19px }
+/* ═══ WEEKLY CALENDAR ═══ */
+.cal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:20px}
+.cal-hd{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)}
+.cal-hd-t{font-size:15px;font-weight:800;color:var(--navy)}
+.cal-winners{display:flex;gap:12px}
+.cal-winner{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.cal-winner strong{color:var(--navy)}
+.cal-grid{overflow-x:auto}
+.cal-table{width:100%;border-collapse:collapse;min-width:900px}
+.cal-table th{padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+.cal-table th.today-col{background:#fff7ed;color:var(--orange)}
+.cal-table th.sticky-col{text-align:left;position:sticky;left:0;z-index:2;background:var(--surface2)}
+.cal-table td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);vertical-align:top;padding:4px;min-width:120px}
+.cal-table td.sticky-col{position:sticky;left:0;z-index:1;background:var(--surface);padding:8px 12px;min-width:160px}
+.cal-table td.today-col{background:#fffdf9}
+.cal-disp-row td{background:var(--surface2)}
+.cal-disp-name{font-size:12px;font-weight:700;color:var(--navy)}
+.cal-disp-co{font-size:10px;color:var(--text3)}
+.cal-week-total{background:var(--bg)!important;font-size:11px;font-family:var(--mono);padding:8px 12px!important}
+.cal-week-tot-row td{background:var(--bg)!important;border-top:2px solid var(--border)!important}
+.cal-week-tot-row td.sticky-col{font-size:11px;font-weight:700;color:var(--text2)}
 
-/* TABS */
-.tabs { display:flex; gap:2px; background:var(--bg); padding:3px; border-radius:9px; border:1px solid var(--border); width:fit-content; margin-bottom:20px }
-.tab { padding:7px 18px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; color:var(--text3); transition:all .15s }
-.tab:hover { color:var(--text2) }
-.tab.on { background:var(--surface); color:var(--navy); box-shadow:var(--shadow) }
-.cpill { display:inline-block; font-size:10px; font-family:var(--mono); padding:1px 6px; border-radius:10px; margin-left:5px; font-weight:700; background:var(--orange); color:#fff }
-.cpill.g { background:var(--green) }
+/* TRIP CHIP */
+.trip-chip{border-radius:6px;padding:4px 8px;margin:2px;cursor:pointer;font-size:10px;font-weight:700;color:#fff;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .15s}
+.trip-chip:hover{opacity:.85}
+.trip-chip .tc-gross{font-size:11px;font-weight:800}
+.trip-chip .tc-route{font-size:9px;opacity:.85;font-family:var(--mono)}
+.trip-chip .tc-rpm{font-size:9px;opacity:.85}
 
-/* MODAL */
-.ov { position:fixed; inset:0; background:rgba(26,37,64,.45); backdrop-filter:blur(6px); z-index:500; display:none; align-items:center; justify-content:center; padding:20px }
-.ov.open { display:flex }
-.modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:860px; max-width:100%; max-height:92vh; overflow-y:auto; box-shadow:var(--shadow2); animation:mIn .2s ease }
-.modal.sm { width:520px }
-.modal.xs { width:440px }
-@keyframes mIn { from{opacity:0;transform:scale(.96) translateY(-10px)} to{opacity:1;transform:scale(1) translateY(0)} }
-.mhd { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:14px 14px 0 0 }
-.mhd-t { font-size:16px; font-weight:800; color:var(--navy) }
-.mcl { width:32px; height:32px; background:var(--bg); border:1px solid var(--border); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--text3); transition:all .15s }
-.mcl:hover { background:var(--bg2); color:var(--text) }
-.mbd { padding:24px }
-.mft { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; background:var(--surface2) }
-
-/* FORM */
-.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px }
-.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px }
-.full { grid-column:1/-1 }
-.fsep { grid-column:1/-1; border-top:1px solid var(--border); margin:4px 0 }
-.ftitle { grid-column:1/-1; font-size:11px; font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1px; padding-top:4px }
-.fg { display:flex; flex-direction:column; gap:6px }
-.fg label { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.7px }
-.fg input, .fg select, .fg textarea {
-  background:var(--bg); border:1.5px solid var(--border); color:var(--text);
-  padding:10px 13px; border-radius:8px; font-family:var(--font); font-size:13px; outline:none; transition:all .15s; width:100%;
-}
-.fg input:focus, .fg select:focus, .fg textarea:focus { border-color:var(--orange); background:#fff; box-shadow:0 0 0 3px rgba(242,101,34,.08) }
-.fg textarea { resize:vertical; min-height:80px }
-.fg input[readonly] { color:var(--blue); background:#f0f7ff; border-color:#bfdbfe }
-.trow { display:flex; align-items:center; gap:12px; background:var(--bg); border:1.5px solid var(--border); border-radius:8px; padding:11px 14px }
-.trow-l { flex:1; font-size:13px; color:var(--text2); font-weight:500 }
+/* TOTALS ROW */
+.tot-cell{font-size:10px;font-family:var(--mono);color:var(--text2);line-height:1.5;text-align:center;padding:6px 8px!important}
+.tot-cell strong{color:var(--navy);font-size:11px}
+.tot-cell .over{color:var(--green)}.tot-cell .under{color:var(--red)}
 
 /* LEADERBOARD */
-.lb { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow) }
-.lb-hd { padding:16px 20px; border-bottom:1px solid var(--border); font-size:15px; font-weight:800; color:var(--navy); display:flex; align-items:center; justify-content:space-between; background:var(--surface2) }
-.lb-th, .lb-row { display:grid; grid-template-columns:46px 1fr 80px 130px 110px 130px 140px; padding:12px 20px; gap:10px; align-items:center }
-.lb-th { background:var(--surface2); border-bottom:1px solid var(--border); font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px }
-.lb-row { border-bottom:1px solid var(--border); transition:background .1s }
-.lb-row:last-child { border-bottom:none }
-.lb-row:hover { background:var(--bg) }
-.lb-row.r1 { background:#fffbeb; border-left:3px solid var(--yellow) }
-.lb-row.r2 { border-left:3px solid #94a3b8 }
-.lb-row.r3 { border-left:3px solid #b45309 }
-.rk { font-family:var(--mono); font-size:16px; font-weight:800 }
+.lb-row-kpi{display:grid;grid-template-columns:40px 1fr 70px 110px 90px 110px 120px;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center}
+.lb-th-kpi{background:var(--surface2);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.lb-row-kpi:last-child{border-bottom:none}
+.lb-row-kpi:hover{background:var(--bg)}
+.lb-row-kpi.r1{background:#fffbeb;border-left:3px solid var(--yellow)}
+.lb-row-kpi.r2{border-left:3px solid #94a3b8}
+.lb-row-kpi.r3{border-left:3px solid #b45309}
+.rk{font-family:var(--mono);font-size:16px;font-weight:800}
 .rk.g1{color:var(--yellow)}.rk.g2{color:#64748b}.rk.g3{color:#b45309}
-.lb-nm { font-size:14px; font-weight:700; color:var(--navy) }
-.lb-co { font-size:11px; color:var(--text3) }
-.bw { background:var(--bg2); height:5px; border-radius:3px; margin-top:5px; overflow:hidden }
-.bf { height:100%; border-radius:3px; transition:width .6s ease }
-.bonus { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:10px; font-weight:700 }
-.bonus.win { background:#fffbeb; color:#d97706; border:1px solid #fde68a }
-.bonus.eff { background:#ecfdf5; color:#059669; border:1px solid #a7f3d0 }
-.bonus.none { background:var(--bg); color:var(--text3); border:1px solid var(--border) }
+.bw{background:var(--bg2);height:4px;border-radius:2px;margin-top:4px;overflow:hidden}
+.bf{height:100%;border-radius:2px;transition:width .6s ease}
+.bonus{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.bonus.win{background:#fffbeb;color:#d97706;border:1px solid #fde68a}
+.bonus.eff{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0}
+.bonus.none{background:var(--bg);color:var(--text3);border:1px solid var(--border)}
 
-/* DRIVER CARD */
-.driver-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px }
-.driver-card {
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
-  padding:18px; box-shadow:var(--shadow); cursor:pointer; transition:all .2s;
-}
-.driver-card:hover { border-color:var(--orange); transform:translateY(-2px); box-shadow:var(--shadow2) }
-.dc-head { display:flex; align-items:center; gap:12px; margin-bottom:14px }
-.dc-av { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#fff; background:var(--navy); flex-shrink:0 }
-.dc-name { font-size:14px; font-weight:700; color:var(--navy) }
-.dc-company { font-size:11px; color:var(--text3) }
-.dc-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px }
-.dc-s { background:var(--bg); border-radius:7px; padding:10px }
-.dc-sl { font-size:10px; color:var(--text3); font-weight:600; margin-bottom:3px; text-transform:uppercase; letter-spacing:.5px }
-.dc-sv { font-size:16px; font-weight:800; color:var(--navy); font-family:var(--mono) }
-.dc-locked { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; background:#fef2f2; color:var(--red); border:1px solid #fecaca; margin-top:10px }
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(26,37,64,.45);backdrop-filter:blur(6px);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.ov.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:600px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow2);animation:mIn .2s ease}
+.modal.sm{width:480px}.modal.xs{width:420px}.modal.lg{width:800px}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(-10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.mhd{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:14px 14px 0 0}
+.mhd-t{font-size:15px;font-weight:800;color:var(--navy)}
+.mcl{width:30px;height:30px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--text3);transition:all .15s}
+.mcl:hover{background:var(--bg2)}
+.mbd{padding:22px}
+.mft{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:var(--surface2)}
 
-/* COMPANY CARDS */
-.co-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px }
-.co-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; box-shadow:var(--shadow); border-top:3px solid var(--orange) }
-.co-name { font-size:15px; font-weight:800; color:var(--navy); margin-bottom:12px }
-.co-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px }
+/* FORM */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.full{grid-column:1/-1}
+.fsep{grid-column:1/-1;border-top:1px solid var(--border);margin:2px 0}
+.ftitle{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:1px;padding-top:2px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.7px}
+.fg input,.fg select,.fg textarea{background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;transition:all .15s;width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(242,101,34,.08)}
+.fg input[readonly]{color:var(--blue);background:#f0f7ff;border-color:#bfdbfe}
+.fg textarea{resize:vertical;min-height:70px}
+.fg input.required-err{border-color:var(--red)!important;background:#fef2f2!important}
+.sw{width:36px;height:20px;background:var(--border2);border-radius:10px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.sw.on{background:var(--green)}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on::after{left:18px}
+.trow{display:flex;align-items:center;gap:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 13px}
+.trow-l{flex:1;font-size:13px;color:var(--text2);font-weight:500}
 
 /* ADMIN */
-.ag { display:grid; grid-template-columns:1fr 1fr; gap:16px }
-.ac { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow) }
-.ach { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface2) }
-.act { font-size:14px; font-weight:700; color:var(--navy) }
-.ur { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--border); transition:background .1s }
-.ur:last-child { border-bottom:none }
-.ur:hover { background:var(--bg) }
-.ua { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff; flex-shrink:0; background:var(--navy) }
-.un { font-size:13px; font-weight:600; color:var(--navy) }
-.ue { font-size:11px; color:var(--text3) }
-.rt { margin-left:auto; padding:3px 9px; border-radius:4px; font-size:10px; font-weight:700 }
-.rt.dispatcher { background:#eff6ff; color:var(--blue) }
-.rt.accounting  { background:#f5f3ff; color:var(--purple) }
-.rt.owner       { background:#fffbeb; color:var(--yellow) }
-.rt.admin       { background:#fef2f2; color:var(--red) }
-.rt.manager     { background:#ecfdf5; color:var(--green) }
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ac{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.ach{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)}
+.act{font-size:14px;font-weight:700;color:var(--navy)}
+.ur{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--border);transition:background .1s}
+.ur:last-child{border-bottom:none}
+.ur:hover{background:var(--bg)}
+.ua{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;background:var(--navy)}
+.un{font-size:13px;font-weight:600;color:var(--navy)}
+.ue{font-size:11px;color:var(--text3)}
+.rt{margin-left:auto;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700}
+.rt.dispatcher{background:#eff6ff;color:var(--blue)}.rt.accounting{background:#f5f3ff;color:var(--purple)}
+.rt.owner{background:#fffbeb;color:var(--yellow)}.rt.admin{background:#fef2f2;color:var(--red)}
 
-/* WEEK NAV */
-.wk-nav { display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:5px 8px }
-.wk-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; border:none; background:transparent; color:var(--text2); font-size:16px; transition:all .15s }
-.wk-btn:hover { background:var(--bg); color:var(--navy) }
-.wk-lbl { font-size:12px; font-weight:600; color:var(--navy); font-family:var(--mono); min-width:140px; text-align:center }
+/* ACCOUNTING */
+.tabs{display:flex;gap:2px;background:var(--bg);padding:3px;border-radius:9px;border:1px solid var(--border);width:fit-content;margin-bottom:18px}
+.tab{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .15s}
+.tab:hover{color:var(--text2)}
+.tab.on{background:var(--surface);color:var(--navy);box-shadow:var(--shadow)}
+.cpill{display:inline-block;font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:10px;margin-left:5px;font-weight:700;background:var(--orange);color:#fff}
+.cpill.g{background:var(--green)}
+.ai{background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:5px 9px;border-radius:6px;font-family:var(--font);font-size:12px;outline:none;width:100%;min-width:140px;transition:all .15s}
+.ai:focus{border-color:var(--orange);background:#fff}
+.late-tag{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:700}
+.late-tag.ok{background:#ecfdf5;color:var(--green)}.late-tag.warn{background:#fffbeb;color:var(--yellow)}.late-tag.danger{background:#fef2f2;color:var(--red);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.6}}
 
-/* LATE TAG */
-.late-tag { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; font-size:10px; font-weight:700 }
-.late-tag.ok     { background:#ecfdf5; color:var(--green) }
-.late-tag.warn   { background:#fffbeb; color:var(--yellow) }
-.late-tag.danger { background:#fef2f2; color:var(--red); animation:blink 1.5s ease-in-out infinite }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.6} }
+/* PW */
+.pw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pw-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.pw-card-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.pw-icon{width:38px;height:38px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pw-name{font-size:13px;font-weight:700;color:var(--navy)}
+.pw-val{font-size:12px;color:var(--navy);font-family:var(--mono);background:var(--bg);border-radius:5px;padding:5px 9px}
 
-/* ACC COMMENT INPUT */
-.ai { background:var(--bg); border:1.5px solid var(--border); color:var(--text); padding:6px 10px; border-radius:6px; font-family:var(--font); font-size:12px; outline:none; width:100%; min-width:160px; transition:all .15s }
-.ai:focus { border-color:var(--orange); background:#fff }
+/* SAL */
+.sal-row{display:grid;grid-template-columns:1fr 70px 90px 70px 90px 70px 90px 90px;gap:8px;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px}
+.sal-head{background:var(--surface2);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
 
-/* DETAIL */
-.dg { display:grid; grid-template-columns:1fr 1fr; gap:14px }
-.di .dl { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px }
-.di .dv { font-size:14px; color:var(--navy) }
-.cb { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; font-size:13px; color:var(--text2); margin-top:14px }
-.cb.acc { border-color:#ddd6fe; background:#f5f3ff; color:var(--purple) }
-
-/* NOTIF */
-.nf { position:fixed; bottom:22px; right:22px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:13px 18px; font-size:13px; z-index:9999; box-shadow:var(--shadow2); animation:nIn .3s ease; max-width:340px; display:flex; align-items:center; gap:10px; color:var(--navy) }
-@keyframes nIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-.nf.ok  { border-left:3px solid var(--green) }
-.nf.err { border-left:3px solid var(--red) }
-.nf.inf { border-left:3px solid var(--orange) }
-
-/* EMPTY */
-.em { text-align:center; padding:56px 20px; color:var(--text3) }
-.em .e { font-size:40px; margin-bottom:10px }
-.em p { font-size:13px }
-
-/* PASSWORD PAGE */
-.pw-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px }
-.pw-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:20px; box-shadow:var(--shadow); cursor:pointer; transition:all .2s }
-.pw-card:hover { border-color:var(--orange); transform:translateY(-2px); box-shadow:var(--shadow2) }
-.pw-card-hd { display:flex; align-items:center; gap:12px; margin-bottom:16px }
-.pw-icon { width:40px; height:40px; border-radius:8px; background:var(--navy); display:flex; align-items:center; justify-content:center; font-size:18px }
-.pw-name { font-size:14px; font-weight:700; color:var(--navy) }
-.pw-field { display:flex; flex-direction:column; gap:4px; margin-bottom:10px }
-.pw-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.7px }
-.pw-val { font-size:13px; color:var(--navy); font-family:var(--mono); background:var(--bg); border-radius:5px; padding:5px 10px }
-
-/* SALARY TABLE */
-.sal-row { display:grid; grid-template-columns:1fr 80px 80px 80px 80px 100px 100px 100px; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:13px }
-.sal-head { background:var(--surface2); font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px }
-
-.hidden { display:none!important }
-
-/* AVATAR COLORS */
-.av-o { background:var(--orange) }
-.av-n { background:var(--navy) }
-.av-g { background:var(--green) }
-.av-b { background:var(--blue) }
-.av-p { background:var(--purple) }
-
-@media(max-width:1024px){
-  .sidebar { width:200px }
-  .kr { grid-template-columns:1fr 1fr }
-  .driver-grid,.co-grid { grid-template-columns:1fr 1fr }
-  .ag { grid-template-columns:1fr }
-  .lb-th,.lb-row { grid-template-columns:36px 1fr 70px 110px 90px 110px }
-  .lb-th>*:nth-child(7),.lb-row>*:nth-child(7) { display:none }
-}
-@media(max-width:768px){
-  .sidebar { position:fixed; left:-240px; z-index:300; transition:left .3s }
-  .sidebar.open { left:0 }
-  .layout { flex-direction:column }
-  .content { padding:16px }
-  .kr { grid-template-columns:1fr 1fr }
-  .driver-grid,.co-grid { grid-template-columns:1fr }
-  .pw-grid { grid-template-columns:1fr }
-}
+/* NOTIFY */
+.nf{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;z-index:9999;box-shadow:var(--shadow2);animation:nIn .3s ease;max-width:320px;display:flex;align-items:center;gap:10px;color:var(--navy)}
+@keyframes nIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.nf.ok{border-left:3px solid var(--green)}.nf.err{border-left:3px solid var(--red)}.nf.inf{border-left:3px solid var(--orange)}
+.em{text-align:center;padding:48px 20px;color:var(--text3)}
+.em .e{font-size:36px;margin-bottom:8px}
+.em p{font-size:13px}
+.hidden{display:none!important}
+.inp{background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:7px 11px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;transition:all .15s}
+.inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(242,101,34,.08)}
+.sel{background:var(--surface);border:1.5px solid var(--border);color:var(--text2);padding:6px 9px;border-radius:8px;font-family:var(--mono);font-size:11px;outline:none;cursor:pointer}
 </style>
 </head>
 <body>
 
 <!-- LOADING -->
 <div id="loading">
-  <svg class="logo-spin" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
-    <path d="M72 50 L50 28 L28 50 L40 50 L40 62 L60 62 L60 50 Z" fill="#b0bec5"/>
+  <svg class="logo-pulse" viewBox="0 0 100 100" fill="none">
+    <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+    <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
     <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
-    <path d="M50 28 L72 50 L60 50 L60 62 L50 62 L50 50 L60 50 L50 28 Z" fill="#cfd8e3"/>
+    <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
   </svg>
   <p>LOADING G-DISPATCH…</p>
 </div>
 
 <!-- LOGIN -->
 <div id="login-page">
-  <div class="login-wrap">
-    <div class="login-left">
+  <div class="lw">
+    <div class="ll">
       <div class="ll-logo">
-        <div class="ll-logo-icon">
-          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polygon points="50,3 97,26 97,74 50,97 3,74 3,26" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
-            <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
-            <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
-            <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
-          </svg>
-        </div>
-        <div>
-          <div class="ll-logo-name">G-Dispatch</div>
-          <div class="ll-logo-tag">TRANSPORT MANAGEMENT</div>
-        </div>
+        <svg viewBox="0 0 100 100" fill="none">
+          <polygon points="50,3 97,26 97,74 50,97 3,74 3,26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1.5"/>
+          <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
+          <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
+          <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
+        </svg>
+        <div><div class="ll-logo-name">G-Dispatch</div><div class="ll-logo-tag">TRANSPORT MANAGEMENT</div></div>
       </div>
       <div class="ll-title">Smart dispatch.<br><span>Powered results.</span></div>
-      <div class="ll-desc">Manage loads, track KPIs, and streamline your entire dispatch operation from one platform.</div>
+      <div class="ll-desc">Manage loads, track KPIs, and streamline your entire dispatch operation.</div>
     </div>
-    <div class="login-right">
-      <div class="login-form-wrap">
+    <div class="lr">
+      <div class="lfw">
         <h2>Welcome back</h2>
         <p>Sign in to your G-Dispatch account</p>
-        <div class="lf"><label>Email Address</label><input type="email" id="li-e" placeholder="you@company.com" autocomplete="email"></div>
-        <div class="lf"><label>Password</label><input type="password" id="li-p" placeholder="••••••••" autocomplete="current-password"></div>
+        <div class="lf"><label>Email</label><input type="email" id="li-e" placeholder="you@company.com"></div>
+        <div class="lf"><label>Password</label><input type="password" id="li-p" placeholder="••••••••"></div>
         <button class="btn-login" onclick="doLogin()">Sign In →</button>
-        <div class="le" id="li-err"></div>
+        <div class="login-err" id="li-err"></div>
       </div>
     </div>
   </div>
@@ -511,87 +416,125 @@ td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
 <!-- APP -->
 <div id="app">
   <div class="layout">
-    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sb-logo">
-        <svg class="sb-logo-icon" viewBox="0 0 100 100" fill="none">
+        <svg viewBox="0 0 100 100" fill="none" style="width:34px;height:34px">
           <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
           <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
           <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
         </svg>
-        <div>
-          <div class="sb-logo-name">G-Dispatch</div>
-          <div class="sb-logo-tag">TMS PLATFORM</div>
-        </div>
+        <div><div class="sb-logo-name">G-Dispatch</div><div class="sb-logo-tag">TMS v3</div></div>
       </div>
       <div class="sb-user">
-        <div class="sb-av av-o" id="sb-av">?</div>
-        <div>
-          <div class="sb-uname" id="sb-uname">—</div>
-          <div class="sb-urole" id="sb-urole">—</div>
-        </div>
+        <div class="sb-av" id="sb-av">?</div>
+        <div><div class="sb-uname" id="sb-uname">—</div><div class="sb-urole" id="sb-urole">—</div></div>
       </div>
       <nav id="sb-nav"></nav>
-      <div class="sb-bottom">
-        <button class="btn-signout" onclick="doLogout()">← Sign Out</button>
-      </div>
+      <div class="sb-bottom"><button class="btn-so" onclick="doLogout()">← Sign Out</button></div>
     </aside>
 
-    <!-- CONTENT -->
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
       <header class="topbar">
+        <div class="tb-back" id="tb-back" onclick="goBack()">‹</div>
         <div>
           <div class="tb-title" id="tb-title">Dashboard</div>
           <div class="tb-sub" id="tb-sub">—</div>
         </div>
         <div class="tb-right">
-          <div class="wk-nav" id="wk-nav-top">
+          <div class="wk-nav">
             <button class="wk-btn" onclick="prevWeek()">‹</button>
-            <div class="wk-lbl" id="wk-lbl-top">—</div>
+            <div class="wk-lbl" id="wk-lbl">—</div>
             <button class="wk-btn" onclick="nextWeek()">›</button>
-            <button class="wk-btn" onclick="goToday()" title="This week" style="font-size:12px;font-weight:700;color:var(--orange)">•</button>
+            <button class="wk-btn" onclick="goToday()" style="color:var(--orange);font-weight:800;font-size:13px" title="This week">•</button>
           </div>
         </div>
       </header>
 
       <div class="content">
-        <!-- DISPATCHER PAGE -->
-        <div class="pg" id="pg-dispatcher">
+        <!-- DISPATCH PAGE — Driver Grid -->
+        <div class="pg" id="pg-dispatch">
           <div class="ph">
-            <div><div class="ph-t">My Loads</div><div class="ph-s" id="d-wlbl">—</div></div>
-            <div class="ph-a">
-              <button class="btn btn-orange" onclick="openLoadModal()">＋ Add Load</button>
-            </div>
+            <div><div class="ph-t">My Drivers</div><div class="ph-s" id="d-wlbl">—</div></div>
           </div>
           <div class="kr">
             <div class="kc o"><div class="kl">Total Loads</div><div class="kv" id="dk-l">0</div><div class="kh">this week</div></div>
-            <div class="kc g"><div class="kl">Gross Revenue</div><div class="kv" id="dk-g">$0</div><div class="kh">total rate</div></div>
-            <div class="kc b"><div class="kl">Avg Rate / Mile</div><div class="kv" id="dk-r">$0.00</div><div class="kh">efficiency</div></div>
-            <div class="kc p"><div class="kl">Total Miles</div><div class="kv" id="dk-m">0</div><div class="kh">this week</div></div>
+            <div class="kc g"><div class="kl">Gross Revenue</div><div class="kv" id="dk-g">$0</div><div class="kh">total</div></div>
+            <div class="kc b"><div class="kl">Avg Rate/Mile</div><div class="kv" id="dk-r">$0.00</div><div class="kh">efficiency</div></div>
+            <div class="kc p"><div class="kl">Over Minimum</div><div class="kv" id="dk-ov">$0</div><div class="kh">above target</div></div>
           </div>
-
-          <!-- DRIVER CARDS -->
-          <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px">My Drivers</div>
           <div class="driver-grid" id="d-drivers"></div>
+        </div>
 
-          <div class="tc">
-            <div class="tc-top">
-              <div class="tc-title">Load Board</div>
-              <input class="inp" placeholder="Search…" oninput="dSrch=this.value;renderD()" style="width:180px">
-              <select class="sel" onchange="dStF=this.value;renderD()">
-                <option value="">All Statuses</option>
-                <option>Assigned</option><option>Picked Up</option><option>Delivered</option><option>Invoiced</option>
-              </select>
-              <div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="d-cnt">0 loads</div>
+        <!-- DRIVER DETAIL PAGE -->
+        <div class="pg" id="pg-driver">
+          <div class="drv-hd" id="drv-hd-info"></div>
+          <div class="ph">
+            <div><div class="ph-t" id="drv-pg-title">Driver Loads</div></div>
+            <div class="ph-a">
+              <button class="btn btn-ghost btn-sm" onclick="showTripCreate()" id="btn-create-trip">＋ Create Trip</button>
+              <button class="btn btn-orange" onclick="openLoadModal()" id="btn-add-load">＋ Add Load</button>
             </div>
+          </div>
+          <!-- TRIP CREATE UI -->
+          <div id="trip-create-ui" class="hidden">
+            <div style="background:#fff7ed;border:1.5px solid var(--orange);border-radius:var(--r);padding:16px;margin-bottom:16px">
+              <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:10px">🗂 Create Trip — Select loads below</div>
+              <div class="g2" style="margin-bottom:12px">
+                <div class="fg"><label>Total Miles (required)</label><input type="number" id="trip-miles" placeholder="e.g. 2500" oninput="updateTripCalc()"></div>
+                <div class="fg"><label>Calc Rate/Mile</label><input id="trip-rpm" readonly></div>
+              </div>
+              <div id="trip-sel-loads" class="ls-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div style="font-size:13px;font-family:var(--mono);color:var(--navy)">Selected: <strong id="trip-sel-count">0</strong> loads · Gross: <strong id="trip-sel-gross" style="color:var(--green)">$0</strong></div>
+                <div class="mla" style="display:flex;gap:8px">
+                  <button class="btn btn-ghost btn-sm" onclick="cancelTripCreate()">Cancel</button>
+                  <button class="btn btn-teal btn-sm" onclick="confirmTrip()">✓ Confirm Trip</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- UNDER MIN COMMENT -->
+          <div id="under-min-ui" class="hidden">
+            <div style="background:#fef2f2;border:1.5px solid var(--red);border-radius:var(--r);padding:16px;margin-bottom:16px">
+              <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">⚠️ Rate below minimum — Comment required</div>
+              <div class="fg"><textarea id="under-min-comment" placeholder="Explain why this trip is below minimum rate…" style="min-height:60px"></textarea></div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+                <button class="btn btn-ghost btn-sm" onclick="cancelUnderMin()">Cancel</button>
+                <button class="btn btn-danger btn-sm" onclick="saveUnderMinTrip()">Save Trip with Comment</button>
+              </div>
+            </div>
+          </div>
+          <!-- TRIPS -->
+          <div id="drv-trips"></div>
+          <!-- STANDALONE LOADS (not in trip) -->
+          <div class="tc" id="drv-loads-tc">
+            <div class="tc-top"><div class="tc-title">Individual Loads</div><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="drv-load-cnt">0</div></div>
             <div class="tw"><table>
-              <thead><tr>
-                <th>ORDER ID</th><th>ORIGIN → DEST</th><th>DRIVER</th><th>BROKER</th>
-                <th>MILES</th><th>RATE</th><th>$/MILE</th><th>PAY METHOD</th>
-                <th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th>
-              </tr></thead>
-              <tbody id="d-tb"></tbody>
+              <thead><tr><th>ORDER ID</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
+              <tbody id="drv-load-tb"></tbody>
             </table></div>
+          </div>
+        </div>
+
+        <!-- KPI PAGE — Calendar -->
+        <div class="pg" id="pg-kpi">
+          <div class="ph">
+            <div><div class="ph-t">KPI Leaderboard</div><div class="ph-s" id="kpi-wlbl">—</div></div>
+          </div>
+          <div class="cal-wrap">
+            <div class="cal-hd">
+              <div class="cal-hd-t">Weekly Calendar</div>
+              <div class="cal-winners" id="cal-winners"></div>
+            </div>
+            <div class="cal-grid">
+              <table class="cal-table" id="cal-table"></table>
+            </div>
+          </div>
+          <!-- Summary leaderboard -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
+            <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:14px;font-weight:800;color:var(--navy)">Dispatcher Rankings</div>
+            <div class="lb-row-kpi lb-th-kpi"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>MILES</div><div>$/MILE</div><div>BONUS</div></div>
+            <div id="kpi-lb"></div>
           </div>
         </div>
 
@@ -600,159 +543,86 @@ td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
           <div class="ph">
             <div><div class="ph-t">Accounting</div><div class="ph-s">Manage payments by company → driver</div></div>
             <div class="ph-a">
-              <select class="sel" id="acc-co-sel" onchange="accSelectCo(this.value)">
-                <option value="">All Companies</option>
-              </select>
-              <select class="sel" id="acc-dr-sel" onchange="renderAcc()">
-                <option value="">All Drivers</option>
-              </select>
+              <select class="sel" id="acc-co-sel" onchange="accCoChange(this.value)"><option value="">All Companies</option></select>
+              <select class="sel" id="acc-dr-sel" onchange="renderAcc()"><option value="">All Drivers</option></select>
             </div>
           </div>
           <div class="tabs">
             <div class="tab on" onclick="setAccTab('pending',this)">Pending <span class="cpill" id="acc-np">0</span></div>
-            <div class="tab"    onclick="setAccTab('paid',this)">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
-            <div class="tab"    onclick="setAccTab('overdue',this)">⚠️ Overdue</div>
-            <div class="tab"    onclick="setAccTab('all',this)">All Loads</div>
+            <div class="tab" onclick="setAccTab('paid',this)">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
+            <div class="tab" onclick="setAccTab('overdue',this)">⚠️ Overdue</div>
+            <div class="tab" onclick="setAccTab('all',this)">All</div>
           </div>
           <div class="tc">
-            <div class="tc-top">
-              <div class="tc-title" id="acc-tt">Pending Payment</div>
-              <input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:180px">
-              <div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0 loads</div>
-            </div>
+            <div class="tc-top"><div class="tc-title" id="acc-tt">Pending Payment</div><input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:160px"><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0</div></div>
             <div class="tw"><table>
-              <thead><tr>
-                <th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>COMPANY</th>
-                <th>ROUTE</th><th>RATE</th><th>$/MILE</th><th>PAY METHOD</th>
-                <th>STATUS</th><th>PAID</th><th>OWNER PAID</th><th>DATE</th><th>DUE DATE</th><th>COMMENT</th>
-              </tr></thead>
+              <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>$/MILE</th><th>PAY METHOD</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead>
               <tbody id="acc-tb"></tbody>
             </table></div>
           </div>
         </div>
 
-        <!-- KPI PAGE -->
-        <div class="pg" id="pg-kpi">
-          <div class="ph">
-            <div><div class="ph-t">KPI Leaderboard</div><div class="ph-s">Weekly performance rankings</div></div>
-          </div>
-          <div class="kr">
-            <div class="kc o"><div class="kl">Team Loads</div><div class="kv" id="kk-l">0</div></div>
-            <div class="kc g"><div class="kl">Team Gross</div><div class="kv" id="kk-g">$0</div></div>
-            <div class="kc b"><div class="kl">Best $/Mile</div><div class="kv" id="kk-r">$0.00</div></div>
-            <div class="kc p"><div class="kl">Over Minimum</div><div class="kv" id="kk-ov">$0</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)">
-              <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">🏆 Gross Winner</div>
-              <div id="kpi-gw" style="font-size:22px;font-weight:800;color:var(--yellow)">—</div>
-              <div id="kpi-gw-val" style="font-size:12px;color:var(--text3);font-family:var(--mono)">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)">
-              <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">⚡ Over Minimum Winner</div>
-              <div id="kpi-ew" style="font-size:22px;font-weight:800;color:var(--green)">—</div>
-              <div id="kpi-ew-val" style="font-size:12px;color:var(--text3);font-family:var(--mono)">—</div>
-            </div>
-          </div>
-          <div class="lb">
-            <div class="lb-hd">Dispatcher Rankings <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400" id="kpi-wr"></span></div>
-            <div class="lb-th"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>MILES</div><div>AVG $/MILE</div><div>BONUS</div></div>
-            <div id="kpi-body"></div>
-          </div>
-        </div>
-
         <!-- OWNER PAGE -->
         <div class="pg" id="pg-owner">
-          <div class="ph">
-            <div><div class="ph-t">Owner Dashboard</div><div class="ph-s">Full company overview</div></div>
-          </div>
+          <div class="ph"><div><div class="ph-t">Owner Dashboard</div><div class="ph-s">Full company overview</div></div></div>
           <div class="kr">
             <div class="kc o"><div class="kl">Total Loads</div><div class="kv" id="ow-l">0</div></div>
             <div class="kc g"><div class="kl">Total Revenue</div><div class="kv" id="ow-g">$0</div></div>
-            <div class="kc b"><div class="kl">Payments Received</div><div class="kv" id="ow-p">$0</div></div>
-            <div class="kc p"><div class="kl">Pending Payment</div><div class="kv" id="ow-pn">$0</div></div>
+            <div class="kc b"><div class="kl">Paid</div><div class="kv" id="ow-p">$0</div></div>
+            <div class="kc p"><div class="kl">Pending</div><div class="kv" id="ow-pn">$0</div></div>
           </div>
-          <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px">Companies</div>
-          <div class="co-grid" id="ow-cog"></div>
-          <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px">Drivers Overview</div>
+          <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:12px">Drivers Overview</div>
           <div class="driver-grid" id="ow-drivers"></div>
         </div>
 
         <!-- PASSWORDS PAGE -->
         <div class="pg" id="pg-passwords">
           <div class="ph">
-            <div><div class="ph-t">Company Passwords</div><div class="ph-s">Central Dispatch credentials & contacts</div></div>
-            <button class="btn btn-primary" onclick="openPwModal()">＋ Add Company Creds</button>
+            <div><div class="ph-t">Company Passwords</div><div class="ph-s">Central Dispatch credentials</div></div>
+            <button class="btn btn-primary" onclick="openPwModal()">＋ Add Credentials</button>
           </div>
           <div class="pw-grid" id="pw-grid"></div>
         </div>
 
-        <!-- SALARY PAGE (Admin only) -->
+        <!-- SALARY PAGE -->
         <div class="pg" id="pg-salary">
           <div class="ph">
-            <div><div class="ph-t">Salary Calculator</div><div class="ph-s">Configure rates & export payroll</div></div>
-            <button class="btn btn-orange" onclick="exportSalaryXLS()">⬇ Export Excel</button>
+            <div><div class="ph-t">Salary Calculator</div><div class="ph-s">Admin only — configure & export</div></div>
+            <button class="btn btn-orange" onclick="exportSalary()">⬇ Export CSV</button>
           </div>
-          <div class="tc">
-            <div class="tc-top"><div class="tc-title">Driver Salary Config & Results</div></div>
-            <div id="sal-table"></div>
-          </div>
+          <div class="tc"><div class="tc-top"><div class="tc-title">Driver Salary</div></div><div id="sal-table"></div></div>
         </div>
 
         <!-- ADMIN PAGE -->
         <div class="pg" id="pg-admin">
           <div class="ph">
-            <div><div class="ph-t">Admin Panel</div><div class="ph-s">Manage users · drivers · companies</div></div>
+            <div><div class="ph-t">Admin Panel</div></div>
             <button class="btn btn-primary" onclick="openUserModal()">＋ Add User</button>
           </div>
           <div class="ag">
-            <div class="ac">
-              <div class="ach"><div class="act">👥 Platform Users</div></div>
-              <div id="adm-u"></div>
-            </div>
-            <div class="ac">
-              <div class="ach">
-                <div class="act">🚛 Dispatchers & Drivers</div>
-                <button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button>
-              </div>
-              <div id="adm-d"></div>
-            </div>
-            <div class="ac">
-              <div class="ach">
-                <div class="act">🏢 Companies</div>
-                <button class="btn btn-ghost btn-sm" onclick="openCompModal()">＋ Add</button>
-              </div>
-              <div id="adm-c"></div>
-            </div>
-            <div class="ac">
-              <div class="ach"><div class="act">📊 Quick Stats</div></div>
-              <div id="adm-s" style="padding:18px"></div>
-            </div>
+            <div class="ac"><div class="ach"><div class="act">👥 Users</div></div><div id="adm-u"></div></div>
+            <div class="ac"><div class="ach"><div class="act">🚛 Dispatchers & Drivers</div><button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button></div><div id="adm-d"></div></div>
+            <div class="ac"><div class="ach"><div class="act">🏢 Companies</div><button class="btn btn-ghost btn-sm" onclick="openCompModal()">＋ Add</button></div><div id="adm-c"></div></div>
+            <div class="ac"><div class="ach"><div class="act">📊 Stats</div></div><div id="adm-s" style="padding:16px"></div></div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══ MODALS ═══ -->
-
-<!-- LOAD MODAL -->
+<!-- LOAD MODAL (simplified — no driver selector) -->
 <div class="ov" id="m-load">
   <div class="modal">
-    <div class="mhd"><div class="mhd-t" id="m-load-t">Add New Load</div><div class="mcl" onclick="cm('m-load')">×</div></div>
+    <div class="mhd"><div class="mhd-t" id="m-load-t">Add Load</div><div class="mcl" onclick="cm('m-load')">×</div></div>
     <div class="mbd"><div class="g2">
-      <div class="ftitle">📦 Load Information</div><div></div>
+      <div class="ftitle">📦 Load Info</div><div></div>
       <div class="fg"><label>Order ID *</label><input id="fl-oid" placeholder="LD-001"></div>
       <div class="fg"><label>Date</label><input type="date" id="fl-date"></div>
       <div class="fg"><label>Pickup Location</label><input id="fl-ori" placeholder="Chicago, IL"></div>
       <div class="fg"><label>Delivery Location</label><input id="fl-dst" placeholder="Dallas, TX"></div>
-
-      <div class="fsep"></div><div class="ftitle">📏 Rate & Miles</div><div></div>
-      <div class="fg"><label>Miles</label><input type="number" id="fl-mi" placeholder="0" oninput="calcRPM()"></div>
-      <div class="fg"><label>Total Rate ($)</label><input type="number" id="fl-rt" placeholder="0.00" step="0.01" oninput="calcRPM()"></div>
-      <div class="fg"><label>Rate / Mile (auto)</label><input id="fl-rpm" readonly placeholder="$0.00"></div>
+      <div class="fsep"></div><div class="ftitle">💰 Rate & Payment</div><div></div>
+      <div class="fg"><label>Total Rate ($) *</label><input type="number" id="fl-rt" placeholder="0.00" step="0.01"></div>
       <div class="fg"><label>Payment Method *</label>
         <select id="fl-pay">
           <option value="">— Select —</option>
@@ -762,50 +632,30 @@ td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
           <option>Factoring</option>
         </select>
       </div>
-
-      <div class="fsep"></div><div class="ftitle">🏢 Broker Info</div><div></div>
-      <div class="fg"><label>Broker Name</label><input id="fl-br" placeholder="Echo Global Logistics"></div>
-      <div class="fg"><label>Broker Email</label><input type="email" id="fl-be" placeholder="broker@company.com"></div>
+      <div class="fsep"></div><div class="ftitle">🏢 Broker</div><div></div>
+      <div class="fg"><label>Broker Name</label><input id="fl-br" placeholder="Echo Global"></div>
+      <div class="fg"><label>Broker Email</label><input type="email" id="fl-be" placeholder="broker@co.com"></div>
       <div class="fg"><label>Broker Phone</label><input id="fl-bp" placeholder="+1 555 000 0000"></div>
       <div class="fg"><label>Broker Fee ($)</label><input type="number" id="fl-bf" placeholder="0.00" step="0.01"></div>
-
-      <div class="fsep"></div><div class="ftitle">🚛 Driver</div><div></div>
-      <div class="fg"><label>Driver</label><select id="fl-drv"><option value="">— Select Driver —</option></select></div>
-      <div class="fg"><label>Week</label><input id="fl-wk" readonly></div>
-
       <div class="trow full"><span class="trow-l">Broker Fee Paid</span><div class="sw" id="sw-bf" onclick="this.classList.toggle('on')"></div></div>
-      <div class="fg full"><label>Notes</label><textarea id="fl-nt" placeholder="Any additional notes about this load…"></textarea></div>
+      <div class="fg full"><label>Notes</label><textarea id="fl-nt" placeholder="Additional notes…"></textarea></div>
     </div></div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-load')">Cancel</button>
-      <button class="btn btn-orange" onclick="saveLoad()">💾 Save Load</button>
-    </div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-load')">Cancel</button><button class="btn btn-orange" onclick="saveLoad()">💾 Save Load</button></div>
   </div>
 </div>
 
 <!-- USER MODAL -->
 <div class="ov" id="m-user">
   <div class="modal sm">
-    <div class="mhd"><div class="mhd-t">Add Platform User</div><div class="mcl" onclick="cm('m-user')">×</div></div>
-    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+    <div class="mhd"><div class="mhd-t">Add User</div><div class="mcl" onclick="cm('m-user')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Full Name</label><input id="u-nm" placeholder="John Smith"></div>
-      <div class="fg"><label>Email</label><input type="email" id="u-em" placeholder="john@company.com"></div>
-      <div class="fg"><label>Temp Password</label><input type="password" id="u-pw" placeholder="Min 6 chars"></div>
-      <div class="fg"><label>Role</label>
-        <select id="u-rl">
-          <option value="dispatcher">Dispatcher</option>
-          <option value="accounting">Accounting / Bookkeeper</option>
-          <option value="manager">Manager</option>
-          <option value="owner">Owner</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
+      <div class="fg"><label>Email</label><input type="email" id="u-em"></div>
+      <div class="fg"><label>Temp Password</label><input type="password" id="u-pw"></div>
+      <div class="fg"><label>Role</label><select id="u-rl"><option value="dispatcher">Dispatcher</option><option value="accounting">Accounting</option><option value="manager">Manager</option><option value="owner">Owner</option><option value="admin">Admin</option></select></div>
       <div class="fg"><label>Company</label><select id="u-co"><option value="">— None —</option></select></div>
     </div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-user')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveUser()">Create User</button>
-    </div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-user')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Create</button></div>
   </div>
 </div>
 
@@ -813,17 +663,14 @@ td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
 <div class="ov" id="m-co">
   <div class="modal xs">
     <div class="mhd"><div class="mhd-t">Add Company</div><div class="mcl" onclick="cm('m-co')">×</div></div>
-    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+    <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Company Name *</label><input id="co-nm" placeholder="ABC Trucking LLC"></div>
-      <div class="fg"><label>MC Number</label><input id="co-mc" placeholder="MC-123456"></div>
-      <div class="fg"><label>DOT Number</label><input id="co-dt" placeholder="DOT-789012"></div>
-      <div class="fg"><label>Email</label><input type="email" id="co-em" placeholder="company@gmail.com"></div>
-      <div class="fg"><label>Phone</label><input id="co-ph" placeholder="+1 555 000 0000"></div>
+      <div class="fg"><label>MC Number</label><input id="co-mc"></div>
+      <div class="fg"><label>DOT Number</label><input id="co-dt"></div>
+      <div class="fg"><label>Email</label><input type="email" id="co-em"></div>
+      <div class="fg"><label>Phone</label><input id="co-ph"></div>
     </div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-co')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveComp()">Save</button>
-    </div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-co')">Cancel</button><button class="btn btn-primary" onclick="saveComp()">Save</button></div>
   </div>
 </div>
 
@@ -831,113 +678,84 @@ td.money { color:var(--green); font-weight:700; font-family:var(--mono) }
 <div class="ov" id="m-drv">
   <div class="modal xs">
     <div class="mhd"><div class="mhd-t">Add Driver</div><div class="mcl" onclick="cm('m-drv')">×</div></div>
-    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
-      <div class="fg"><label>Driver Name *</label><input id="dr-nm" placeholder="Mike Johnson"></div>
-      <div class="fg"><label>Phone</label><input id="dr-ph" placeholder="+1 555 000 0000"></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
+      <div class="fg"><label>Driver Name *</label><input id="dr-nm"></div>
+      <div class="fg"><label>Phone</label><input id="dr-ph"></div>
       <div class="fg"><label>Company</label><select id="dr-co"><option value="">— None —</option></select></div>
       <div class="fg"><label>Assigned Dispatcher</label><select id="dr-dp"><option value="">— None —</option></select></div>
-      <div class="fg"><label>Minimum Rate/Mile ($) <span style="color:var(--orange)">*</span></label><input type="number" id="dr-min" placeholder="2.50" step="0.01"></div>
+      <div class="fg"><label>Minimum Rate/Mile ($)</label><input type="number" id="dr-min" placeholder="2.50" step="0.01"></div>
       <div class="fg"><label>Salary % (admin only)</label><input type="number" id="dr-sal" placeholder="8" step="0.1"></div>
     </div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-drv')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveDrv()">Save Driver</button>
-    </div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-drv')">Cancel</button><button class="btn btn-primary" onclick="saveDrv()">Save</button></div>
   </div>
 </div>
 
 <!-- PASSWORD MODAL -->
 <div class="ov" id="m-pw">
   <div class="modal sm">
-    <div class="mhd"><div class="mhd-t">Add Company Credentials</div><div class="mcl" onclick="cm('m-pw')">×</div></div>
-    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+    <div class="mhd"><div class="mhd-t">Add Credentials</div><div class="mcl" onclick="cm('m-pw')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Company</label><select id="pw-co"><option value="">— Select —</option></select></div>
-      <div class="fg"><label>Platform Name</label><input id="pw-pl" placeholder="Central Dispatch"></div>
-      <div class="fg"><label>Username / Email</label><input id="pw-us" placeholder="username@email.com"></div>
-      <div class="fg"><label>Password</label><input id="pw-ps" placeholder="password123"></div>
-      <div class="fg"><label>Notes</label><textarea id="pw-nt" placeholder="Any extra info…" style="min-height:60px"></textarea></div>
+      <div class="fg"><label>Platform</label><input id="pw-pl" placeholder="Central Dispatch"></div>
+      <div class="fg"><label>Username</label><input id="pw-us"></div>
+      <div class="fg"><label>Password</label><input id="pw-ps"></div>
+      <div class="fg"><label>Notes</label><textarea id="pw-nt" style="min-height:55px"></textarea></div>
     </div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-pw')">Cancel</button>
-      <button class="btn btn-primary" onclick="savePw()">Save Credentials</button>
-    </div>
-  </div>
-</div>
-
-<!-- DETAIL MODAL -->
-<div class="ov" id="m-det">
-  <div class="modal sm">
-    <div class="mhd"><div class="mhd-t" id="m-det-t">Load Details</div><div class="mcl" onclick="cm('m-det')">×</div></div>
-    <div class="mbd" id="m-det-b"></div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-det')">Close</button></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-pw')">Cancel</button><button class="btn btn-primary" onclick="savePw()">Save</button></div>
   </div>
 </div>
 
 <script>
 /* ══ STATE ══ */
-let CU,CP,ROLE,LOADS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[],editId=null,unsub=null;
-let accTab='pending',accSrch='',dSrch='',dStF='',accCo='',accDr='';
+let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[];
+let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
+let accTab='pending',accSrch='',accCo='';
+let tripSelLoads=[],pendingTripData=null;
 
 /* ══ WEEK ══ */
-const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1)),wk=Math.ceil((((d-yr)/86400000)+1)/7);return`${d.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`};
+const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1));return`${d.getUTCFullYear()}-W${String(Math.ceil((((d-yr)/86400000)+1)/7)).padStart(2,'0')}`};
 let curW=CW();
 function wRange(ws){try{const[y,w]=ws.split('-W'),jan4=new Date(+y,0,4),mo=new Date(jan4);mo.setDate(jan4.getDate()-((jan4.getDay()+6)%7)+(parseInt(w)-1)*7);const su=new Date(mo);su.setDate(mo.getDate()+6);return{start:mo,end:su}}catch{return{start:new Date(),end:new Date()}}}
 function inW(ds,ws){if(!ds||!ws)return false;const d=new Date(ds+'T00:00:00'),{start,end}=wRange(ws);return d>=start&&d<=end}
 function wLbl(ws){try{const{start,end}=wRange(ws);return`${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`}catch{return ws}}
-function prevWeek(){const[y,w]=curW.split('-W');const d=new Date(wRange(curW).start);d.setDate(d.getDate()-7);curW=CW_from(d);updateWkLabel();renderCur()}
-function nextWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()+7);curW=CW_from(d);updateWkLabel();renderCur()}
-function goToday(){curW=CW();updateWkLabel();renderCur()}
-function CW_from(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dy=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-dy);const yr=new Date(Date.UTC(dt.getUTCFullYear(),0,1)),wk=Math.ceil((((dt-yr)/86400000)+1)/7);return`${dt.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`}
-function updateWkLabel(){document.getElementById('wk-lbl-top').textContent=wLbl(curW)}
+function CWfrom(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dy=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-dy);const yr=new Date(Date.UTC(dt.getUTCFullYear(),0,1));return`${dt.getUTCFullYear()}-W${String(Math.ceil((((dt-yr)/86400000)+1)/7)).padStart(2,'0')}`}
+function prevWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()-7);curW=CWfrom(d);updateWkLbl();renderCur()}
+function nextWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()+7);curW=CWfrom(d);updateWkLbl();renderCur()}
+function goToday(){curW=CW();updateWkLbl();renderCur()}
+function updateWkLbl(){document.getElementById('wk-lbl').textContent=wLbl(curW)}
 
 /* ══ UTILS ══ */
-function fmt(n){return(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function fK(n){return n>=1000?'$'+(n/1000).toFixed(1)+'k':'$'+fmt(n)}
-function avL(n){if(!n)return'?';return n.trim().split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)}
-function sC(s){const m={assigned:'s-assigned','picked up':'s-picked',pickedup:'s-picked',delivered:'s-delivered',invoiced:'s-invoiced'};return m[(s||'').toLowerCase().replace(' ','')]||'s-assigned'}
-function swV(id){return document.getElementById(id)?.classList.contains('on')}
-function setSw(id,v){document.getElementById(id)?.classList.toggle('on',!!v)}
-function cm(id){document.getElementById(id)?.classList.remove('open');if(id==='m-load')editId=null}
-function om(id){document.getElementById(id)?.classList.add('open')}
-function calcRPM(){const m=parseFloat(document.getElementById('fl-mi')?.value)||0,r=parseFloat(document.getElementById('fl-rt')?.value)||0,el=document.getElementById('fl-rpm');if(el)el.value=(m>0&&r>0)?'$'+(r/m).toFixed(2):''}
-function escQ(s){return(s||'').replace(/"/g,'&quot;')}
-function notify(msg,t='ok'){const el=document.createElement('div');el.className=`nf ${t}`;el.innerHTML=`<span>${t==='ok'?'✅':t==='err'?'❌':'ℹ️'}</span>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),4000)}
+const fmt=n=>(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fK=n=>n>=1000?'$'+(n/1000).toFixed(1)+'k':'$'+fmt(n);
+const avL=n=>n?n.trim().split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2):'?';
+const sC=s=>({assigned:'s-assigned','picked up':'s-picked',pickedup:'s-picked',delivered:'s-delivered',invoiced:'s-invoiced'}[(s||'').toLowerCase().replace(' ','')]||'s-assigned');
+const swV=id=>document.getElementById(id)?.classList.contains('on');
+const setSw=(id,v)=>document.getElementById(id)?.classList.toggle('on',!!v);
+const cm=id=>{document.getElementById(id)?.classList.remove('open');if(id==='m-load')editLoadId=null};
+const om=id=>document.getElementById(id)?.classList.add('open');
+const escQ=s=>(s||'').replace(/"/g,'&quot;');
+const COLORS=['#0d9488','#3b82f6','#8b5cf6','#f59e0b','#10b981','#f26522','#64748b','#ec4899','#06b6d4'];
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+['li-e','li-p'].forEach(id=>document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
 
-/* ══ DUE DATE CALC ══ */
-function getDueDate(loadDate, payMethod){
-  if(!loadDate||!payMethod) return null;
-  const days={'QP':5,'COD':5,'COP':5,'SuperPay':5,'5 B. Days':10,'7 B. Days':15,'10 B. Days':20,'15 B. Days':25,'21 B. Days':32,'30 B. Days':45,'Factoring':5};
-  const d=days[payMethod];
-  if(!d) return null;
-  const dt=new Date(loadDate+'T00:00:00');
-  dt.setDate(dt.getDate()+d);
-  return dt;
-}
-function lateTag(loadDate, payMethod, paid){
-  if(paid) return `<span class="late-tag ok">✓ Paid</span>`;
-  const due=getDueDate(loadDate,payMethod);
-  if(!due) return '';
-  const today=new Date(); today.setHours(0,0,0,0);
-  const diff=Math.floor((today-due)/86400000);
-  if(diff<0) return `<span class="late-tag ok">Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
-  if(diff<=3) return `<span class="late-tag warn">⚠ ${diff}d late</span>`;
-  return `<span class="late-tag danger">🔴 ${diff}d OVERDUE</span>`;
-}
+function notify(msg,t='ok'){const el=document.createElement('div');el.className=`nf ${t}`;el.innerHTML=`<span>${t==='ok'?'✅':t==='err'?'❌':'ℹ️'}</span>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),4000)}
 
-/* ══ KPI OVER MINIMUM ══ */
-function calcOverMin(loads, drivers){
-  // For each load, find driver's min rate, calc (actualRPM - minRPM) * miles
+/* ══ DUE DATE ══ */
+function getDueDate(ld,pm){if(!ld||!pm)return null;const d={'QP':5,'COD':5,'COP':5,'SuperPay':5,'5 B. Days':10,'7 B. Days':15,'10 B. Days':20,'15 B. Days':25,'21 B. Days':32,'30 B. Days':45,'Factoring':5}[pm];if(!d)return null;const dt=new Date(ld+'T00:00:00');dt.setDate(dt.getDate()+d);return dt}
+function lateTag(ld,pm,paid){if(paid)return`<span class="late-tag ok">✓ Paid</span>`;const due=getDueDate(ld,pm);if(!due)return'';const diff=Math.floor((new Date()-due)/86400000);if(diff<0)return`<span class="late-tag ok">Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;if(diff<=3)return`<span class="late-tag warn">⚠ ${diff}d late</span>`;return`<span class="late-tag danger">🔴 ${diff}d OVERDUE</span>`}
+
+/* ══ OVER MIN ══ */
+function calcOverMin(loads,driver){
+  if(!driver||!driver.minRate)return 0;
   let total=0;
-  loads.forEach(l=>{
-    const drv=drivers.find(d=>d.name===l.driver);
-    if(!drv||!drv.minRate) return;
-    const actualRPM=l.miles>0?l.rate/l.miles:0;
-    const over=(actualRPM-(+drv.minRate||0))*l.miles;
-    if(over>0) total+=over;
-  });
+  loads.forEach(l=>{const rpm=l.miles>0?l.rate/l.miles:0;const over=(rpm-(+driver.minRate||0))*l.miles;if(over>0)total+=over});
   return total;
 }
+function tripRPM(trip){return trip.miles>0?(trip.gross/trip.miles):0}
+function tripOverMin(trip,driver){if(!driver||!driver.minRate)return 0;const rpm=tripRPM(trip);const over=(rpm-(+driver.minRate||0))*trip.miles;return over>0?over:0}
+
+/* ══ LOCKED ══ */
+function isLocked(drvName){const d=DRIVERS.find(x=>x.name===drvName);return d&&d.weekLocked===curW}
 
 /* ══ AUTH ══ */
 async function doLogin(){
@@ -947,14 +765,12 @@ async function doLogin(){
   try{await window._fb.signInWithEmailAndPassword(window._auth,e,p)}
   catch{err.textContent='Incorrect email or password.';err.style.display='block'}
 }
-async function doLogout(){if(unsub)unsub();await window._fb.signOut(window._auth)}
-['li-e','li-p'].forEach(id=>document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
+async function doLogout(){if(unsub)unsub();if(unsubTrips)unsubTrips();await window._fb.signOut(window._auth)}
 
 window.addEventListener('load',()=>{
-  window._fb.onAuthStateChanged(window._auth,async user=>{
+  window._fb.onAuthStateChanged(window._auth,async u=>{
     document.getElementById('loading').style.display='none';
-    if(user){await boot(user)}
-    else{document.getElementById('login-page').style.display='block';document.getElementById('app').classList.remove('show')}
+    if(u){await boot(u)}else{document.getElementById('login-page').style.display='block';document.getElementById('app').classList.remove('show')}
   });
 });
 
@@ -967,250 +783,323 @@ async function boot(user){
   const snap=await getDocs(query(collection(window._db,'users'),where('email','==',user.email)));
   CP=snap.empty?{name:user.email,role:'dispatcher'}:{id:snap.docs[0].id,...snap.docs[0].data()};
   ROLE=CP.role||'dispatcher';
-  const av=document.getElementById('sb-av');
-  av.textContent=avL(CP.name);
+  document.getElementById('sb-av').textContent=avL(CP.name);
   document.getElementById('sb-uname').textContent=CP.name||user.email;
   document.getElementById('sb-urole').textContent=ROLE.toUpperCase();
   buildNav();
   await loadMeta();
   subLoads();
-  updateWkLabel();
-  const def={dispatcher:'dispatcher',accounting:'accounting',manager:'kpi',owner:'owner',admin:'admin'};
-  showPg(def[ROLE]||'dispatcher');
+  subTrips();
+  updateWkLbl();
+  const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
+  showPg(def[ROLE]||'dispatch');
 }
 
 function buildNav(){
   const maps={
-    dispatcher:[
-      {id:'dispatcher',icon:'📋',l:'My Loads'},
-      {id:'kpi',icon:'📊',l:'KPI Leaderboard'},
-      {id:'passwords',icon:'🔐',l:'Passwords'},
-    ],
-    accounting:[
-      {id:'accounting',icon:'💰',l:'Accounting'},
-      {id:'kpi',icon:'📊',l:'KPI'},
-    ],
-    manager:[
-      {id:'kpi',icon:'📊',l:'KPI'},
-      {id:'accounting',icon:'💰',l:'Accounting'},
-      {id:'owner',icon:'🏠',l:'Dashboard'},
-    ],
-    owner:[
-      {id:'owner',icon:'🏠',l:'Dashboard'},
-      {id:'kpi',icon:'📊',l:'KPI'},
-      {id:'accounting',icon:'💰',l:'Accounting'},
-    ],
-    admin:[
-      {id:'dispatcher',icon:'📋',l:'Loads'},
-      {id:'accounting',icon:'💰',l:'Accounting'},
-      {id:'kpi',icon:'📊',l:'KPI'},
-      {id:'owner',icon:'🏠',l:'Owner View'},
-      {id:'passwords',icon:'🔐',l:'Passwords'},
-      {id:'salary',icon:'💵',l:'Salary'},
-      {id:'admin',icon:'⚙️',l:'Admin'},
-    ],
+    dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
+    accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'kpi',i:'📊',l:'KPI'}],
+    manager:[{id:'kpi',i:'📊',l:'KPI'},{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
+    owner:[{id:'owner',i:'🏠',l:'Dashboard'},{id:'kpi',i:'📊',l:'KPI'},{id:'accounting',i:'💰',l:'Accounting'}],
+    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
-  const items=maps[ROLE]||maps.dispatcher;
-  document.getElementById('sb-nav').innerHTML=
-    `<div class="sb-section">NAVIGATION</div>`+
-    items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.icon} ${i.l}</div>`).join('');
+  const items=(maps[ROLE]||maps.dispatcher);
+  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.i} ${i.l}</div>`).join('');
 }
 
 /* ══ META ══ */
 async function loadMeta(){
   const{getDocs,collection}=window._fb,db=window._db;
-  const[us,ds,cs,pws]=await Promise.all([
-    getDocs(collection(db,'users')),
-    getDocs(collection(db,'drivers')),
-    getDocs(collection(db,'companies')),
-    getDocs(collection(db,'passwords')),
-  ]);
+  const[us,ds,cs,pw]=await Promise.all([getDocs(collection(db,'users')),getDocs(collection(db,'drivers')),getDocs(collection(db,'companies')),getDocs(collection(db,'passwords'))]);
   USERS=us.docs.map(d=>({id:d.id,...d.data()}));
   DRIVERS=ds.docs.map(d=>({id:d.id,...d.data()}));
   COMPANIES=cs.docs.map(d=>({id:d.id,...d.data()}));
-  PASSWORDS=pws.docs.map(d=>({id:d.id,...d.data()}));
-  fillAccSelects();
-}
-
-function fillAccSelects(){
-  const coSel=document.getElementById('acc-co-sel');
-  if(coSel) coSel.innerHTML=`<option value="">All Companies</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-}
-
-function accSelectCo(coId){
-  accCo=coId;
-  const drSel=document.getElementById('acc-dr-sel');
-  const drivers=coId?DRIVERS.filter(d=>d.companyId===coId||d.company===COMPANIES.find(c=>c.id===coId)?.name):DRIVERS;
-  drSel.innerHTML=`<option value="">All Drivers</option>`+drivers.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');
-  accDr='';
-  renderAcc();
+  PASSWORDS=pw.docs.map(d=>({id:d.id,...d.data()}));
+  // fill acc selects
+  const csel=document.getElementById('acc-co-sel');
+  if(csel)csel.innerHTML=`<option value="">All Companies</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
 }
 
 /* ══ REALTIME ══ */
 function subLoads(){
   if(unsub)unsub();
   const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
-  const q=ROLE==='dispatcher'
-    ?query(collection(db,'loads'),where('dispEmail','==',CU.email),orderBy('createdAt','desc'))
-    :query(collection(db,'loads'),orderBy('createdAt','desc'));
+  const isAll=['admin','owner','manager','accounting'].includes(ROLE);
+  const q=isAll?query(collection(db,'loads'),orderBy('createdAt','desc')):query(collection(db,'loads'),where('dispEmail','==',CU.email),orderBy('createdAt','desc'));
   unsub=onSnapshot(q,snap=>{LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));renderCur()});
+}
+function subTrips(){
+  if(unsubTrips)unsubTrips();
+  const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
+  const isAll=['admin','owner','manager','accounting'].includes(ROLE);
+  const q=isAll?query(collection(db,'trips'),orderBy('createdAt','desc')):query(collection(db,'trips'),where('dispEmail','==',CU.email),orderBy('createdAt','desc'));
+  unsubTrips=onSnapshot(q,snap=>{TRIPS=snap.docs.map(d=>({id:d.id,...d.data()}));renderCur()});
 }
 
 /* ══ ROUTING ══ */
-const pgTitles={dispatcher:'My Loads',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary Calculator',admin:'Admin Panel'};
-function showPg(pg){
+const pgTitles={dispatch:'My Drivers',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary',admin:'Admin Panel',driver:'Driver Loads'};
+function showPg(pg,opts={}){
   document.querySelectorAll('.pg').forEach(e=>e.classList.remove('show'));
   document.querySelectorAll('.sni').forEach(e=>e.classList.remove('on'));
   document.getElementById(`pg-${pg}`)?.classList.add('show');
   document.querySelector(`[data-pg="${pg}"]`)?.classList.add('on');
-  document.getElementById('tb-title').textContent=pgTitles[pg]||pg;
+  document.getElementById('tb-title').textContent=opts.title||pgTitles[pg]||pg;
   document.getElementById('tb-sub').textContent=wLbl(curW);
+  const back=document.getElementById('tb-back');
+  back.classList.toggle('show',pg==='driver');
   renderPg(pg);
 }
+function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
 function renderCur(){const v=document.querySelector('.pg.show');if(v)renderPg(v.id.replace('pg-',''))}
 function renderPg(pg){
-  if(pg==='dispatcher')renderD();
-  if(pg==='accounting')renderAcc();
+  if(pg==='dispatch')renderDispatch();
+  if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi')renderKPI();
+  if(pg==='accounting')renderAcc();
   if(pg==='owner')renderOwner();
   if(pg==='passwords')renderPasswords();
   if(pg==='salary')renderSalary();
   if(pg==='admin')renderAdmin();
 }
 
-/* ══ DISPATCHER ══ */
-function renderD(){
-  const isAll=['admin','owner','manager','accounting'].includes(ROLE);
-  const loads=LOADS.filter(l=>(isAll||l.dispEmail===CU.email)&&inW(l.date,curW));
+/* ══ DISPATCH PAGE ══ */
+function renderDispatch(){
   document.getElementById('d-wlbl').textContent=wLbl(curW);
-  const gross=loads.reduce((s,l)=>s+(+l.rate||0),0),miles=loads.reduce((s,l)=>s+(+l.miles||0),0);
-  document.getElementById('dk-l').textContent=loads.length;
-  document.getElementById('dk-g').textContent=fK(gross);
-  document.getElementById('dk-r').textContent=miles>0?'$'+(gross/miles).toFixed(2):'$0.00';
-  document.getElementById('dk-m').textContent=miles.toLocaleString();
+  const isAll=['admin','owner','manager'].includes(ROLE);
   const myDrivers=isAll?DRIVERS:DRIVERS.filter(d=>d.dispatcherEmail===CU.email);
-  renderDriverCards(myDrivers,'d-drivers',true);
-  let fl=loads.slice();
-  if(dSrch){const q=dSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.broker||'').toLowerCase().includes(q))}
-  if(dStF)fl=fl.filter(l=>l.status===dStF);
-  document.getElementById('d-cnt').textContent=`${fl.length} load${fl.length!==1?'s':''}`;
-  renderTbl(fl,'d-tb',isAll);
-}
-
-function renderDriverCards(drivers,cid,myView){
-  const el=document.getElementById(cid);if(!el)return;
-  if(!drivers.length){el.innerHTML=`<div class="em"><div class="e">🚛</div><p>No drivers assigned yet.</p></div>`;return}
-  el.innerHTML=drivers.map(d=>{
-    const dLoads=LOADS.filter(l=>l.driver===d.name&&inW(l.date,curW));
-    const dGross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
-    const dMiles=dLoads.reduce((s,l)=>s+(+l.miles||0),0);
-    const isLocked=d.weekLocked&&d.weekLocked===curW;
-    const overMin=calcOverMin(dLoads,[d]);
-    return`<div class="driver-card" onclick="filterByDriver('${d.name}')">
+  const wLoads=LOADS.filter(l=>inW(l.date,curW));
+  const myLoads=isAll?wLoads:wLoads.filter(l=>l.dispEmail===CU.email);
+  const gross=myLoads.reduce((s,l)=>s+(+l.rate||0),0),miles=0;
+  const totalOverMin=myDrivers.reduce((s,d)=>{const dl=myLoads.filter(l=>l.driver===d.name);return s+calcOverMin(dl,d)},0);
+  document.getElementById('dk-l').textContent=myLoads.length;
+  document.getElementById('dk-g').textContent=fK(gross);
+  document.getElementById('dk-r').textContent=myLoads.length>0?'$'+(gross/(myLoads.reduce((s,l)=>s+(+l.miles||0),1)||1)).toFixed(2):'$0.00';
+  document.getElementById('dk-ov').textContent=fK(totalOverMin);
+  const grid=document.getElementById('d-drivers');
+  if(!myDrivers.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🚛</div><p>No drivers assigned. Add drivers in Admin panel.</p></div>`;return}
+  grid.innerHTML=myDrivers.map(d=>{
+    const dl=wLoads.filter(l=>l.driver===d.name);
+    const dg=dl.reduce((s,l)=>s+(+l.rate||0),0),dm=dl.reduce((s,l)=>s+(+l.miles||0),0);
+    const overMin=calcOverMin(dl,d);
+    const locked=d.weekLocked===curW;
+    const rpm=dm>0?dg/dm:0;
+    const rpmOk=d.minRate&&rpm>0?rpm>=(+d.minRate):true;
+    return`<div class="driver-card ${locked?'locked':''}" onclick="openDriverPage('${d.id}')">
+      ${locked?`<div class="lock-badge">🔒 Locked</div>`:''}
       <div class="dc-head">
         <div class="dc-av">${avL(d.name)}</div>
-        <div>
-          <div class="dc-name">${d.name}</div>
-          <div class="dc-company">${d.company||'—'} · Min: $${d.minRate||'0.00'}/mi</div>
-        </div>
-        ${myView&&(ROLE==='dispatcher'||ROLE==='admin')?`<button class="btn btn-sm ${isLocked?'btn-danger':'btn-ghost'}" style="margin-left:auto" onclick="event.stopPropagation();toggleWeekLock('${d.id}','${d.name}')">${isLocked?'🔒 Locked':'🔓 Lock Week'}</button>`:''}
+        <div><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||'—'}</div></div>
       </div>
       <div class="dc-stats">
-        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dLoads.length}</div></div>
-        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dGross)}</div></div>
-        <div class="dc-s"><div class="dc-sl">Miles</div><div class="dc-sv">${dMiles.toLocaleString()}</div></div>
-        <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:var(--orange)">${fK(overMin)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dl.length}</div></div>
+        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Miles</div><div class="dc-sv">${dm.toLocaleString()}</div></div>
+        <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:${overMin>0?'var(--green)':'var(--text3)'}">${fK(overMin)}</div></div>
       </div>
-      ${isLocked?`<div class="dc-locked">🔒 Week Locked</div>`:''}
+      <div class="dc-bar">
+        <div class="dc-barlabel"><span>Rate/Mile</span><span style="color:${rpmOk?'var(--green)':'var(--red)'};font-weight:700">$${rpm.toFixed(2)} / min $${d.minRate||'—'}</span></div>
+        <div class="dc-bartrack"><div class="dc-barfill" style="width:${Math.min(rpm/(+(d.minRate||rpm||1))*100,100)}%;background:${rpmOk?'var(--green)':'var(--red)'}"></div></div>
+      </div>
     </div>`;
   }).join('');
 }
 
-function filterByDriver(name){dSrch=name;renderD();window.scrollTo(0,500)}
-
-async function toggleWeekLock(drvId,drvName){
-  const drv=DRIVERS.find(d=>d.id===drvId);if(!drv)return;
-  const isLocked=drv.weekLocked===curW;
-  if(isLocked&&ROLE!=='admin'){notify('Only admin can unlock a week','err');return}
-  if(!isLocked&&!confirm(`Lock week ${wLbl(curW)} for ${drvName}? Dispatcher won't be able to edit loads.`))return;
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:isLocked?'':curW});
-  await loadMeta();renderCur();
-  notify(isLocked?'Week unlocked':'Week locked 🔒');
+/* ══ DRIVER PAGE ══ */
+function openDriverPage(drvId){
+  curDrv=DRIVERS.find(d=>d.id===drvId)||null;
+  if(!curDrv)return;
+  showPg('driver',{title:curDrv.name});
+}
+function renderDriverPage(){
+  if(!curDrv)return;
+  const d=DRIVERS.find(x=>x.id===curDrv.id);
+  if(d)curDrv=d;
+  const locked=curDrv.weekLocked===curW;
+  const canEdit=(ROLE==='dispatcher'||ROLE==='admin')&&!locked;
+  document.getElementById('btn-add-load').style.display=canEdit?'':'none';
+  document.getElementById('btn-create-trip').style.display=canEdit?'':'none';
+  const wLoads=LOADS.filter(l=>l.driver===curDrv.name&&inW(l.date,curW));
+  const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const overMin=calcOverMin(wLoads,curDrv);
+  document.getElementById('drv-hd-info').innerHTML=`
+    <div class="drv-av-big">${avL(curDrv.name)}</div>
+    <div style="flex:1">
+      <div class="drv-title">${curDrv.name}</div>
+      <div class="drv-co">${curDrv.company||'—'}</div>
+      <div class="drv-meta">
+        <div class="drv-badge">Min: $${curDrv.minRate||'—'}/mi</div>
+        <div class="drv-badge" style="color:var(--green)">Gross: ${fK(gross)}</div>
+        <div class="drv-badge" style="color:var(--orange)">Over min: ${fK(overMin)}</div>
+        ${locked?`<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Week Locked</div>`:''}
+      </div>
+    </div>
+    ${ROLE==='admin'||ROLE==='dispatcher'?`<button class="btn btn-sm ${locked?'btn-danger':'btn-ghost'}" onclick="toggleLock('${curDrv.id}')">${locked?'🔒 Unlock Week':'🔓 Lock Week'}</button>`:''}`;
+  document.getElementById('drv-pg-title').textContent=`${curDrv.name} — Week Loads`;
+  // render trips for this driver this week
+  renderDrvTrips(wLoads);
 }
 
-function isWeekLocked(driverName){
-  const drv=DRIVERS.find(d=>d.name===driverName);
-  return drv&&drv.weekLocked===curW;
-}
-
-/* ══ TABLE ══ */
-function renderTbl(loads,tbid,showD){
-  const tb=document.getElementById(tbid);
-  if(!loads.length){tb.innerHTML=`<tr><td colspan="14"><div class="em"><div class="e">📋</div><p>No loads found.</p></div></td></tr>`;return}
-  tb.innerHTML=loads.map(l=>{
-    const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
-    const sc=sC(l.status);
-    const dc=showD?`<td style="color:var(--blue);font-size:12px;font-weight:600">${l.dispName||'—'}</td>`:'';
-    const locked=isWeekLocked(l.driver)&&ROLE!=='admin';
-    const statOrder=['Assigned','Picked Up','Delivered','Invoiced'];
-    const curIdx=statOrder.indexOf(l.status||'Assigned');
-    const nextStatus=statOrder[curIdx+1];
-    const statusBtn=nextStatus&&!locked
-      ?`<button class="sf-btn sf-${nextStatus.toLowerCase().replace(' ','-')}" onclick="advanceStatus(event,'${l.id}','${nextStatus}')">${nextStatus} →</button>`
-      :`<span class="pill ${sc}">${l.status||'Assigned'}</span>`;
-    return`<tr onclick="openDet('${l.id}')">
+function renderDrvTrips(wLoads){
+  const drvTrips=TRIPS.filter(t=>t.driverName===curDrv.name&&inW(t.weekDate||t.createdDate,curW));
+  const trippedLoadIds=new Set(drvTrips.flatMap(t=>t.loadIds||[]));
+  const solo=wLoads.filter(l=>!trippedLoadIds.has(l.id));
+  const locked=curDrv?.weekLocked===curW&&ROLE!=='admin';
+  const el=document.getElementById('drv-trips');
+  el.innerHTML=drvTrips.length?drvTrips.map((t,ti)=>{
+    const tLoads=wLoads.filter(l=>t.loadIds?.includes(l.id));
+    const tGross=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const rpm=t.miles>0?tGross/t.miles:0;
+    const minRate=+(curDrv?.minRate||0);
+    const rpmClass=minRate>0?(rpm>=minRate?'ok':rpm>=minRate*0.9?'warn':'low'):'ok';
+    const overMin=tripOverMin(t,curDrv);
+    const col=COLORS[ti%COLORS.length];
+    return`<div class="trip-card">
+      <div class="trip-hd" onclick="this.parentElement.querySelector('.trip-loads').classList.toggle('hidden')">
+        <div class="trip-color" style="background:${col}"></div>
+        <div class="trip-id">TRIP #${t.tripNum||ti+1}</div>
+        <div class="trip-route">${t.loadIds?.length||0} loads · ${(+t.miles||0).toLocaleString()} mi</div>
+        <div class="trip-gross">${fK(tGross)}</div>
+        <div class="trip-rpm ${rpmClass}">$${rpm.toFixed(2)}/mi</div>
+        ${overMin>0?`<div style="font-size:10px;color:var(--green);font-weight:700;background:#ecfdf5;padding:3px 8px;border-radius:5px">+${fK(overMin)}</div>`:''}
+        ${t.underMinComment?`<div style="font-size:10px;color:var(--red);background:#fef2f2;padding:3px 8px;border-radius:5px;max-width:150px;overflow:hidden;text-overflow:ellipsis">⚠ ${t.underMinComment}</div>`:''}
+        ${!locked?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delTrip('${t.id}')" style="margin-left:auto">🗑</button>`:''}
+      </div>
+      <div class="trip-loads">
+        ${tLoads.map(l=>`<div class="load-row">
+          <span class="bold" style="font-family:var(--mono);font-size:11px">${l.orderId||'—'}</span>
+          <span>${l.origin||'—'} → ${l.dest||'—'}</span>
+          <span class="money">$${fmt(+l.rate||0)}</span>
+          <span style="font-size:10px">${l.payMethod||'—'}</span>
+          <span><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></span>
+          <span>${l.paid?'<span style="color:var(--green);font-size:11px;font-weight:700">✓ PAID</span>':'<span style="color:var(--red);font-size:11px">UNPAID</span>'}</span>
+          <span style="display:flex;gap:4px">${!locked?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join(''):``;
+  // solo loads table
+  const tb=document.getElementById('drv-load-tb');
+  document.getElementById('drv-load-cnt').textContent=`${solo.length} load${solo.length!==1?'s':''}`;
+  if(!solo.length){tb.innerHTML=`<tr><td colspan="9"><div class="em"><div class="e">📋</div><p>No individual loads — add loads and group them into trips.</p></div></td></tr>`;return}
+  const statOrder=['Assigned','Picked Up','Delivered','Invoiced'];
+  tb.innerHTML=solo.map(l=>{
+    const ci=statOrder.indexOf(l.status||'Assigned'),ns=statOrder[ci+1];
+    const statusBtn=ns&&!locked?`<button class="sf-btn sf-${ns.toLowerCase().replace(' ','-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`:`<span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span>`;
+    return`<tr>
       <td class="bold">${l.orderId||'—'}</td>
-      ${dc}
       <td>${l.origin||'—'} → ${l.dest||'—'}</td>
-      <td>${l.driver||'—'}</td>
-      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis">${l.broker||'—'}</td>
-      <td style="font-family:var(--mono)">${(+l.miles||0).toLocaleString()}</td>
       <td class="money">$${fmt(+l.rate||0)}</td>
-      <td style="font-family:var(--mono);color:var(--blue)">$${rpm}</td>
       <td style="font-size:11px">${l.payMethod||'—'}</td>
-      <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee)+' '+(l.bfPaid?'✓':'✗'):'—'}</td>
+      <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
       <td>${statusBtn}</td>
-      <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid(event,'${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
-      <td style="color:var(--text3);font-size:11px">${l.date||'—'}</td>
-      ${!locked||ROLE==='admin'?`<td><div style="display:flex;gap:4px">
-        <button class="btn btn-ghost btn-sm" onclick="editLoad(event,'${l.id}')">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="delLoad(event,'${l.id}')">🗑</button>
-      </div></td>`:`<td><span style="font-size:10px;color:var(--text3)">🔒</span></td>`}
+      <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
+      <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
+      <td><div style="display:flex;gap:4px">${!locked?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</div></td>
     </tr>`;
   }).join('');
 }
 
-async function advanceStatus(e,id,nextStatus){
-  e.stopPropagation();
-  if(!confirm(`Mark as "${nextStatus}"? This cannot be undone.`))return;
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',id),{status:nextStatus});
-  notify(`Status → ${nextStatus}`);
+/* ══ TRIP CREATION ══ */
+function showTripCreate(){
+  tripSelLoads=[];
+  document.getElementById('trip-create-ui').classList.remove('hidden');
+  document.getElementById('trip-miles').value='';
+  document.getElementById('trip-rpm').value='';
+  document.getElementById('trip-sel-count').textContent='0';
+  document.getElementById('trip-sel-gross').textContent='$0';
+  renderTripSelLoads();
+}
+function renderTripSelLoads(){
+  const wLoads=LOADS.filter(l=>l.driver===curDrv?.name&&inW(l.date,curW));
+  const drvTrips=TRIPS.filter(t=>t.driverName===curDrv?.name&&inW(t.weekDate||t.createdDate,curW));
+  const tripped=new Set(drvTrips.flatMap(t=>t.loadIds||[]));
+  const avail=wLoads.filter(l=>!tripped.has(l.id));
+  const el=document.getElementById('trip-sel-loads');
+  if(!avail.length){el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">No available loads — add loads first.</div>`;return}
+  el.innerHTML=avail.map(l=>{
+    const sel=tripSelLoads.includes(l.id);
+    return`<div class="ls-item ${sel?'sel':''}" onclick="toggleTripLoad('${l.id}')">
+      <div class="ls-check">${sel?'✓':''}</div>
+      <div style="flex:1;font-size:12px"><strong>${l.orderId||'?'}</strong> · ${l.origin||'—'} → ${l.dest||'—'}</div>
+      <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)">$${fmt(+l.rate||0)}</div>
+    </div>`;
+  }).join('');
+}
+function toggleTripLoad(id){
+  const i=tripSelLoads.indexOf(id);
+  if(i>=0)tripSelLoads.splice(i,1);else tripSelLoads.push(id);
+  updateTripCalc();
+  renderTripSelLoads();
+}
+function updateTripCalc(){
+  const selLoads=LOADS.filter(l=>tripSelLoads.includes(l.id));
+  const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const miles=parseFloat(document.getElementById('trip-miles')?.value)||0;
+  document.getElementById('trip-sel-count').textContent=tripSelLoads.length;
+  document.getElementById('trip-sel-gross').textContent='$'+fmt(gross);
+  if(miles>0&&gross>0)document.getElementById('trip-rpm').value='$'+(gross/miles).toFixed(2)+'/mi';
+  else document.getElementById('trip-rpm').value='';
+}
+async function confirmTrip(){
+  if(!tripSelLoads.length){notify('Select at least 1 load','err');return}
+  const miles=parseFloat(document.getElementById('trip-miles').value)||0;
+  if(!miles){notify('Miles are required for trip','err');document.getElementById('trip-miles').classList.add('required-err');return}
+  document.getElementById('trip-miles').classList.remove('required-err');
+  const selLoads=LOADS.filter(l=>tripSelLoads.includes(l.id));
+  const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const rpm=miles>0?gross/miles:0;
+  const minRate=+(curDrv?.minRate||0);
+  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:wRange(curW).start.toISOString().split('T')[0],createdDate:wRange(curW).start.toISOString().split('T')[0]};
+  if(minRate>0&&rpm<minRate){
+    // under minimum — require comment
+    document.getElementById('trip-create-ui').classList.add('hidden');
+    document.getElementById('under-min-ui').classList.remove('hidden');
+    document.getElementById('under-min-comment').value='';
+    return;
+  }
+  await saveTrip(pendingTripData);
+}
+async function saveUnderMinTrip(){
+  const comment=document.getElementById('under-min-comment').value.trim();
+  if(!comment){notify('Comment is required when below minimum','err');return}
+  pendingTripData.underMinComment=comment;
+  await saveTrip(pendingTripData);
+  document.getElementById('under-min-ui').classList.add('hidden');
+}
+function cancelUnderMin(){document.getElementById('under-min-ui').classList.add('hidden');pendingTripData=null;cancelTripCreate()}
+async function saveTrip(data){
+  const{addDoc,collection,serverTimestamp}=window._fb;
+  const tripNum=TRIPS.filter(t=>t.driverName===data.driverName).length+1;
+  await addDoc(collection(window._db,'trips'),{...data,tripNum,createdAt:serverTimestamp()});
+  notify('Trip created ✓');
+  cancelTripCreate();
+}
+function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create-ui').classList.add('hidden');pendingTripData=null}
+async function delTrip(id){
+  if(!confirm('Delete this trip? Loads will become individual again.'))return;
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'trips',id));
+  notify('Trip deleted','inf');
 }
 
-/* ══ LOAD MODAL ══ */
+/* ══ LOAD CRUD ══ */
 function openLoadModal(){
-  editId=null;
-  document.getElementById('m-load-t').textContent='Add New Load';
-  ['fl-oid','fl-ori','fl-dst','fl-mi','fl-rt','fl-rpm','fl-br','fl-be','fl-bp','fl-nt','fl-bf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  editLoadId=null;
+  document.getElementById('m-load-t').textContent=`Add Load — ${curDrv?.name||'?'}`;
+  ['fl-oid','fl-ori','fl-dst','fl-rt','fl-br','fl-be','fl-bp','fl-nt','fl-bf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
   document.getElementById('fl-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('fl-pay').value='';
-  document.getElementById('fl-wk').value=wLbl(curW);
   setSw('sw-bf',false);
-  fillDrvSel();om('m-load');
+  om('m-load');
 }
-function editLoad(e,id){
-  e.stopPropagation();
+function editLoad(id){
   const l=LOADS.find(x=>x.id===id);if(!l)return;
-  if(isWeekLocked(l.driver)&&ROLE!=='admin'){notify('Week is locked. Admin only.','err');return}
-  editId=id;
+  editLoadId=id;
   document.getElementById('m-load-t').textContent='Edit Load';
   document.getElementById('fl-oid').value=l.orderId||'';
   document.getElementById('fl-date').value=l.date||'';
   document.getElementById('fl-ori').value=l.origin||'';
   document.getElementById('fl-dst').value=l.dest||'';
-  document.getElementById('fl-mi').value=l.miles||'';
   document.getElementById('fl-rt').value=l.rate||'';
   document.getElementById('fl-br').value=l.broker||'';
   document.getElementById('fl-be').value=l.brokerEmail||'';
@@ -1218,88 +1107,224 @@ function editLoad(e,id){
   document.getElementById('fl-bf').value=l.brokerFee||'';
   document.getElementById('fl-nt').value=l.notes||'';
   document.getElementById('fl-pay').value=l.payMethod||'';
-  document.getElementById('fl-wk').value=wLbl(l.week||curW);
   setSw('sw-bf',!!l.bfPaid);
-  fillDrvSel(l.driver);calcRPM();om('m-load');
-}
-function fillDrvSel(sel=''){
-  const el=document.getElementById('fl-drv');if(!el)return;
-  const drvs=ROLE==='dispatcher'?DRIVERS.filter(d=>d.dispatcherEmail===CU.email):DRIVERS;
-  el.innerHTML=`<option value="">— Select Driver —</option>`+drvs.map(d=>`<option value="${d.name}"${d.name===sel?' selected':''}>${d.name}${d.company?' ('+d.company+')':''}</option>`).join('');
+  om('m-load');
 }
 async function saveLoad(){
   const oid=document.getElementById('fl-oid').value.trim(),pay=document.getElementById('fl-pay').value;
-  if(!oid){notify('Order ID is required','err');return}
-  if(!pay){notify('Payment Method is required','err');return}
-  const miles=parseFloat(document.getElementById('fl-mi').value)||0,rate=parseFloat(document.getElementById('fl-rt').value)||0;
-  const drvName=document.getElementById('fl-drv').value;
-  if(isWeekLocked(drvName)&&ROLE!=='admin'){notify('Week is locked for this driver','err');return}
+  if(!oid){notify('Order ID required','err');return}
+  if(!pay){notify('Payment Method required','err');return}
+  const rate=parseFloat(document.getElementById('fl-rt').value)||0;
+  if(!rate){notify('Rate required','err');return}
   const data={
     orderId:oid,date:document.getElementById('fl-date').value,
     origin:document.getElementById('fl-ori').value.trim(),dest:document.getElementById('fl-dst').value.trim(),
-    miles,rate,ratePerMile:miles>0?rate/miles:0,
+    rate,miles:0,
     broker:document.getElementById('fl-br').value.trim(),
     brokerEmail:document.getElementById('fl-be').value.trim(),
     brokerPhone:document.getElementById('fl-bp').value.trim(),
     brokerFee:parseFloat(document.getElementById('fl-bf').value)||0,
     bfPaid:swV('sw-bf'),payMethod:pay,
-    status:editId?undefined:'Assigned',
-    paid:editId?undefined:false,
-    driver:drvName,notes:document.getElementById('fl-nt').value.trim(),
+    driver:curDrv?.name||'',driverName:curDrv?.name||'',
     dispEmail:CU.email,dispName:CP.name||CU.email,
-    company:CP.company||'',week:curW,
+    company:curDrv?.company||CP.company||'',week:curW,
+    notes:document.getElementById('fl-nt').value.trim(),
   };
-  if(editId){delete data.status;delete data.paid}
   const{addDoc,updateDoc,doc,collection,serverTimestamp}=window._fb,db=window._db;
   try{
-    if(editId){await updateDoc(doc(db,'loads',editId),{...data,updatedAt:serverTimestamp()})}
-    else{await addDoc(collection(db,'loads'),{...data,createdAt:serverTimestamp()})}
-    notify(editId?'Load updated ✓':'Load added ✓');cm('m-load');
+    if(editLoadId){await updateDoc(doc(db,'loads',editLoadId),{...data,updatedAt:serverTimestamp()})}
+    else{await addDoc(collection(db,'loads'),{...data,status:'Assigned',paid:false,createdAt:serverTimestamp()})}
+    notify(editLoadId?'Load updated':'Load added ✓');cm('m-load');
   }catch(e){notify('Error: '+e.message,'err')}
 }
-async function tgPaid(e,id,v,locked){
-  e.stopPropagation();
-  if(locked){notify('Week is locked','err');return}
+async function advStat(id,next){
+  if(!confirm(`Mark as "${next}"? Cannot undo.`))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',id),{status:next});
+  notify(`→ ${next}`);
+}
+async function tgPaid(id,v,locked){
+  if(locked){notify('Week locked','err');return}
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'loads',id),{paid:v});
-  notify(v?'✓ Marked as PAID':'Marked as UNPAID');
+  notify(v?'✓ Marked PAID':'Marked UNPAID');
 }
-async function delLoad(e,id){
-  e.stopPropagation();
-  const l=LOADS.find(x=>x.id===id);
-  if(isWeekLocked(l?.driver)&&ROLE!=='admin'){notify('Week is locked','err');return}
+async function delLoad(id){
   if(!confirm('Delete this load?'))return;
   const{deleteDoc,doc}=window._fb;
-  await deleteDoc(doc(window._db,'loads',id));notify('Load deleted','inf');
+  await deleteDoc(doc(window._db,'loads',id));
+  notify('Deleted','inf');
+}
+async function toggleLock(drvId){
+  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
+  const locked=d.weekLocked===curW;
+  if(locked&&ROLE!=='admin'){notify('Only admin can unlock','err');return}
+  if(!locked&&!confirm(`Lock week for ${d.name}?`))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:locked?'':curW});
+  await loadMeta();notify(locked?'Unlocked':'Week Locked 🔒');
+}
+
+/* ══ KPI CALENDAR ══ */
+function renderKPI(){
+  document.getElementById('kpi-wlbl').textContent=wLbl(curW);
+  const{start}=wRange(curW);
+  const days=[];
+  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}
+  const today=new Date();today.setHours(0,0,0,0);
+  const wLoads=LOADS.filter(l=>inW(l.date,curW));
+  const wTrips=TRIPS.filter(t=>inW(t.weekDate||t.createdDate,curW));
+  const dispatchers=USERS.filter(u=>u.role==='dispatcher');
+  // Build KPI stats per dispatcher
+  const stats=dispatchers.map(disp=>{
+    const dl=wLoads.filter(l=>l.dispEmail===disp.email);
+    const dt=wTrips.filter(t=>t.dispEmail===disp.email);
+    const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+    const miles=dt.reduce((s,t)=>s+(+t.miles||0),0);
+    const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===disp.email);
+    const overMin=myDrivers.reduce((s,d)=>{const dLoads=dl.filter(l=>l.driver===d.name);const dTrips=dt.filter(t=>t.driverName===d.name);const ov=dTrips.reduce((ss,trip)=>ss+tripOverMin(trip,d),0);return s+ov},0);
+    return{...disp,loads:dl.length,gross,miles,rpm:miles>0?gross/miles:0,overMin,drivers:myDrivers,trips:dt};
+  }).sort((a,b)=>b.gross-a.gross);
+  // Winners
+  const gWin=stats.find(s=>s.gross>0);
+  const oWin=[...stats].sort((a,b)=>b.overMin-a.overMin).find(s=>s.overMin>0);
+  document.getElementById('cal-winners').innerHTML=`
+    ${gWin?`<div class="cal-winner">🏆 Gross: <strong>${gWin.name?.split(' ')[0]||'—'} $${fmt(gWin.gross)}</strong></div>`:''}
+    ${oWin?`<div class="cal-winner">⚡ Over Min: <strong>${oWin.name?.split(' ')[0]||'—'} $${fmt(oWin.overMin)}</strong></div>`:''}`;
+  // Build calendar table
+  const table=document.getElementById('cal-table');
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const thCols=days.map((d,i)=>{
+    const isToday=d.getTime()===today.getTime();
+    return`<th class="${isToday?'today-col':''}">${dayNames[i]}<br><span style="font-size:13px;font-weight:800;color:${isToday?'var(--orange)':'var(--text)'}">${d.getDate()}</span>${isToday?'<br><span style="font-size:9px;color:var(--orange)">Today</span>':''}</th>`;
+  }).join('');
+  let html=`<thead><tr><th class="sticky-col" style="min-width:160px">Dispatcher / Driver</th>${thCols}<th>Total</th></tr></thead><tbody>`;
+  stats.forEach(disp=>{
+    const dl=wLoads.filter(l=>l.dispEmail===disp.email);
+    const dt=wTrips.filter(t=>t.dispEmail===disp.email);
+    const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+    const miles=dt.reduce((s,t)=>s+(+t.miles||0),0);
+    const rpm=miles>0?gross/miles:0;
+    const overMin=disp.overMin||0;
+    // Dispatcher header row
+    html+=`<tr class="cal-disp-row">
+      <td class="sticky-col"><div class="cal-disp-name">${disp.name||disp.email}</div></td>
+      ${days.map(()=>`<td class="cal-week-total"></td>`).join('')}
+      <td class="cal-week-total" style="text-align:right">
+        <div style="font-size:11px;font-family:var(--mono);line-height:1.7">
+          <div>Loads: <strong>${disp.loads}</strong></div>
+          <div>Gross: <strong style="color:var(--green)">$${fmt(gross)}</strong></div>
+          ${miles>0?`<div>Miles: <strong>${miles.toLocaleString()}</strong></div>`:''}
+          ${rpm>0?`<div>$/mi: <strong style="color:var(--blue)">$${rpm.toFixed(2)}</strong></div>`:''}
+          ${overMin>0?`<div>Over min: <strong style="color:var(--orange)">$${fmt(overMin)}</strong></div>`:''}
+        </div>
+      </td>
+    </tr>`;
+    // Driver rows
+    disp.drivers.forEach(drv=>{
+      const dLoads=dl.filter(l=>l.driver===drv.name);
+      const dTrips=dt.filter(t=>t.driverName===drv.name);
+      const dGross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
+      const dMiles=dTrips.reduce((s,t)=>s+(+t.miles||0),0);
+      const dRpm=dMiles>0?dGross/dMiles:0;
+      const dOverMin=dTrips.reduce((s,t)=>s+tripOverMin(t,drv),0);
+      const locked=drv.weekLocked===curW;
+      html+=`<tr>
+        <td class="sticky-col" style="padding-left:24px">
+          <div style="font-size:12px;font-weight:600;color:var(--navy)">${drv.name}${locked?' 🔒':''}</div>
+          <div style="font-size:10px;color:var(--text3)">${drv.company||'—'} · Min: $${drv.minRate||'—'}/mi</div>
+        </td>
+        ${days.map(d=>{
+          const ds=d.toISOString().split('T')[0];
+          const isToday=d.getTime()===today.getTime();
+          const dayTrips=dTrips.filter(t=>{const wl=dLoads.filter(l=>t.loadIds?.includes(l.id));return wl.some(l=>l.date===ds)});
+          const dayLoads=dLoads.filter(l=>l.date===ds&&!dTrips.flatMap(t=>t.loadIds||[]).includes(l.id));
+          return`<td class="${isToday?'today-col':''}">
+            ${dayTrips.map((t,ti)=>{
+              const tLoads=dLoads.filter(l=>t.loadIds?.includes(l.id));
+              const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+              const trpm=t.miles>0?tg/t.miles:0;
+              const colIdx=(TRIPS.indexOf(t))%COLORS.length;
+              const col=COLORS[colIdx>=0?colIdx:ti%COLORS.length];
+              const minR=+(drv.minRate||0);
+              const rpmOk=minR>0?trpm>=minR:true;
+              return`<div class="trip-chip" style="background:${rpmOk?col:'var(--red)'}" onclick="openDriverPage('${drv.id}')">
+                <div class="tc-gross">$${fmt(tg)}</div>
+                <div class="tc-route">${tLoads[0]?.origin?.split(',')[0]||'?'} → ${tLoads[tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
+                <div class="tc-rpm">${trpm.toFixed(2)}/mi · ${(+t.miles||0).toLocaleString()}mi</div>
+              </div>`;
+            }).join('')}
+            ${dayLoads.map(l=>`<div class="trip-chip" style="background:var(--silver)" onclick="openDriverPage('${drv.id}')">
+              <div class="tc-gross">$${fmt(+l.rate||0)}</div>
+              <div class="tc-route">${l.origin?.split(',')[0]||'?'} → ${l.dest?.split(',')[0]||'?'}</div>
+            </div>`).join('')}
+          </td>`;
+        }).join('')}
+        <td class="tot-cell">
+          <strong>$${fmt(dGross)}</strong><br>
+          ${dMiles>0?`<span style="color:var(--text3)">${dMiles.toLocaleString()}mi</span><br>`:''}
+          ${dRpm>0?`<span style="color:var(--blue)">$${dRpm.toFixed(2)}/mi</span><br>`:''}
+          ${dOverMin>0?`<span class="over">+$${fmt(dOverMin)}</span>`:''}
+          ${dOverMin<0&&dMiles>0?`<span class="under">$${fmt(dOverMin)}</span>`:''}
+        </td>
+      </tr>`;
+    });
+    // Week total row
+    html+=`<tr class="cal-week-tot-row">
+      <td class="sticky-col">Week Total — ${disp.name?.split(' ')[0]||''}</td>
+      ${days.map(d=>{
+        const ds=d.toISOString().split('T')[0];
+        const dayG=dl.filter(l=>l.date===ds).reduce((s,l)=>s+(+l.rate||0),0);
+        return`<td class="cal-week-total" style="text-align:center;font-size:11px;font-family:var(--mono);color:${dayG>0?'var(--green)':'var(--text3)'}">
+          ${dayG>0?'$'+fmt(dayG):'—'}
+        </td>`;
+      }).join('')}
+      <td class="cal-week-total" style="text-align:right;font-family:var(--mono);font-size:12px;font-weight:800;color:var(--green)">$${fmt(gross)}</td>
+    </tr>`;
+  });
+  html+='</tbody>';
+  table.innerHTML=html;
+  // Leaderboard
+  const lb=document.getElementById('kpi-lb');
+  if(!stats.length){lb.innerHTML=`<div class="em"><div class="e">📊</div><p>No dispatcher data.</p></div>`;return}
+  const maxG=stats[0]?.gross||1;
+  const rc=['g1','g2','g3'],rr=['r1','r2','r3'];
+  lb.innerHTML=stats.map((s,i)=>{
+    const isG=gWin&&s.email===gWin.email&&s.gross>0;
+    const isO=oWin&&s.email===oWin.email&&s.overMin>0&&!isG;
+    const bTag=isG?`<span class="bonus win">🏆 Gross</span>`:isO?`<span class="bonus eff">⚡ Over Min</span>`:`<span class="bonus none">—</span>`;
+    return`<div class="lb-row-kpi ${rr[i]||''}">
+      <div><span class="rk ${rc[i]||''}">${i+1}</span></div>
+      <div><div style="font-size:13px;font-weight:700;color:var(--navy)">${s.name||s.email}</div><div style="font-size:11px;color:var(--text3)">${s.company||''}</div>
+        <div class="bw"><div class="bf" style="width:${maxG>0?(s.gross/maxG*100):0}%;background:${i===0?'var(--yellow)':'var(--orange)'}"></div></div>
+      </div>
+      <div style="font-family:var(--mono)">${s.loads}</div>
+      <div style="font-family:var(--mono);color:var(--green);font-weight:700">$${fmt(s.gross)}</div>
+      <div style="font-family:var(--mono)">${s.miles.toLocaleString()}</div>
+      <div style="font-family:var(--mono);color:var(--blue);font-weight:600">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
+      <div>${bTag}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ══ ACCOUNTING ══ */
-function setAccTab(k,el){accTab=k;document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('acc-tt').textContent={pending:'Pending Payment',paid:'Paid Loads ✓',overdue:'Overdue Loads',all:'All Loads'}[k];renderAcc()}
+function accCoChange(v){accCo=v;const co=COMPANIES.find(c=>c.id===v);const sel=document.getElementById('acc-dr-sel');const drvs=v?DRIVERS.filter(d=>d.company===co?.name):DRIVERS;sel.innerHTML=`<option value="">All Drivers</option>`+drvs.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');renderAcc()}
+function setAccTab(k,el){accTab=k;document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('acc-tt').textContent={pending:'Pending',paid:'Paid ✓',overdue:'Overdue',all:'All Loads'}[k];renderAcc()}
 function renderAcc(){
   let loads=LOADS.filter(l=>inW(l.date,curW));
-  const accDrVal=document.getElementById('acc-dr-sel')?.value||'';
-  if(accCo){const co=COMPANIES.find(c=>c.id===accCo);if(co)loads=loads.filter(l=>l.company===co.name||l.company===co.id)}
-  if(accDrVal)loads=loads.filter(l=>l.driver===accDrVal);
+  const drv=document.getElementById('acc-dr-sel')?.value||'';
+  if(accCo){const co=COMPANIES.find(c=>c.id===accCo);if(co)loads=loads.filter(l=>l.company===co.name)}
+  if(drv)loads=loads.filter(l=>l.driver===drv);
   document.getElementById('acc-np').textContent=loads.filter(l=>!l.paid).length;
   document.getElementById('acc-pp').textContent=loads.filter(l=>l.paid).length;
-  let fil=accTab==='pending'?loads.filter(l=>!l.paid)
-    :accTab==='paid'?loads.filter(l=>l.paid)
-    :accTab==='overdue'?loads.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);if(!due)return false;return new Date()>due})
-    :loads;
-  if(accSrch){const q=accSrch.toLowerCase();fil=fil.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q)||(l.broker||'').toLowerCase().includes(q))}
-  document.getElementById('acc-cnt').textContent=`${fil.length} load${fil.length!==1?'s':''}`;
-  renderAccTbl(fil);
-}
-function renderAccTbl(loads){
+  let fl=accTab==='pending'?loads.filter(l=>!l.paid):accTab==='paid'?loads.filter(l=>l.paid):accTab==='overdue'?loads.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);return due&&new Date()>due}):loads;
+  if(accSrch){const q=accSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q))}
+  document.getElementById('acc-cnt').textContent=`${fl.length}`;
   const tb=document.getElementById('acc-tb');
-  if(!loads.length){tb.innerHTML=`<tr><td colspan="14"><div class="em"><div class="e">💰</div><p>No loads.</p></div></td></tr>`;return}
-  tb.innerHTML=loads.map(l=>{
+  if(!fl.length){tb.innerHTML=`<tr><td colspan="13"><div class="em"><div class="e">💰</div><p>No loads.</p></div></td></tr>`;return}
+  const canEdit=ROLE==='accounting'||ROLE==='admin';
+  tb.innerHTML=fl.map(l=>{
     const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
-    const sc=sC(l.status);
-    const due=getDueDate(l.date,l.payMethod);
-    const dueStr=due?due.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
-    const lTag=lateTag(l.date,l.payMethod,l.paid);
-    const canEdit=ROLE==='accounting'||ROLE==='admin';
     return`<tr>
       <td class="bold">${l.orderId||'—'}</td>
       <td style="color:var(--blue);font-size:12px">${l.dispName||'—'}</td>
@@ -1307,75 +1332,23 @@ function renderAccTbl(loads){
       <td style="font-size:11px">${l.company||'—'}</td>
       <td>${l.origin||'—'} → ${l.dest||'—'}</td>
       <td class="money">$${fmt(+l.rate||0)}</td>
-      <td style="font-family:var(--mono);color:var(--blue)">$${rpm}</td>
+      <td style="font-family:var(--mono);color:var(--blue)">${rpm!=='—'?'$'+rpm:'—'}</td>
       <td style="font-size:11px">${l.payMethod||'—'}</td>
-      <td><span class="pill ${sc}">${l.status||'Assigned'}</span></td>
-      <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accTP('${l.id}',${!l.paid},'${l.payMethod||''}')">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
-      <td>${l.ownerPaid?`<span style="font-size:11px;color:var(--green);font-weight:700">✓ Owner OK</span>`:`<span style="font-size:11px;color:var(--text3)">Pending</span>`}</td>
+      <td><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></td>
+      <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
       <td style="font-size:11px">${l.date||'—'}</td>
-      <td>${lTag}</td>
-      <td>${canEdit?`<input class="ai" placeholder="Note…" value="${escQ(l.accComment||'')}" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()" style="min-width:120px">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+      <td>${lateTag(l.date,l.payMethod,l.paid)}</td>
+      <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
     </tr>`;
   }).join('');
 }
-async function accTP(id,v,method){
+async function accPaid(id,v){
+  const note=v?prompt('Payment note (how/when paid?)'):null;
   const{updateDoc,doc}=window._fb;
-  let note='';
-  if(v){note=prompt('Payment note (e.g. "Received via ACH on Mar 6")')||''}
   await updateDoc(doc(window._db,'loads',id),{paid:v,accComment:note||undefined,paidDate:v?new Date().toISOString():null});
-  notify(v?'✓ Moved to Paid':'Moved to Pending');
+  notify(v?'✓ Marked Paid':'Moved to Pending');
 }
 async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
-
-/* ══ KPI ══ */
-function renderKPI(){
-  document.getElementById('kpi-wr').textContent=wLbl(curW);
-  const loads=LOADS.filter(l=>inW(l.date,curW));
-  const disps=USERS.filter(u=>u.role==='dispatcher');
-  const stats=disps.map(d=>{
-    const dl=loads.filter(l=>l.dispEmail===d.email);
-    const g=dl.reduce((s,l)=>s+(+l.rate||0),0),m=dl.reduce((s,l)=>s+(+l.miles||0),0);
-    const myDrivers=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
-    const overMin=calcOverMin(dl,myDrivers);
-    return{...d,loads:dl.length,gross:g,miles:m,rpm:m>0?g/m:0,overMin};
-  }).sort((a,b)=>b.gross-a.gross);
-  const tG=loads.reduce((s,l)=>s+(+l.rate||0),0),tM=loads.reduce((s,l)=>s+(+l.miles||0),0);
-  const tOv=stats.reduce((s,d)=>s+d.overMin,0);
-  const bRPM=stats.length?Math.max(...stats.map(s=>s.rpm)):0;
-  document.getElementById('kk-l').textContent=loads.length;
-  document.getElementById('kk-g').textContent=fK(tG);
-  document.getElementById('kk-r').textContent='$'+(bRPM||0).toFixed(2);
-  document.getElementById('kk-ov').textContent=fK(tOv);
-  // winners
-  const gW=stats.find(s=>s.gross>0);
-  const eW=[...stats].sort((a,b)=>b.overMin-a.overMin).find(s=>s.overMin>0);
-  document.getElementById('kpi-gw').textContent=gW?.name||'—';
-  document.getElementById('kpi-gw-val').textContent=gW?`$${fmt(gW.gross)} gross`:'No data';
-  document.getElementById('kpi-ew').textContent=eW?.name||'—';
-  document.getElementById('kpi-ew-val').textContent=eW?`$${fmt(eW.overMin)} over minimum`:'No data';
-  renderLB(stats,'kpi-body',bRPM);
-}
-function renderLB(stats,cid){
-  const el=document.getElementById(cid);if(!el)return;
-  if(!stats.length){el.innerHTML=`<div class="em"><div class="e">📊</div><p>No data.</p></div>`;return}
-  const maxG=stats[0]?.gross||1,gW=stats.find(s=>s.gross>0),eW=[...stats].sort((a,b)=>b.overMin-a.overMin).find(s=>s.overMin>0);
-  const rc=['g1','g2','g3'],rr=['r1','r2','r3'];
-  el.innerHTML=stats.map((s,i)=>{
-    const isG=gW&&s.email===gW.email&&s.gross>0,isE=eW&&s.email===eW.email&&s.overMin>0&&!isG;
-    const bTag=isG?`<span class="bonus win">🏆 Gross Winner</span>`:isE?`<span class="bonus eff">⚡ Over Min Winner</span>`:`<span class="bonus none">—</span>`;
-    return`<div class="lb-row ${rr[i]||''}">
-      <div><span class="rk ${rc[i]||''}">${i+1}</span></div>
-      <div><div class="lb-nm">${s.name||s.email}</div><div class="lb-co">${s.company||''}</div>
-        <div class="bw"><div class="bf" style="width:${maxG>0?(s.gross/maxG*100):0}%;background:${i===0?'var(--yellow)':'var(--orange)'}"></div></div>
-      </div>
-      <div style="font-family:var(--mono);font-size:13px">${s.loads}</div>
-      <div style="font-family:var(--mono);font-size:13px;color:var(--green);font-weight:700">$${fmt(s.gross)}</div>
-      <div style="font-family:var(--mono);font-size:13px">${s.miles.toLocaleString()}</div>
-      <div style="font-family:var(--mono);font-size:13px;color:var(--blue);font-weight:600">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
-      <div>${bTag}</div>
-    </div>`;
-  }).join('');
-}
 
 /* ══ OWNER ══ */
 function renderOwner(){
@@ -1385,222 +1358,109 @@ function renderOwner(){
   document.getElementById('ow-g').textContent=fK(g);
   document.getElementById('ow-p').textContent=fK(pa);
   document.getElementById('ow-pn').textContent=fK(g-pa);
-  const cols=['var(--orange)','var(--blue)','var(--green)','var(--purple)','var(--yellow)','var(--red)'];
-  document.getElementById('ow-cog').innerHTML=COMPANIES.length?COMPANIES.map((co,i)=>{
-    const cl=loads.filter(l=>l.company===co.name||l.company===co.id);
-    const cg=cl.reduce((s,l)=>s+(+l.rate||0),0),cp=cl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
-    return`<div class="co-card" style="border-top-color:${cols[i%6]}">
-      <div class="co-name">${co.name}</div>
-      <div class="co-stats">
-        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${cl.length}</div></div>
-        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(cg)}</div></div>
-        <div class="dc-s"><div class="dc-sl">Paid</div><div class="dc-sv" style="color:var(--blue)">${fK(cp)}</div></div>
-        <div class="dc-s"><div class="dc-sl">Pending</div><div class="dc-sv" style="color:var(--red)">${fK(cg-cp)}</div></div>
+  const grid=document.getElementById('ow-drivers');
+  grid.innerHTML=DRIVERS.map(d=>{
+    const dl=loads.filter(l=>l.driver===d.name);
+    const dg=dl.reduce((s,l)=>s+(+l.rate||0),0);
+    return`<div class="driver-card" onclick="openDriverPage('${d.id}')">
+      <div class="dc-head"><div class="dc-av">${avL(d.name)}</div><div><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||'—'}</div></div></div>
+      <div class="dc-stats">
+        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dl.length}</div></div>
+        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
+        <div class="dc-s"><div class="dc-sl">Paid</div><div class="dc-sv" style="color:var(--blue)">${fK(dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0))}</div></div>
+        <div class="dc-s"><div class="dc-sl">Pending</div><div class="dc-sv" style="color:var(--red)">${fK(dg-dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0))}</div></div>
       </div>
     </div>`;
-  }).join(''):`<div class="em" style="grid-column:1/-1"><div class="e">🏢</div><p>No companies.</p></div>`;
-  renderDriverCards(DRIVERS,'ow-drivers',false);
+  }).join('')||`<div class="em" style="grid-column:1/-1"><div class="e">🚛</div><p>No drivers.</p></div>`;
 }
 
 /* ══ PASSWORDS ══ */
 function renderPasswords(){
   const grid=document.getElementById('pw-grid');
-  if(!PASSWORDS.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🔐</div><p>No credentials saved yet.</p></div>`;return}
+  if(!PASSWORDS.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🔐</div><p>No credentials saved.</p></div>`;return}
   grid.innerHTML=PASSWORDS.map(p=>{
     const co=COMPANIES.find(c=>c.id===p.companyId||c.name===p.company);
     return`<div class="pw-card">
-      <div class="pw-card-hd">
-        <div class="pw-icon">🔐</div>
-        <div>
-          <div class="pw-name">${co?.name||p.company||'Unknown Company'}</div>
-          <div style="font-size:11px;color:var(--text3)">${p.platform||'Central Dispatch'}</div>
-        </div>
-        ${ROLE==='admin'?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="delPw('${p.id}')">🗑</button>`:''}
-      </div>
-      <div class="pw-field"><div class="pw-label">Username</div><div class="pw-val">${p.username||'—'}</div></div>
-      <div class="pw-field"><div class="pw-label">Password</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="pw-val" id="pw-${p.id}" style="flex:1">••••••••</div>
-          <button class="btn btn-ghost btn-sm" onclick="togglePw('${p.id}','${escQ(p.password||'')}')">👁</button>
-        </div>
-      </div>
-      ${p.notes?`<div class="pw-field"><div class="pw-label">Notes</div><div style="font-size:12px;color:var(--text2)">${p.notes}</div></div>`:''}
+      <div class="pw-card-hd"><div class="pw-icon">🔐</div><div><div class="pw-name">${co?.name||p.company||'?'}</div><div style="font-size:10px;color:var(--text3)">${p.platform||'Central Dispatch'}</div></div>${ROLE==='admin'?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="delPw('${p.id}')">🗑</button>`:''}</div>
+      <div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Username</div><div class="pw-val">${p.username||'—'}</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><div class="pw-val" id="pw-${p.id}" style="flex:1">••••••••</div><button class="btn btn-ghost btn-sm" onclick="togglePw('${p.id}','${escQ(p.password||'')}')">👁</button></div>
+      ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-top:8px">${p.notes}</div>`:''}
     </div>`;
   }).join('');
 }
 function togglePw(id,val){const el=document.getElementById('pw-'+id);if(el)el.textContent=el.textContent==='••••••••'?val:'••••••••'}
-function openPwModal(){
-  document.getElementById('pw-co').innerHTML=`<option value="">— Select —</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  ['pw-pl','pw-us','pw-ps','pw-nt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-  om('m-pw');
-}
+function openPwModal(){document.getElementById('pw-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');['pw-pl','pw-us','pw-ps','pw-nt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});om('m-pw')}
 async function savePw(){
-  const co=document.getElementById('pw-co').value,us=document.getElementById('pw-us').value.trim(),ps=document.getElementById('pw-ps').value.trim();
-  if(!co||!us){notify('Company and username required','err');return}
+  const co=document.getElementById('pw-co').value,us=document.getElementById('pw-us').value.trim();
+  if(!co||!us){notify('Company & username required','err');return}
   const{addDoc,collection}=window._fb;
   const coObj=COMPANIES.find(c=>c.id===co);
-  await addDoc(collection(window._db,'passwords'),{
-    companyId:co,company:coObj?.name||'',platform:document.getElementById('pw-pl').value.trim(),
-    username:us,password:ps,notes:document.getElementById('pw-nt').value.trim()
-  });
-  notify('Credentials saved ✓');await loadMeta();renderPasswords();cm('m-pw');
+  await addDoc(collection(window._db,'passwords'),{companyId:co,company:coObj?.name||'',platform:document.getElementById('pw-pl').value.trim(),username:us,password:document.getElementById('pw-ps').value.trim(),notes:document.getElementById('pw-nt').value.trim()});
+  notify('Saved ✓');await loadMeta();renderPasswords();cm('m-pw');
 }
-async function delPw(id){
-  if(!confirm('Delete these credentials?'))return;
-  const{deleteDoc,doc}=window._fb;
-  await deleteDoc(doc(window._db,'passwords',id));
-  notify('Deleted','inf');await loadMeta();renderPasswords();
-}
+async function delPw(id){if(!confirm('Delete?'))return;const{deleteDoc,doc}=window._fb;await deleteDoc(doc(window._db,'passwords',id));notify('Deleted','inf');await loadMeta();renderPasswords()}
 
 /* ══ SALARY ══ */
 function renderSalary(){
   const loads=LOADS.filter(l=>inW(l.date,curW));
+  const trips=TRIPS.filter(t=>inW(t.weekDate||t.createdDate,curW));
   const rows=DRIVERS.map(d=>{
     const dl=loads.filter(l=>l.driver===d.name);
+    const dt=trips.filter(t=>t.driverName===d.name);
     const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
-    const salPct=+(d.salaryPct||0)/100;
-    const salary=gross*salPct;
-    const overMin=calcOverMin(dl,[d]);
-    return{...d,loads:dl.length,gross,salary,overMin};
+    const overMin=dt.reduce((s,t)=>s+tripOverMin(t,d),0);
+    const sal=gross*(+(d.salaryPct||0)/100);
+    return{...d,loads:dl.length,gross,salary:sal,overMin};
   });
-  const table=document.getElementById('sal-table');
-  table.innerHTML=`
-    <div class="sal-row sal-head">
-      <div>Driver</div><div>Loads</div><div>Gross</div><div>Min $/mi</div>
-      <div>Over Min</div><div>Salary %</div><div>Salary</div><div>Total</div>
-    </div>
-    ${rows.map(r=>`<div class="sal-row">
+  const el=document.getElementById('sal-table');
+  el.innerHTML=`<div class="sal-row sal-head"><div>Driver</div><div>Loads</div><div>Gross</div><div>Min$/mi</div><div>Over Min</div><div>Sal%</div><div>Salary</div><div>Total</div></div>`+
+    rows.map(r=>`<div class="sal-row">
       <div style="font-weight:600">${r.name}</div>
       <div style="font-family:var(--mono)">${r.loads}</div>
       <div style="font-family:var(--mono);color:var(--green)">$${fmt(r.gross)}</div>
       <div style="font-family:var(--mono)">$${r.minRate||'—'}</div>
       <div style="font-family:var(--mono);color:var(--orange)">$${fmt(r.overMin)}</div>
-      <div>${ROLE==='admin'?`<input type="number" value="${r.salaryPct||''}" placeholder="%" style="width:60px;border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:12px;font-family:var(--mono)" onblur="saveSalPct('${r.id}',this.value)">`:r.salaryPct?r.salaryPct+'%':'—'}</div>
+      <div>${ROLE==='admin'?`<input type="number" value="${r.salaryPct||''}" placeholder="%" style="width:55px;border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:12px;font-family:var(--mono)" onblur="saveSalPct('${r.id}',this.value)">`:r.salaryPct?r.salaryPct+'%':'—'}</div>
       <div style="font-family:var(--mono);color:var(--blue)">$${fmt(r.salary)}</div>
-      <div style="font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(r.salary+r.overMin)}</div>
-    </div>`).join('')}
-    <div class="sal-row" style="font-weight:700;background:var(--surface2);border-top:2px solid var(--border)">
+      <div style="font-family:var(--mono);font-weight:700">$${fmt(r.salary+r.overMin)}</div>
+    </div>`).join('')+
+    `<div class="sal-row" style="font-weight:700;background:var(--surface2);border-top:2px solid var(--border)">
       <div>TOTAL</div><div>${rows.reduce((s,r)=>s+r.loads,0)}</div>
       <div style="color:var(--green);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.gross,0))}</div>
-      <div></div>
-      <div style="color:var(--orange);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.overMin,0))}</div>
+      <div></div><div style="color:var(--orange);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.overMin,0))}</div>
       <div></div>
       <div style="color:var(--blue);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary,0))}</div>
-      <div style="color:var(--navy);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary+r.overMin,0))}</div>
+      <div style="font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary+r.overMin,0))}</div>
     </div>`;
 }
-async function saveSalPct(id,val){
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'drivers',id),{salaryPct:parseFloat(val)||0});
-  await loadMeta();notify('Salary % saved');
-}
-function exportSalaryXLS(){
+async function saveSalPct(id,val){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'drivers',id),{salaryPct:parseFloat(val)||0});await loadMeta();notify('Saved')}
+function exportSalary(){
   const loads=LOADS.filter(l=>inW(l.date,curW));
-  let csv='Driver,Loads,Gross,Min $/Mile,Over Minimum,Salary %,Salary,Total\n';
-  DRIVERS.forEach(d=>{
-    const dl=loads.filter(l=>l.driver===d.name);
-    const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
-    const sal=gross*(+(d.salaryPct||0)/100);
-    const over=calcOverMin(dl,[d]);
-    csv+=`"${d.name}",${dl.length},$${fmt(gross)},$${d.minRate||0},${fmt(over)},${d.salaryPct||0}%,$${fmt(sal)},$${fmt(sal+over)}\n`;
-  });
-  const blob=new Blob([csv],{type:'text/csv'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`salary_${curW}.csv`;a.click();
-  notify('Excel exported ✓');
+  const trips=TRIPS.filter(t=>inW(t.weekDate||t.createdDate,curW));
+  let csv='Driver,Loads,Gross,Min$/mi,Over Min,Sal%,Salary,Total\n';
+  DRIVERS.forEach(d=>{const dl=loads.filter(l=>l.driver===d.name);const dt=trips.filter(t=>t.driverName===d.name);const g=dl.reduce((s,l)=>s+(+l.rate||0),0);const ov=dt.reduce((s,t)=>s+tripOverMin(t,d),0);const sal=g*(+(d.salaryPct||0)/100);csv+=`"${d.name}",${dl.length},$${fmt(g)},$${d.minRate||0},$${fmt(ov)},${d.salaryPct||0}%,$${fmt(sal)},$${fmt(sal+ov)}\n`});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`salary_${curW}.csv`;a.click();notify('Exported ✓');
 }
 
 /* ══ ADMIN ══ */
 function renderAdmin(){
-  document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`<div class="ur"><div class="ua">${avL(u.name)}</div><div><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div><span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span></div>`).join(''):`<div class="em" style="padding:24px"><p>No users.</p></div>`;
+  document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`<div class="ur"><div class="ua">${avL(u.name)}</div><div><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div><span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span></div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
   const disps=USERS.filter(u=>u.role==='dispatcher');
-  document.getElementById('adm-d').innerHTML=disps.length?disps.map(d=>{
-    const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
-    return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:6px">
-      <div style="display:flex;align-items:center;gap:10px;width:100%"><div class="ua">${avL(d.name)}</div><div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div></div>
-      <div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0;display:flex;align-items:center;gap:8px">🚛 ${dr.name} <span style="color:var(--text3);font-family:var(--mono);font-size:10px">${dr.company||''} · Min: $${dr.minRate||'—'}/mi · ${dr.salaryPct||'—'}%</span></div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div>
-    </div>`;
-  }).join(''):`<div class="em" style="padding:24px"><p>No dispatchers.</p></div>`;
-  document.getElementById('adm-c').innerHTML=COMPANIES.length?COMPANIES.map(co=>`<div class="ur"><div style="font-size:22px">🏢</div><div><div class="un">${co.name}</div><div class="ue">${co.email||co.mc||'—'}</div></div></div>`).join(''):`<div class="em" style="padding:24px"><p>No companies.</p></div>`;
-  document.getElementById('adm-s').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-    <div class="dc-s"><div class="dc-sl">Users</div><div class="dc-sv">${USERS.length}</div></div>
-    <div class="dc-s"><div class="dc-sl">Dispatchers</div><div class="dc-sv">${USERS.filter(u=>u.role==='dispatcher').length}</div></div>
-    <div class="dc-s"><div class="dc-sl">Drivers</div><div class="dc-sv">${DRIVERS.length}</div></div>
-    <div class="dc-s"><div class="dc-sl">Companies</div><div class="dc-sv">${COMPANIES.length}</div></div>
-    <div class="dc-s"><div class="dc-sl">Total Loads</div><div class="dc-sv">${LOADS.length}</div></div>
-    <div class="dc-s"><div class="dc-sl">Paid</div><div class="dc-sv" style="color:var(--green)">${LOADS.filter(l=>l.paid).length}</div></div>
+  document.getElementById('adm-d').innerHTML=disps.map(d=>{const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px"><div style="display:flex;align-items:center;gap:10px;width:100%"><div class="ua">${avL(d.name)}</div><div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div></div><div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0">🚛 ${dr.name} · $${dr.minRate||'?'}/mi · ${dr.salaryPct||'?'}%</div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div></div>`}).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
+  document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
+  document.getElementById('adm-s').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Users</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${USERS.length}</div></div>
+    <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Drivers</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${DRIVERS.length}</div></div>
+    <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Total Loads</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${LOADS.length}</div></div>
+    <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Companies</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${COMPANIES.length}</div></div>
   </div>`;
 }
-
-/* ══ ADMIN MODALS ══ */
-function openUserModal(){
-  ['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-  document.getElementById('u-co').innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-  om('m-user');
-}
-async function saveUser(){
-  const nm=document.getElementById('u-nm').value.trim(),em=document.getElementById('u-em').value.trim(),pw=document.getElementById('u-pw').value;
-  if(!nm||!em){notify('Name and email required','err');return}
-  const{addDoc,collection}=window._fb;
-  await addDoc(collection(window._db,'users'),{name:nm,email:em,role:document.getElementById('u-rl').value,company:document.getElementById('u-co').value,createdAt:new Date().toISOString()});
-  notify(`Profile saved. ⚠️ Also create "${em}" in Firebase Auth with password: ${pw||'(set manually)'}`, 'inf');
-  await loadMeta();renderAdmin();cm('m-user');
-}
+function openUserModal(){['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('u-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');om('m-user')}
+async function saveUser(){const nm=document.getElementById('u-nm').value.trim(),em=document.getElementById('u-em').value.trim(),pw=document.getElementById('u-pw').value;if(!nm||!em){notify('Name & email required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'users'),{name:nm,email:em,role:document.getElementById('u-rl').value,company:document.getElementById('u-co').value,createdAt:new Date().toISOString()});notify(`Profile saved! Also create "${em}" in Firebase Auth.`,'inf');await loadMeta();renderAdmin();cm('m-user')}
 function openCompModal(){['co-nm','co-mc','co-dt','co-em','co-ph'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});om('m-co')}
-async function saveComp(){
-  const nm=document.getElementById('co-nm').value.trim();if(!nm){notify('Name required','err');return}
-  const{addDoc,collection}=window._fb;
-  await addDoc(collection(window._db,'companies'),{name:nm,mc:document.getElementById('co-mc').value.trim(),dot:document.getElementById('co-dt').value.trim(),email:document.getElementById('co-em').value.trim(),phone:document.getElementById('co-ph').value.trim()});
-  notify('Company added ✓');await loadMeta();renderAdmin();cm('m-co');
-}
-function openDriverModal(){
-  ['dr-nm','dr-ph','dr-min','dr-sal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-  document.getElementById('dr-co').innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-  document.getElementById('dr-dp').innerHTML=`<option value="">— None —</option>`+USERS.filter(u=>u.role==='dispatcher').map(d=>`<option value="${d.email}">${d.name||d.email}</option>`).join('');
-  om('m-drv');
-}
-async function saveDrv(){
-  const nm=document.getElementById('dr-nm').value.trim();if(!nm){notify('Driver name required','err');return}
-  const{addDoc,collection}=window._fb;
-  await addDoc(collection(window._db,'drivers'),{
-    name:nm,phone:document.getElementById('dr-ph').value.trim(),
-    company:document.getElementById('dr-co').value,
-    dispatcherEmail:document.getElementById('dr-dp').value,
-    minRate:parseFloat(document.getElementById('dr-min').value)||0,
-    salaryPct:parseFloat(document.getElementById('dr-sal').value)||0,
-  });
-  notify('Driver added ✓');await loadMeta();renderAdmin();cm('m-drv');
-}
-
-/* ══ DETAIL ══ */
-function openDet(id){
-  const l=LOADS.find(x=>x.id===id);if(!l)return;
-  const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
-  document.getElementById('m-det-t').textContent=`Load: ${l.orderId||'?'}`;
-  document.getElementById('m-det-b').innerHTML=`
-    <div class="dg">
-      <div class="di"><div class="dl">Order ID</div><div class="dv" style="font-family:var(--mono);font-weight:800;font-size:16px;color:var(--navy)">${l.orderId||'—'}</div></div>
-      <div class="di"><div class="dl">Date</div><div class="dv">${l.date||'—'}</div></div>
-      <div class="di"><div class="dl">Pickup</div><div class="dv">${l.origin||'—'}</div></div>
-      <div class="di"><div class="dl">Delivery</div><div class="dv">${l.dest||'—'}</div></div>
-      <div class="di"><div class="dl">Driver</div><div class="dv" style="font-weight:600">${l.driver||'—'}</div></div>
-      <div class="di"><div class="dl">Dispatcher</div><div class="dv">${l.dispName||'—'}</div></div>
-      <div class="di"><div class="dl">Miles</div><div class="dv" style="font-family:var(--mono)">${(+l.miles||0).toLocaleString()}</div></div>
-      <div class="di"><div class="dl">Total Rate</div><div class="dv" style="font-family:var(--mono);color:var(--green);font-size:22px;font-weight:800">$${fmt(+l.rate||0)}</div></div>
-      <div class="di"><div class="dl">Rate / Mile</div><div class="dv" style="font-family:var(--mono);color:var(--blue);font-weight:700;font-size:16px">$${rpm}</div></div>
-      <div class="di"><div class="dl">Pay Method</div><div class="dv">${l.payMethod||'—'}</div></div>
-      <div class="di"><div class="dl">Broker</div><div class="dv">${l.broker||'—'}</div></div>
-      <div class="di"><div class="dl">Broker Email</div><div class="dv" style="font-size:12px">${l.brokerEmail||'—'}</div></div>
-      <div class="di"><div class="dl">Broker Phone</div><div class="dv" style="font-size:12px">${l.brokerPhone||'—'}</div></div>
-      <div class="di"><div class="dl">Broker Fee</div><div class="dv" style="font-family:var(--mono)">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'} <span style="color:${l.bfPaid?'var(--green)':'var(--red)'}">${l.bfPaid?'Paid':'Unpaid'}</span></div></div>
-      <div class="di"><div class="dl">Status</div><div class="dv"><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></div></div>
-      <div class="di"><div class="dl">Payment</div><div class="dv" style="color:${l.paid?'var(--green)':'var(--red)'}">● ${l.paid?'PAID':'UNPAID'}</div></div>
-    </div>
-    ${l.notes?`<div class="cb">${l.notes}</div>`:''}
-    ${l.accComment?`<div class="cb acc">💬 Accounting: ${l.accComment}</div>`:''}
-  `;
-  om('m-det');
-}
+async function saveComp(){const nm=document.getElementById('co-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'companies'),{name:nm,mc:document.getElementById('co-mc').value.trim(),dot:document.getElementById('co-dt').value.trim(),email:document.getElementById('co-em').value.trim(),phone:document.getElementById('co-ph').value.trim()});notify('Company added ✓');await loadMeta();renderAdmin();cm('m-co')}
+function openDriverModal(){['dr-nm','dr-ph','dr-min','dr-sal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('dr-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');document.getElementById('dr-dp').innerHTML=`<option value="">—</option>`+USERS.filter(u=>u.role==='dispatcher').map(d=>`<option value="${d.email}">${d.name||d.email}</option>`).join('');om('m-drv')}
+async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'drivers'),{name:nm,phone:document.getElementById('dr-ph').value.trim(),company:document.getElementById('dr-co').value,dispatcherEmail:document.getElementById('dr-dp').value,minRate:parseFloat(document.getElementById('dr-min').value)||0,salaryPct:parseFloat(document.getElementById('dr-sal').value)||0});notify('Driver added ✓');await loadMeta();renderAdmin();cm('m-drv')}
 </script>
 </body>
 </html>
