@@ -1327,12 +1327,14 @@ async function closeWeek(drvId){
     return;
   }
 
-  // Validation 3: can only close up to Thursday of next week
+  // Validation 3: can only close up to Thursday of the FOLLOWING week
+  // Week: Mon-Sun. Next Thursday = Sunday + 4 days
   const{end}=wRange(curW);
-  const thursday=new Date(end);thursday.setDate(end.getDate()+4); // Mon+3=Thu next week
+  const thursday=new Date(end);thursday.setDate(end.getDate()+4);thursday.setHours(23,59,59,999);
   const now=new Date();
   if(now>thursday){
-    notify('⚠ Week can only be closed until Thursday of the following week!','err');
+    const tStr=thursday.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    notify('⚠ Deadline passed! Week can only be closed until '+tStr,'err');
     return;
   }
 
@@ -1406,7 +1408,8 @@ function renderKPI(){
           <div>Gross: <strong style="color:var(--green)">$${fmt(gross)}</strong></div>
           ${miles>0?`<div>Miles: <strong>${miles.toLocaleString()}</strong></div>`:''}
           ${rpm>0?`<div>$/mi: <strong style="color:var(--blue)">$${rpm.toFixed(2)}</strong></div>`:''}
-          ${overMin>0?`<div>Over min: <strong style="color:var(--orange)">$${fmt(overMin)}</strong></div>`:''}
+          ${overMin>0?`<div>Over min: <strong style="color:var(--orange);font-size:12px">+$${fmt(overMin)}</strong></div>`:''}
+          ${overMin<0?`<div>Over min: <strong style="color:var(--red);font-size:12px">-$${fmt(Math.abs(overMin))}</strong></div>`:''}
         </div>
       </td>
     </tr>`;
@@ -1438,7 +1441,11 @@ function renderKPI(){
               const col=COLORS[colIdx>=0?colIdx:ti%COLORS.length];
               const minR=+(drv.minRate||0);
               const rpmOk=minR>0?trpm>=minR:true;
-              return`<div class="trip-chip" style="background:${rpmOk?col:'var(--red)'}" onclick="openDriverPage('${drv.id}')">
+              // Check if trip spans into another week
+              const tLoadWeeks=new Set(tLoads.map(l=>l.week||curW));
+              const spansWeeks=tLoadWeeks.size>1;
+              return`<div class="trip-chip" style="background:${rpmOk?col:'var(--red)'}${spansWeeks?';border:2px dashed rgba(255,255,255,.6)':''}" onclick="openDriverPage('${drv.id}')">
+                ${spansWeeks?`<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.9);background:rgba(0,0,0,.2);border-radius:3px;padding:1px 4px;margin-bottom:2px">↔ MULTI-WEEK</div>`:''}
                 <div class="tc-gross">$${fmt(tg)}</div>
                 <div class="tc-route">${tLoads[0]?.origin?.split(',')[0]||'?'} → ${tLoads[tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
                 <div class="tc-rpm">${trpm.toFixed(2)}/mi · ${(+t.miles||0).toLocaleString()}mi</div>
@@ -1502,7 +1509,8 @@ function renderKPI(){
 function accCoChange(v){accCo=v;const co=COMPANIES.find(c=>c.id===v);const sel=document.getElementById('acc-dr-sel');const drvs=v?DRIVERS.filter(d=>d.company===co?.name):DRIVERS;sel.innerHTML=`<option value="">All Drivers</option>`+drvs.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');renderAcc()}
 function setAccTab(k,el){accTab=k;document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('acc-tt').textContent={pending:'Pending',paid:'Paid ✓',overdue:'Overdue',all:'All Loads'}[k];renderAcc()}
 function renderAcc(){
-  let loads=LOADS.filter(l=>inW(l.date,curW));
+  // ALL loads — no week filter
+  let loads=[...LOADS];
   const drv=document.getElementById('acc-dr-sel')?.value||'';
   if(accCo){const co=COMPANIES.find(c=>c.id===accCo);if(co)loads=loads.filter(l=>l.company===co.name)}
   if(drv)loads=loads.filter(l=>l.driver===drv);
@@ -1514,24 +1522,59 @@ function renderAcc(){
   const tb=document.getElementById('acc-tb');
   if(!fl.length){tb.innerHTML=`<tr><td colspan="13"><div class="em"><div class="e">💰</div><p>No loads.</p></div></td></tr>`;return}
   const canEdit=ROLE==='accounting'||ROLE==='admin';
-  tb.innerHTML=fl.map(l=>{
-    const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
-    return`<tr>
-      <td class="bold">${l.orderId||'—'}</td>
-      <td style="color:var(--blue);font-size:12px">${l.dispName||'—'}</td>
-      <td style="font-weight:600">${l.driver||'—'}</td>
-      <td style="font-size:11px">${l.company||'—'}</td>
-      <td>${l.origin||'—'} → ${l.dest||'—'}</td>
-      <td class="money">$${fmt(+l.rate||0)}</td>
-      <td style="font-family:var(--mono);color:var(--blue)">${rpm!=='—'?'$'+rpm:'—'}</td>
-      <td style="font-size:11px">${l.payMethod||'—'}</td>
-      <td><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></td>
-      <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
-      <td style="font-size:11px">${l.date||'—'}</td>
-      <td>${lateTag(l.date,l.payMethod,l.paid)}</td>
-      <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+
+  // Group by week, newest first
+  const byWeek={};
+  fl.forEach(l=>{const w=l.week||CWfrom(new Date((l.date||'2000-01-01')+'T00:00:00'));if(!byWeek[w])byWeek[w]=[];byWeek[w].push(l)});
+  const sortedWks=Object.keys(byWeek).sort((a,b)=>b.localeCompare(a));
+
+  let rows='';
+  sortedWks.forEach(w=>{
+    const wLoads=byWeek[w].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const wPaid=wLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    const wUnpaid=wGross-wPaid;
+    // Find if week is closed (any driver has this week locked)
+    const isClosedWeek=DRIVERS.some(d=>d.weekLocked===w);
+    const isCurW=w===curW;
+
+    // Week separator
+    rows+=`<tr style="background:${isClosedWeek?'var(--navy)':'var(--surface2)'}">
+      <td colspan="13" style="padding:10px 16px;border-top:2px solid ${isClosedWeek?'var(--navy)':'var(--border2)'}">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:800;color:${isClosedWeek?'#fff':'var(--navy)'}">
+            ${isClosedWeek?'🔒':'📅'} ${wLbl(w)}${isCurW?' <span style="font-size:10px;background:var(--orange);color:#fff;border-radius:4px;padding:1px 6px">current</span>':''}
+          </span>
+          <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wGross)}</span>
+          ${wPaid>0?`<span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.6)':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.5)':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
+          <span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.4)':'var(--text3)'};">${wLoads.length} loads</span>
+          ${isClosedWeek?`<span style="font-size:10px;background:rgba(255,255,255,.15);color:#fff;border-radius:4px;padding:1px 8px;font-weight:700">CLOSED</span>`:''}
+        </div>
+      </td>
     </tr>`;
-  }).join('');
+
+    // Load rows
+    wLoads.forEach(l=>{
+      const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
+      rows+=`<tr style="${isClosedWeek?'background:#f8f9fc;opacity:.95':''}">
+        <td class="bold">${l.orderId||'—'}</td>
+        <td style="color:var(--blue);font-size:12px">${l.dispName||'—'}</td>
+        <td style="font-weight:600">${l.driver||'—'}</td>
+        <td style="font-size:11px">${l.company||'—'}</td>
+        <td>${l.origin||'—'} → ${l.dest||'—'}</td>
+        <td class="money">$${fmt(+l.rate||0)}</td>
+        <td style="font-family:var(--mono);color:var(--blue)">${rpm!=='—'?'$'+rpm:'—'}</td>
+        <td style="font-size:11px">${l.payMethod||'—'}</td>
+        <td><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></td>
+        <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
+        <td style="font-size:11px">${l.date||'—'}</td>
+        <td>${lateTag(l.date,l.payMethod,l.paid)}</td>
+        <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+      </tr>`;
+    });
+  });
+  tb.innerHTML=rows;
 }
 async function accPaid(id,v){
   if(!v){
