@@ -1213,6 +1213,12 @@ function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create
 let editTripSelLoads=[];
 function openEditTrip(tripId){
   const trip=TRIPS.find(t=>t.id===tripId);if(!trip)return;
+  // Block editing if week is locked
+  const tripWeek=trip.week||trip.weekDate||curW;
+  const drv=DRIVERS.find(d=>d.name===trip.driverName);
+  if(drv&&drv.weekLocked&&(drv.weekLocked===tripWeek||drv.weekLocked===curW)){
+    notify('🔒 Week is closed — trip cannot be edited','err');return;
+  }
   editTripId=tripId;
   editTripSelLoads=[...(trip.loadIds||[])];
   document.getElementById('et-miles').value=trip.miles||'';
@@ -1265,6 +1271,14 @@ function updateEditTripCalc(){
 }
 async function saveEditTrip(){
   if(!editTripId)return;
+  const trip=TRIPS.find(t=>t.id===editTripId);
+  if(trip){
+    const drv=DRIVERS.find(d=>d.name===trip.driverName);
+    const tripWeek=trip.week||trip.weekDate||curW;
+    if(drv&&drv.weekLocked&&(drv.weekLocked===tripWeek||drv.weekLocked===curW)){
+      notify('🔒 Week is closed — cannot save changes','err');cm('m-edit-trip');return;
+    }
+  }
   if(!editTripSelLoads.length){notify('Select at least 1 load','err');return}
   const miles=parseFloat(document.getElementById('et-miles').value)||0;
   if(!miles){notify('Miles are required','err');return}
@@ -1286,6 +1300,14 @@ async function saveEditTrip(){
 }
 async function deleteTripFromModal(){
   if(!editTripId)return;
+  const trip=TRIPS.find(t=>t.id===editTripId);
+  if(trip){
+    const drv=DRIVERS.find(d=>d.name===trip.driverName);
+    const tripWeek=trip.week||trip.weekDate||curW;
+    if(drv&&drv.weekLocked&&(drv.weekLocked===tripWeek||drv.weekLocked===curW)){
+      notify('🔒 Week is closed — cannot delete trip','err');cm('m-edit-trip');return;
+    }
+  }
   if(!confirm('Delete this trip? Loads will become individual again.'))return;
   const{deleteDoc,doc}=window._fb;
   await deleteDoc(doc(window._db,'trips',editTripId));
