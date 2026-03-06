@@ -949,7 +949,7 @@ function renderDriverPage(){
     <div style="display:flex;gap:6px">
     ${ROLE==='admin'||ROLE==='dispatcher'?(!locked
       ?`<button class="btn btn-sm btn-ghost" onclick="closeWeek('${curDrv.id}')">📅 Close Week</button>`
-      :`<button class="btn btn-sm btn-danger" onclick="toggleLock('${curDrv.id}')">🔒 Unlock</button>
+      :`${ROLE==='admin'?`<button class="btn btn-sm btn-danger" onclick="toggleLock('${curDrv.id}')">🔒 Unlock</button>`:''}
         <button class="btn btn-sm btn-teal" onclick="openNewWeek('${curDrv.id}')">▶ Open New Week</button>`
     ):''}
     </div>;
@@ -1205,6 +1205,7 @@ async function closeWeek(drvId){
 }
 async function openNewWeek(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
+  if(!confirm('Open new week for '+d.name+'?'))return;
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:''});
   await loadMeta();
