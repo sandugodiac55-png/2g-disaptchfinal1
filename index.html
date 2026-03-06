@@ -20,6 +20,7 @@ const firebaseConfig = {
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
 
+
 const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
@@ -510,7 +511,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div class="tc" id="drv-loads-tc">
             <div class="tc-top"><div class="tc-title">Individual Loads</div><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="drv-load-cnt">0</div></div>
             <div class="tw"><table>
-              <thead><tr><th>ORDER ID</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
+              <thead><tr><th>ORDER ID</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>NOTES</th><th>ACTIONS</th></tr></thead>
               <tbody id="drv-load-tb"></tbody>
             </table></div>
           </div>
@@ -790,6 +791,7 @@ async function boot(user){
   await loadMeta();
   subLoads();
   subTrips();
+  curW=CW(); // Always start on current real week
   updateWkLbl();
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
   showPg(def[ROLE]||'dispatch');
@@ -890,29 +892,58 @@ function renderDispatch(){
   document.getElementById('dk-ov').textContent=fK(totalOverMin);
   const grid=document.getElementById('d-drivers');
   if(!myDrivers.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🚛</div><p>No drivers assigned. Add drivers in Admin panel.</p></div>`;return}
+  // Get all unique weeks across all loads for this dispatcher
+  const allMyLoads=isAll?LOADS:LOADS.filter(l=>l.dispEmail===CU.email);
+
   grid.innerHTML=myDrivers.map(d=>{
-    const dl=wLoads.filter(l=>l.driver===d.name);
+    const allDL=allMyLoads.filter(l=>l.driver===d.name);
+    const dl=wLoads.filter(l=>l.driver===d.name); // current week
     const dg=dl.reduce((s,l)=>s+(+l.rate||0),0),dm=dl.reduce((s,l)=>s+(+l.miles||0),0);
+    const totalGross=allDL.reduce((s,l)=>s+(+l.rate||0),0);
     const overMin=calcOverMin(dl,d);
     const locked=d.weekLocked===curW;
     const rpm=dm>0?dg/dm:0;
     const rpmOk=d.minRate&&rpm>0?rpm>=(+d.minRate):true;
+
+    // Build per-week history rows (newest first)
+    const weekMap={};
+    allDL.forEach(l=>{
+      const w=l.week||CWfrom(new Date(l.date+'T00:00:00'));
+      if(!weekMap[w])weekMap[w]=[];
+      weekMap[w].push(l);
+    });
+    const sortedWks=Object.keys(weekMap).sort((a,b)=>b.localeCompare(a));
+    const weekRows=sortedWks.map((w,wi)=>{
+      const wk=weekMap[w];
+      const wg=wk.reduce((s,l)=>s+(+l.rate||0),0);
+      const isCur=w===curW;
+      const isLk=d.weekLocked===w;
+      const wNum=sortedWks.length-wi;
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:${isCur?'#fff7ed':isLk?'#f8f9fc':'var(--bg)'};border:1px solid ${isCur?'var(--orange)':isLk?'var(--border)':'transparent'};margin-bottom:3px">
+        <span style="font-size:11px;font-weight:600;color:${isCur?'var(--orange)':'var(--text2)'}">
+          ${isLk?'🔒 ':''}Week ${wNum}${isCur?' ●':''}
+          <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">${wLbl(w).split('–')[0].trim()}</span>
+        </span>
+        <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wg)}</span>
+      </div>`;
+    }).join('');
+
     return`<div class="driver-card ${locked?'locked':''}" onclick="openDriverPage('${d.id}')">
       ${locked?`<div class="lock-badge">🔒 Locked</div>`:''}
       <div class="dc-head">
         <div class="dc-av">${avL(d.name)}</div>
-        <div><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||'—'}</div></div>
+        <div style="flex:1"><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||'—'}</div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:15px;font-weight:800;color:var(--green);font-family:var(--mono)">${fK(totalGross)}</div></div>
       </div>
-      <div class="dc-stats">
-        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dl.length}</div></div>
-        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
-        <div class="dc-s"><div class="dc-sl">Miles</div><div class="dc-sv">${dm.toLocaleString()}</div></div>
+      <div class="dc-stats" style="margin-bottom:10px">
+        <div class="dc-s"><div class="dc-sl">This Week</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
         <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:${overMin>0?'var(--green)':overMin<0?'var(--red)':'var(--text3)'}">${overMin<0?'-':''}${fK(Math.abs(overMin))}</div></div>
       </div>
-      <div class="dc-bar">
+      <div class="dc-bar" style="margin-bottom:10px">
         <div class="dc-barlabel"><span>Rate/Mile</span><span style="color:${rpmOk?'var(--green)':'var(--red)'};font-weight:700">$${rpm.toFixed(2)} / min $${d.minRate||'—'}</span></div>
         <div class="dc-bartrack"><div class="dc-barfill" style="width:${Math.min(rpm/(+(d.minRate||rpm||1))*100,100)}%;background:${rpmOk?'var(--green)':'var(--red)'}"></div></div>
       </div>
+      ${weekRows?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px">${weekRows}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -931,7 +962,9 @@ function renderDriverPage(){
   const canEdit=(ROLE==='dispatcher'||ROLE==='admin')&&!locked;
   document.getElementById('btn-add-load').style.display=canEdit?'':'none';
   document.getElementById('btn-create-trip').style.display=canEdit?'':'none';
-  const wLoads=LOADS.filter(l=>l.driver===curDrv.name&&inW(l.date,curW));
+  // Use ALL loads for this driver (all weeks combined in one view)
+  const allDrvLoads=LOADS.filter(l=>l.driver===curDrv.name);
+  const wLoads=allDrvLoads.filter(l=>inW(l.date,curW)); // current week for header stats
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
   const dId=curDrv.id;
@@ -954,82 +987,93 @@ function renderDriverPage(){
     <div style="display:flex;gap:6px">
       ${(ROLE==='admin'||ROLE==='dispatcher')?lockBtn:''}
     </div>`;
-  document.getElementById('drv-pg-title').textContent=`${curDrv.name} — Week Loads`;
-  // render trips for this driver this week
-  renderDrvTrips(wLoads);
+  document.getElementById('drv-pg-title').textContent=`${curDrv.name} — All Loads`;
+  // render all loads grouped by week
+  renderDrvTrips(allDrvLoads);
 }
 
-function renderDrvTrips(wLoads){
-  const drvTrips=TRIPS.filter(t=>t.driverName===curDrv.name&&inW(t.weekDate||t.createdDate,curW));
-  const trippedLoadIds=new Set(drvTrips.flatMap(t=>t.loadIds||[]));
-  const solo=wLoads.filter(l=>!trippedLoadIds.has(l.id));
-  const locked=curDrv?.weekLocked===curW&&ROLE!=='admin';
+function renderDrvTrips(allDrvLoads){
+  // Group loads by week
+  const weeks={};
+  allDrvLoads.forEach(l=>{
+    const w=l.week||CWfrom(new Date(l.date+'T00:00:00'));
+    if(!weeks[w])weeks[w]=[];
+    weeks[w].push(l);
+  });
+  // Sort weeks newest first
+  const sortedWeeks=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+  const allTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
+  const isLockedWeek=(w)=>curDrv?.weekLocked===w;
   const el=document.getElementById('drv-trips');
-  el.innerHTML=drvTrips.length?drvTrips.map((t,ti)=>{
-    const tLoads=wLoads.filter(l=>t.loadIds?.includes(l.id));
-    const tGross=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
-    const rpm=t.miles>0?tGross/t.miles:0;
-    const minRate=+(curDrv?.minRate||0);
-    const rpmClass=minRate>0?(rpm>=minRate?'ok':rpm>=minRate*0.9?'warn':'low'):'ok';
-    const overMin=tripOverMin(t,curDrv);
-    const col=COLORS[ti%COLORS.length];
-    return`<div class="trip-card">
-      <div class="trip-hd" onclick="this.parentElement.querySelector('.trip-loads').classList.toggle('hidden')">
-        <div class="trip-color" style="background:${col}"></div>
-        <div class="trip-id">TRIP #${t.tripNum||ti+1}</div>
-        <div class="trip-route">${t.loadIds?.length||0} loads · ${(+t.miles||0).toLocaleString()} mi</div>
-        <div class="trip-gross">${fK(tGross)}</div>
-        <div class="trip-rpm ${rpmClass}">$${rpm.toFixed(2)}/mi</div>
-        ${overMin>0?`<div style="font-size:10px;color:var(--green);font-weight:700;background:#ecfdf5;padding:3px 8px;border-radius:5px">+${fK(overMin)}</div>`:overMin<0?`<div style="font-size:10px;color:var(--red);font-weight:700;background:#fef2f2;padding:3px 8px;border-radius:5px">-${fK(Math.abs(overMin))}</div>`:''}
-        ${t.underMinComment?`<div style="font-size:10px;color:var(--red);background:#fef2f2;padding:3px 8px;border-radius:5px;max-width:150px;overflow:hidden;text-overflow:ellipsis">⚠ ${t.underMinComment}</div>`:''}
-        ${!locked?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delTrip('${t.id}')" style="margin-left:auto">🗑</button>`:''}
-      </div>
-      <div class="trip-loads">
-        ${tLoads.map(l=>`<div class="load-row">
-          <span class="bold" style="font-family:var(--mono);font-size:11px">${l.orderId||'—'}</span>
-          <span>${l.origin||'—'} → ${l.dest||'—'}</span>
-          <span class="money">$${fmt(+l.rate||0)}</span>
-          <span style="font-size:10px">${l.payMethod||'—'}</span>
-          <span><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></span>
-          <span>${l.paid?'<span style="color:var(--green);font-size:11px;font-weight:700">✓ PAID</span>':'<span style="color:var(--red);font-size:11px">UNPAID</span>'}</span>
-          <span style="display:flex;gap:4px">${!locked?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</span>
-        </div>`).join('')}
-      </div>
-    </div>`;
-  }).join(''):``;
-  // ALL LOADS table (loads stay visible even if in a trip)
+  el.innerHTML=''; // trips section unused now — all in one list below
+
   const tb=document.getElementById('drv-load-tb');
-  const trippedIds=new Set(drvTrips.flatMap(t=>t.loadIds||[]));
-  document.getElementById('drv-load-cnt').textContent=`${wLoads.length} load${wLoads.length!==1?'s':''}`;
-  if(!wLoads.length){tb.innerHTML=`<tr><td colspan="9"><div class="em"><div class="e">📋</div><p>No loads this week.</p></div></td></tr>`;return}
   const statOrder=['Assigned','Picked Up','Delivered','Invoiced'];
-  const grossTotal=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
-  const sepRow=locked?`<tr style="background:var(--navy)">
-    <td colspan="9" style="padding:10px 14px">
-      <div style="display:flex;align-items:center;gap:16px">
-        <span style="color:#fff;font-size:12px;font-weight:800;font-family:var(--mono)">📅 WEEK CLOSED — ${wLbl(curW)}</span>
-        <span style="color:var(--green);font-size:14px;font-weight:800;font-family:var(--mono)">GROSS: $${fmt(grossTotal)}</span>
-        <span style="color:rgba(255,255,255,.5);font-size:11px">${wLoads.length} loads</span>
-      </div>
-    </td>
-  </tr>`:'';
-  tb.innerHTML=sepRow+wLoads.map(l=>{
-    const inTrip=trippedIds.has(l.id);
-    const ci=statOrder.indexOf(l.status||'Assigned'),ns=statOrder[ci+1];
-    const statusBtn=ns&&!locked?`<button class="sf-btn sf-${ns.toLowerCase().replace(' ','-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`:`<span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span>`;
-    return`<tr style="${inTrip?'background:#f8f9fc':''}">
-      <td class="bold">${l.orderId||'—'}${inTrip?`<span style="font-size:9px;color:var(--teal);font-weight:700;margin-left:4px">●TRIP</span>`:''}</td>
-      <td>${l.origin||'—'} → ${l.dest||'—'}</td>
-      <td class="money">$${fmt(+l.rate||0)}</td>
-      <td style="font-size:11px">${l.payMethod||'—'}</td>
-      <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
-      <td>${statusBtn}</td>
-      <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
-      <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
-      <td><div style="display:flex;gap:4px">${!locked&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</div></td>
+  let html='';
+
+  if(!sortedWeeks.length){
+    tb.innerHTML=`<tr><td colspan="10"><div class="em"><div class="e">📋</div><p>No loads yet. Click a driver card to start.</p></div></td></tr>`;
+    document.getElementById('drv-load-cnt').textContent='0 loads';
+    return;
+  }
+
+  let totalLoads=0;
+  sortedWeeks.forEach((w,wi)=>{
+    const wk=weeks[w];
+    totalLoads+=wk.length;
+    const wGross=wk.reduce((s,l)=>s+(+l.rate||0),0);
+    const locked=isLockedWeek(w);
+    const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
+    const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
+    const wNum=sortedWeeks.length-wi; // Week 1 = oldest
+    const isCurW=w===curW;
+
+    // Week separator row
+    html+=`<tr style="background:${locked?'var(--navy)':'var(--surface2)'}">
+      <td colspan="10" style="padding:10px 16px;border-top:2px solid ${locked?'var(--navy)':'var(--border2)'}"'>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:800;color:${locked?'#fff':'var(--navy)'}">
+            ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
+          </span>
+          <span style="font-size:14px;font-weight:800;color:var(--green);font-family:var(--mono)">$${fmt(wGross)}</span>
+          <span style="font-size:11px;color:${locked?'rgba(255,255,255,.5)':'var(--text3)'};">${wk.length} loads</span>
+          ${wTrips.length?`<span style="font-size:11px;color:${locked?'rgba(255,255,255,.5)':'var(--teal)'};">${wTrips.length} trips</span>`:''}
+        </div>
+      </td>
     </tr>`;
-  }).join('');
+
+    // Load rows for this week
+    wk.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(l=>{
+      const inTrip=trippedIds.has(l.id);
+      const ci=statOrder.indexOf(l.status||'Assigned'),ns=statOrder[ci+1];
+      const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
+      // Status button with date
+      let statusHtml;
+      if(ns&&canEdit){
+        statusHtml=`<button class="sf-btn sf-${(l.status||'assigned').toLowerCase().replace(/ /g,'-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`;
+      } else {
+        const dateLabel=l.status==='Delivered'&&l.deliveredDate?` ${l.deliveredDate}`:l.status==='Invoiced'&&l.invoicedDate?` ${l.invoicedDate}`:l.status==='Picked Up'&&l.pickedDate?` ${l.pickedDate}`:'';
+        statusHtml=`<span class="pill ${sC(l.status)}">${l.status||'Assigned'}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
+      }
+      html+=`<tr style="${inTrip?'background:#f8f9fc':''}${locked?'opacity:.9':''}">
+        <td class="bold" style="font-size:12px">${l.orderId||'—'}${inTrip?'<span style="font-size:9px;color:var(--teal);font-weight:700;margin-left:4px">●T</span>':''}</td>
+        <td style="font-size:12px">${l.origin||'—'} → ${l.dest||'—'}</td>
+        <td class="money">$${fmt(+l.rate||0)}</td>
+        <td style="font-size:11px">${l.payMethod||'—'}</td>
+        <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
+        <td>${statusHtml}</td>
+        <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
+        <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
+        <td style="font-size:11px;color:var(--text3);max-width:120px;white-space:normal">${l.notes||''}</td>
+        <td><div style="display:flex;gap:4px">${canEdit&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:''}</div></td>
+      </tr>`;
+    });
+  });
+
+  document.getElementById('drv-load-cnt').textContent=`${totalLoads} load${totalLoads!==1?'s':''}`;
+  tb.innerHTML=html;
 }
+
 
 /* ══ TRIP CREATION ══ */
 function showTripCreate(){
@@ -1170,10 +1214,15 @@ async function saveLoad(){
   }catch(e){notify('Error: '+e.message,'err')}
 }
 async function advStat(id,next){
-  if(!confirm(`Mark as "${next}"? Cannot undo.`))return;
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',id),{status:next});
-  notify(`→ ${next}`);
+  if(!confirm('Mark as "'+next+'"? Cannot undo.'))return;
+  const{updateDoc,doc,serverTimestamp}=window._fb;
+  const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const upd={status:next};
+  if(next==='Delivered')upd.deliveredDate=ts;
+  if(next==='Invoiced')upd.invoicedDate=ts;
+  if(next==='Picked Up')upd.pickedDate=ts;
+  await updateDoc(doc(window._db,'loads',id),upd);
+  notify('→ '+next);
 }
 async function tgPaid(id,v,locked){
   if(locked){notify('Week locked','err');return}
@@ -1210,7 +1259,10 @@ async function openNewWeek(drvId){
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:''});
   await loadMeta();
-  nextWeek();
+  // Go to current real week, not next
+  curW=CW();
+  updateWkLbl();
+  renderCur();
   notify('New week started for '+d.name+' ▶');
 }
 
