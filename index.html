@@ -710,7 +710,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[];
 let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
 let accTab='pending',accSrch='',accCo='';
-let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='';
+let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='',pendingAdvStatNext='';
 
 /* ══ WEEK ══ */
 const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1));return`${d.getUTCFullYear()}-W${String(Math.ceil((((d-yr)/86400000)+1)/7)).padStart(2,'0')}`};
@@ -1048,9 +1048,9 @@ function renderDrvTrips(allDrvLoads){
       // COD/COP: Assigned → Picked Up only (no Delivered, no Invoiced)
       // Others:  Assigned → Picked Up → Delivered → Invoiced
       const statOrderFull=['Assigned','Picked Up','Delivered','Invoiced'];
-      const statOrder=isCODCOP?['Assigned','Picked Up']:statOrderFull;
-      // If COD/COP load somehow has Delivered/Invoiced status — treat as Picked Up
-      const effectiveStatus=(isCODCOP&&(l.status==='Delivered'||l.status==='Invoiced'))?'Picked Up':(l.status||'Assigned');
+      // COD/COP: Assigned → Picked Up → Delivered (no Invoiced)
+      const statOrder=isCODCOP?['Assigned','Picked Up','Delivered']:statOrderFull;
+      const effectiveStatus=l.status||'Assigned';
       const ci=statOrder.indexOf(effectiveStatus);
       const ns=statOrder[ci+1]||null; // null when at last step
       const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
@@ -1247,11 +1247,20 @@ async function saveLoad(){
 async function advStat(id,next){
   const load=LOADS.find(l=>l.id===id);
   const isCODCOP=load&&(load.payMethod==='COD'||load.payMethod==='COP');
-  // Double-check: COD/COP cannot go to Delivered or Invoiced
-  if(isCODCOP&&(next==='Delivered'||next==='Invoiced')){
-    notify('COD/COP: no Delivered or Invoiced step','err');return;
+  // COD/COP going to Delivered — require driver payment method first
+  if(isCODCOP&&next==='Delivered'){
+    pendingPayId=id;pendingPayLocked=false;pendingPaySource='advStat';
+    pendingAdvStatNext=next;
+    document.getElementById('pay-method-label').textContent=load.payMethod;
+    document.getElementById('pay-how').value='';
+    document.getElementById('pay-note').value='';
+    om('m-pay');
+    return;
   }
   if(!confirm('Mark as "'+next+'"? Cannot undo.'))return;
+  await doAdvStat(id,next);
+}
+async function doAdvStat(id,next){
   const{updateDoc,doc}=window._fb;
   const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const upd={status:next};
@@ -1301,7 +1310,33 @@ async function closeWeek(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
   const wLoads=LOADS.filter(l=>l.driver===d.name&&inW(l.date,curW));
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
-  if(!confirm('Close week for '+d.name+'?\nGross: $'+fmt(gross)+'\n\nLoadurile raman vizibile dar blocate.'))return;
+
+  // Validation 1: COD/COP must be Delivered before closing
+  const undeliveredCOD=wLoads.filter(l=>(l.payMethod==='COD'||l.payMethod==='COP')&&l.status!=='Delivered');
+  if(undeliveredCOD.length){
+    notify('⚠ Cannot close: '+undeliveredCOD.length+' COD/COP load(s) not marked Delivered yet!','err');
+    return;
+  }
+
+  // Validation 2: all loads must be in a trip
+  const wTrips=TRIPS.filter(t=>t.driverName===d.name&&inW(t.weekDate||t.createdDate,curW));
+  const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
+  const untripped=wLoads.filter(l=>!trippedIds.has(l.id));
+  if(untripped.length){
+    notify('⚠ Cannot close: '+untripped.length+' load(s) not assigned to a trip yet!','err');
+    return;
+  }
+
+  // Validation 3: can only close up to Thursday of next week
+  const{end}=wRange(curW);
+  const thursday=new Date(end);thursday.setDate(end.getDate()+4); // Mon+3=Thu next week
+  const now=new Date();
+  if(now>thursday){
+    notify('⚠ Week can only be closed until Thursday of the following week!','err');
+    return;
+  }
+
+  if(!confirm('Close week for '+d.name+'?\nGross: $'+fmt(gross)+'\n\n'+wLoads.length+' loads in '+wTrips.length+' trips.'))return;
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:curW,weekClosedGross:gross,weekClosedAt:new Date().toISOString()});
   await loadMeta();
@@ -1418,9 +1453,10 @@ function renderKPI(){
         <td class="tot-cell">
           <strong>$${fmt(dGross)}</strong><br>
           ${dMiles>0?`<span style="color:var(--text3)">${dMiles.toLocaleString()}mi</span><br>`:''}
-          ${dRpm>0?`<span style="color:var(--blue)">$${dRpm.toFixed(2)}/mi</span><br>`:''}
-          ${dOverMin>0?`<span class="over">+$${fmt(dOverMin)}</span>`:''}
-          ${dOverMin<0&&dMiles>0?`<span class="under">$${fmt(dOverMin)}</span>`:''}
+          ${dRpm>0?`<span style="color:var(--blue);font-weight:700">$${dRpm.toFixed(2)}/mi</span><br>`:''}
+          ${dOverMin>0?`<strong class="over" style="font-size:12px">+$${fmt(dOverMin)}</strong>`:''}
+          ${dOverMin<0?`<strong class="under" style="font-size:12px;color:var(--red)">-$${fmt(Math.abs(dOverMin))}</strong>`:''}
+          ${dOverMin===0&&dMiles>0?`<span style="color:var(--text3);font-size:10px">$0 over min</span>`:''}
         </td>
       </tr>`;
     });
@@ -1456,7 +1492,7 @@ function renderKPI(){
       <div style="font-family:var(--mono)">${s.loads}</div>
       <div style="font-family:var(--mono);color:var(--green);font-weight:700">$${fmt(s.gross)}</div>
       <div style="font-family:var(--mono)">${s.miles.toLocaleString()}</div>
-      <div style="font-family:var(--mono);color:var(--blue);font-weight:600">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
+      <div style="font-family:var(--mono);color:var(--blue);font-weight:700">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
       <div>${bTag}</div>
     </div>`;
   }).join('');
@@ -1523,15 +1559,24 @@ async function confirmPayment(){
   if(!how){notify('Select payment method','err');return}
   const note=document.getElementById('pay-note').value.trim();
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',pendingPayId),{
-    paid:true,
-    driverPayMethod:how,
-    driverPayNote:note||null,
-    paidDate:new Date().toISOString(),
-    accComment:(how+(note?' — '+note:''))
-  });
-  notify('✓ Paid via '+how);
-  cm('m-pay');pendingPayId=null;
+  if(pendingPaySource==='advStat'){
+    // Mark as Delivered + save driver payment method
+    const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    await updateDoc(doc(window._db,'loads',pendingPayId),{
+      status:'Delivered',deliveredDate:ts,
+      driverPayMethod:how,driverPayNote:note||null,
+      accComment:'Driver paid via '+how+(note?' — '+note:'')
+    });
+    notify('→ Delivered + paid via '+how+' ✓');
+  } else {
+    await updateDoc(doc(window._db,'loads',pendingPayId),{
+      paid:true,driverPayMethod:how,driverPayNote:note||null,
+      paidDate:new Date().toISOString(),
+      accComment:(how+(note?' — '+note:''))
+    });
+    notify('✓ Paid via '+how);
+  }
+  cm('m-pay');pendingPayId=null;pendingAdvStatNext='';
 }
 async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
 
