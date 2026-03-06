@@ -1047,31 +1047,30 @@ function renderDrvTrips(allDrvLoads){
       const isCODCOP=l.payMethod==='COD'||l.payMethod==='COP';
       // COD/COP: Assigned → Picked Up only (no Delivered, no Invoiced)
       // Others:  Assigned → Picked Up → Delivered → Invoiced
-      const statOrder=isCODCOP
-        ?['Assigned','Picked Up']
-        :['Assigned','Picked Up','Delivered','Invoiced'];
-      const ci=statOrder.indexOf(l.status||'Assigned');
+      const statOrderFull=['Assigned','Picked Up','Delivered','Invoiced'];
+      const statOrder=isCODCOP?['Assigned','Picked Up']:statOrderFull;
+      // If COD/COP load somehow has Delivered/Invoiced status — treat as Picked Up
+      const effectiveStatus=(isCODCOP&&(l.status==='Delivered'||l.status==='Invoiced'))?'Picked Up':(l.status||'Assigned');
+      const ci=statOrder.indexOf(effectiveStatus);
       const ns=statOrder[ci+1]||null; // null when at last step
       const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
 
-      // Date label shown on pill when status is final or locked
-      const getDateLabel=(l)=>{
-        if(l.status==='Delivered'&&l.deliveredDate)return l.deliveredDate;
-        if(l.status==='Invoiced'&&l.invoicedDate)return l.invoicedDate;
-        if(l.status==='Picked Up'&&l.pickedDate)return l.pickedDate;
+      // Date label shown on pill
+      const getDateLabel=(st,ld)=>{
+        if(st==='Delivered'&&ld.deliveredDate)return ld.deliveredDate;
+        if(st==='Invoiced'&&ld.invoicedDate)return ld.invoicedDate;
+        if(st==='Picked Up'&&ld.pickedDate)return ld.pickedDate;
         return '';
       };
-      const dateLabel=getDateLabel(l);
+      const dateLabel=getDateLabel(effectiveStatus,l);
 
       // Build status HTML
       let statusHtml;
       if(ns&&canEdit){
-        // Show next-step button — always show current status as pill + next button
-        const curPill=`<span class="pill ${sC(l.status)}" style="margin-right:4px">${l.status||'Assigned'}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
+        const curPill=`<span class="pill ${sC(effectiveStatus)}" style="margin-right:4px">${effectiveStatus}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
         statusHtml=curPill+`<button class="sf-btn sf-${ns.toLowerCase().replace(/ /g,'-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`;
       } else {
-        // Final state or locked — just show pill with date
-        statusHtml=`<span class="pill ${sC(l.status)}">${l.status||'Assigned'}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
+        statusHtml=`<span class="pill ${sC(effectiveStatus)}">${effectiveStatus}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
       }
       html+=`<tr style="${inTrip?'background:#f8f9fc':''}${locked?'opacity:.9':''}">
         <td class="bold" style="font-size:12px">${l.orderId||'—'}${inTrip?'<span style="font-size:9px;color:var(--teal);font-weight:700;margin-left:4px">●T</span>':''}</td>
@@ -1104,19 +1103,29 @@ function showTripCreate(){
   renderTripSelLoads();
 }
 function renderTripSelLoads(){
-  const wLoads=LOADS.filter(l=>l.driver===curDrv?.name&&inW(l.date,curW));
-  const drvTrips=TRIPS.filter(t=>t.driverName===curDrv?.name&&inW(t.weekDate||t.createdDate,curW));
-  const tripped=new Set(drvTrips.flatMap(t=>t.loadIds||[]));
-  const avail=wLoads.filter(l=>!tripped.has(l.id));
+  // Show ALL loads for this driver not yet in any trip
+  const allDrvLoads=LOADS.filter(l=>l.driver===curDrv?.name);
+  const allDrvTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
+  const tripped=new Set(allDrvTrips.flatMap(t=>t.loadIds||[]));
+  const avail=allDrvLoads.filter(l=>!tripped.has(l.id));
   const el=document.getElementById('trip-sel-loads');
   if(!avail.length){el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">No available loads — add loads first.</div>`;return}
-  el.innerHTML=avail.map(l=>{
-    const sel=tripSelLoads.includes(l.id);
-    return`<div class="ls-item ${sel?'sel':''}" onclick="toggleTripLoad('${l.id}')">
-      <div class="ls-check">${sel?'✓':''}</div>
-      <div style="flex:1;font-size:12px"><strong>${l.orderId||'?'}</strong> · ${l.origin||'—'} → ${l.dest||'—'}</div>
-      <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)">$${fmt(+l.rate||0)}</div>
-    </div>`;
+  // Group by week for clarity
+  const byWeek={};
+  avail.forEach(l=>{const w=l.week||curW;if(!byWeek[w])byWeek[w]=[];byWeek[w].push(l)});
+  const sortedW=Object.keys(byWeek).sort((a,b)=>b.localeCompare(a));
+  el.innerHTML=sortedW.map(w=>{
+    const wLoads=byWeek[w];
+    const wLabel=wLbl(w);
+    return`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:6px 4px 3px;letter-spacing:.5px">${wLabel}</div>`+
+    wLoads.map(l=>{
+      const sel=tripSelLoads.includes(l.id);
+      return`<div class="ls-item ${sel?'sel':''}" onclick="toggleTripLoad('${l.id}')">
+        <div class="ls-check">${sel?'✓':''}</div>
+        <div style="flex:1;font-size:12px"><strong>${l.orderId||'?'}</strong> · ${l.origin||'—'} → ${l.dest||'—'}</div>
+        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)">$${fmt(+l.rate||0)}</div>
+      </div>`;
+    }).join('');
   }).join('');
 }
 function toggleTripLoad(id){
@@ -1143,7 +1152,11 @@ async function confirmTrip(){
   const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const rpm=miles>0?gross/miles:0;
   const minRate=+(curDrv?.minRate||0);
-  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:wRange(curW).start.toISOString().split('T')[0],createdDate:wRange(curW).start.toISOString().split('T')[0]};
+  // Use the week of the first selected load (not necessarily curW)
+  const firstLoad=selLoads[0];
+  const tripWeek=firstLoad?.week||curW;
+  const tripWeekDate=wRange(tripWeek).start.toISOString().split('T')[0];
+  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
   if(minRate>0&&rpm<minRate){
     // under minimum — require comment
     document.getElementById('trip-create-ui').classList.add('hidden');
