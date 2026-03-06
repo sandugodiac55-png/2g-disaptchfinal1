@@ -934,6 +934,11 @@ function renderDriverPage(){
   const wLoads=LOADS.filter(l=>l.driver===curDrv.name&&inW(l.date,curW));
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
+  const dId=curDrv.id;
+  const lockBtn = locked
+    ? (ROLE==='admin'?`<button class="btn btn-sm btn-danger" onclick="toggleLock('${dId}')">🔒 Unlock</button>`:'')
+      + `<button class="btn btn-sm btn-teal" onclick="openNewWeek('${dId}')">▶ Open New Week</button>`
+    : `<button class="btn btn-sm btn-ghost" onclick="closeWeek('${dId}')">📅 Close Week</button>`;
   document.getElementById('drv-hd-info').innerHTML=`
     <div class="drv-av-big">${avL(curDrv.name)}</div>
     <div style="flex:1">
@@ -943,16 +948,12 @@ function renderDriverPage(){
         <div class="drv-badge">Min: $${curDrv.minRate||'—'}/mi</div>
         <div class="drv-badge" style="color:var(--green)">Gross: ${fK(gross)}</div>
         <div class="drv-badge" style="color:${overMin>=0?'var(--orange)':'var(--red)'}">Over min: ${overMin<0?'-':''}${fK(Math.abs(overMin))}</div>
-        ${locked?`<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Week Locked</div>`:''}
+        ${locked?'<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Week Locked</div>':''}
       </div>
     </div>
     <div style="display:flex;gap:6px">
-    ${ROLE==='admin'||ROLE==='dispatcher'?(!locked
-      ?`<button class="btn btn-sm btn-ghost" onclick="closeWeek('${curDrv.id}')">📅 Close Week</button>`
-      :`${ROLE==='admin'?`<button class="btn btn-sm btn-danger" onclick="toggleLock('${curDrv.id}')">🔒 Unlock</button>`:''}
-        <button class="btn btn-sm btn-teal" onclick="openNewWeek('${curDrv.id}')">▶ Open New Week</button>`
-    ):''}
-    </div>;
+      ${(ROLE==='admin'||ROLE==='dispatcher')?lockBtn:''}
+    </div>`;
   document.getElementById('drv-pg-title').textContent=`${curDrv.name} — Week Loads`;
   // render trips for this driver this week
   renderDrvTrips(wLoads);
