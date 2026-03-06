@@ -20,7 +20,6 @@ const firebaseConfig = {
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
 
-
 const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
@@ -711,7 +710,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[];
 let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
 let accTab='pending',accSrch='',accCo='';
-let tripSelLoads=[],pendingTripData=null;
+let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='';
 
 /* ══ WEEK ══ */
 const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1));return`${d.getUTCFullYear()}-W${String(Math.ceil((((d-yr)/86400000)+1)/7)).padStart(2,'0')}`};
@@ -1226,9 +1225,26 @@ async function advStat(id,next){
 }
 async function tgPaid(id,v,locked){
   if(locked){notify('Week locked','err');return}
+  if(!v){
+    // Unmarking as paid — always allowed
+    const{updateDoc,doc}=window._fb;
+    await updateDoc(doc(window._db,'loads',id),{paid:false,driverPayMethod:null,driverPayNote:null});
+    notify('Marked UNPAID');
+    return;
+  }
+  const load=LOADS.find(l=>l.id===id);
+  if(load&&(load.payMethod==='COD'||load.payMethod==='COP')){
+    // Require driver payment method
+    pendingPayId=id;pendingPayLocked=locked;pendingPaySource='tgPaid';
+    document.getElementById('pay-method-label').textContent=load.payMethod;
+    document.getElementById('pay-how').value='';
+    document.getElementById('pay-note').value='';
+    om('m-pay');
+    return;
+  }
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',id),{paid:v});
-  notify(v?'✓ Marked PAID':'Marked UNPAID');
+  await updateDoc(doc(window._db,'loads',id),{paid:true});
+  notify('✓ Marked PAID');
 }
 async function delLoad(id){
   if(!confirm('Delete this load?'))return;
@@ -1444,10 +1460,40 @@ function renderAcc(){
   }).join('');
 }
 async function accPaid(id,v){
-  const note=v?prompt('Payment note (how/when paid?)'):null;
+  if(!v){
+    const{updateDoc,doc}=window._fb;
+    await updateDoc(doc(window._db,'loads',id),{paid:false,paidDate:null});
+    notify('Moved to Pending');
+    return;
+  }
+  const load=LOADS.find(l=>l.id===id);
+  if(load&&(load.payMethod==='COD'||load.payMethod==='COP')){
+    pendingPayId=id;pendingPayLocked=false;pendingPaySource='accPaid';
+    document.getElementById('pay-method-label').textContent=load.payMethod;
+    document.getElementById('pay-how').value='';
+    document.getElementById('pay-note').value='';
+    om('m-pay');
+    return;
+  }
+  const note=prompt('Payment note (optional):');
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',id),{paid:v,accComment:note||undefined,paidDate:v?new Date().toISOString():null});
-  notify(v?'✓ Marked Paid':'Moved to Pending');
+  await updateDoc(doc(window._db,'loads',id),{paid:true,accComment:note||undefined,paidDate:new Date().toISOString()});
+  notify('✓ Marked Paid');
+}
+async function confirmPayment(){
+  const how=document.getElementById('pay-how').value;
+  if(!how){notify('Select payment method','err');return}
+  const note=document.getElementById('pay-note').value.trim();
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',pendingPayId),{
+    paid:true,
+    driverPayMethod:how,
+    driverPayNote:note||null,
+    paidDate:new Date().toISOString(),
+    accComment:(how+(note?' — '+note:''))
+  });
+  notify('✓ Paid via '+how);
+  cm('m-pay');pendingPayId=null;
 }
 async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
 
@@ -1563,5 +1609,36 @@ async function saveComp(){const nm=document.getElementById('co-nm').value.trim()
 function openDriverModal(){['dr-nm','dr-ph','dr-min','dr-sal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('dr-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');document.getElementById('dr-dp').innerHTML=`<option value="">—</option>`+USERS.filter(u=>u.role==='dispatcher').map(d=>`<option value="${d.email}">${d.name||d.email}</option>`).join('');om('m-drv')}
 async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'drivers'),{name:nm,phone:document.getElementById('dr-ph').value.trim(),company:document.getElementById('dr-co').value,dispatcherEmail:document.getElementById('dr-dp').value,minRate:parseFloat(document.getElementById('dr-min').value)||0,salaryPct:parseFloat(document.getElementById('dr-sal').value)||0});notify('Driver added ✓');await loadMeta();renderAdmin();cm('m-drv')}
 </script>
+
+<!-- PAYMENT METHOD MODAL (COD/COP require how driver was paid) -->
+<div class="ov" id="m-pay">
+  <div class="modal xs">
+    <div class="mhd"><div class="mhd-t">💵 How was the driver paid?</div><div class="mcl" onclick="cm('m-pay')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:#fff7ed;border:1px solid var(--orange);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);font-weight:600">
+        ⚠️ This load is <span id="pay-method-label">COD/COP</span> — driver payment method is required before marking as paid.
+      </div>
+      <div class="fg"><label>Payment Method *</label>
+        <select id="pay-how">
+          <option value="">— Select —</option>
+          <option value="Cash">Cash</option>
+          <option value="Zelle">Zelle</option>
+          <option value="Check">Check</option>
+          <option value="Bank Transfer">Bank Transfer</option>
+          <option value="Venmo">Venmo</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Notes (optional)</label>
+        <input id="pay-note" placeholder="e.g. paid on Mar 6, check #1234">
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-pay')">Cancel</button>
+      <button class="btn btn-orange" onclick="confirmPayment()">✓ Mark as Paid</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
