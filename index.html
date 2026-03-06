@@ -710,7 +710,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[];
 let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
 let accTab='pending',accSrch='',accCo='';
-let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='',pendingAdvStatNext='';
+let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='',pendingAdvStatNext='',editTripId=null;
 
 /* ══ WEEK ══ */
 const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1));return`${d.getUTCFullYear()}-W${String(Math.ceil((((d-yr)/86400000)+1)/7)).padStart(2,'0')}`};
@@ -1026,6 +1026,7 @@ function renderDrvTrips(allDrvLoads){
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
     const wNum=sortedWeeks.length-wi; // Week 1 = oldest
     const isCurW=w===curW;
+    const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
 
     // Week separator row
     html+=`<tr style="background:${locked?'var(--navy)':'var(--surface2)'}">
@@ -1041,6 +1042,33 @@ function renderDrvTrips(allDrvLoads){
       </td>
     </tr>`;
 
+    // Trip cards for this week (above loads)
+    if(wTrips.length&&canEdit!==undefined){
+      const canEditTrips=(ROLE==='dispatcher'||ROLE==='admin')&&!locked;
+      wTrips.forEach(t=>{
+        const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id));
+        const tGross=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+        const tRpm=t.miles>0?tGross/t.miles:0;
+        const minR=+(curDrv?.minRate||0);
+        const rpmOk=minR>0?tRpm>=minR:true;
+        html+=`<tr>
+          <td colspan="10" style="padding:6px 16px 4px;background:${rpmOk?'#f0fdf4':'#fff5f5'}">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:800;color:${rpmOk?'var(--teal)':'var(--red)'}">🗂 Trip #${t.tripNum||'?'}</span>
+              <span style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--green)">$${fmt(tGross)}</span>
+              <span style="font-size:11px;color:var(--text3)">${(+t.miles||0).toLocaleString()} mi</span>
+              <span style="font-size:11px;font-weight:700;color:${rpmOk?'var(--blue)':'var(--red)'}">$${tRpm.toFixed(2)}/mi${rpmOk?'':' ⚠ below min'}</span>
+              <span style="font-size:10px;color:var(--text3)">${tLoads.length} loads: ${tLoads.map(l=>l.orderId||'?').join(', ')}</span>
+              ${t.underMinComment?`<span style="font-size:10px;color:var(--orange);font-style:italic">"${t.underMinComment}"</span>`:''}
+              ${canEditTrips?`<div class="mla" style="display:flex;gap:6px">
+                <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEditTrip('${t.id}')">✏️ Edit</button>
+              </div>`:''}
+            </div>
+          </td>
+        </tr>`;
+      });
+    }
+
     // Load rows for this week
     wk.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(l=>{
       const inTrip=trippedIds.has(l.id);
@@ -1053,8 +1081,6 @@ function renderDrvTrips(allDrvLoads){
       const effectiveStatus=l.status||'Assigned';
       const ci=statOrder.indexOf(effectiveStatus);
       const ns=statOrder[ci+1]||null; // null when at last step
-      const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
-
       // Date label shown on pill
       const getDateLabel=(st,ld)=>{
         if(st==='Delivered'&&ld.deliveredDate)return ld.deliveredDate;
@@ -1182,6 +1208,90 @@ async function saveTrip(data){
   cancelTripCreate();
 }
 function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create-ui').classList.add('hidden');pendingTripData=null}
+
+/* ══ TRIP EDIT ══ */
+let editTripSelLoads=[];
+function openEditTrip(tripId){
+  const trip=TRIPS.find(t=>t.id===tripId);if(!trip)return;
+  editTripId=tripId;
+  editTripSelLoads=[...(trip.loadIds||[])];
+  document.getElementById('et-miles').value=trip.miles||'';
+  updateEditTripCalc();
+  renderEditTripLoads();
+  om('m-edit-trip');
+}
+function renderEditTripLoads(){
+  // Show all driver loads not in OTHER trips (but include this trip's loads)
+  const otherTrips=TRIPS.filter(t=>t.id!==editTripId&&t.driverName===curDrv?.name);
+  const otherTripped=new Set(otherTrips.flatMap(t=>t.loadIds||[]));
+  const available=LOADS.filter(l=>l.driver===curDrv?.name&&!otherTripped.has(l.id));
+  const byWeek={};
+  available.forEach(l=>{const w=l.week||curW;if(!byWeek[w])byWeek[w]=[];byWeek[w].push(l)});
+  const sortedW=Object.keys(byWeek).sort((a,b)=>b.localeCompare(a));
+  const el=document.getElementById('et-load-list');
+  if(!available.length){el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">No loads available</div>`;return}
+  el.innerHTML=sortedW.map(w=>{
+    const wk=byWeek[w];
+    return`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:4px 2px 2px;letter-spacing:.5px">${wLbl(w)}</div>`+
+    wk.map(l=>{
+      const sel=editTripSelLoads.includes(l.id);
+      return`<div class="ls-item ${sel?'sel':''}" onclick="toggleEditTripLoad('${l.id}')">
+        <div class="ls-check">${sel?'✓':''}</div>
+        <div style="flex:1;font-size:12px"><strong>${l.orderId||'?'}</strong> · ${l.origin||'—'} → ${l.dest||'—'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-right:8px">${l.payMethod||''}</div>
+        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)">$${fmt(+l.rate||0)}</div>
+      </div>`;
+    }).join('');
+  }).join('');
+}
+function toggleEditTripLoad(id){
+  const i=editTripSelLoads.indexOf(id);
+  if(i>=0)editTripSelLoads.splice(i,1);else editTripSelLoads.push(id);
+  updateEditTripCalc();
+  renderEditTripLoads();
+}
+function updateEditTripCalc(){
+  const selLoads=LOADS.filter(l=>editTripSelLoads.includes(l.id));
+  const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const miles=parseFloat(document.getElementById('et-miles')?.value)||0;
+  document.getElementById('et-sel-count').textContent=editTripSelLoads.length;
+  document.getElementById('et-sel-gross').textContent='$'+fmt(gross);
+  const rpm=miles>0&&gross>0?gross/miles:0;
+  document.getElementById('et-rpm').value=rpm>0?'$'+rpm.toFixed(2)+'/mi':'';
+  // Show under-min warning
+  const minRate=+(curDrv?.minRate||0);
+  const underMin=minRate>0&&rpm>0&&rpm<minRate;
+  document.getElementById('et-under-min-row').style.display=underMin?'':'none';
+}
+async function saveEditTrip(){
+  if(!editTripId)return;
+  if(!editTripSelLoads.length){notify('Select at least 1 load','err');return}
+  const miles=parseFloat(document.getElementById('et-miles').value)||0;
+  if(!miles){notify('Miles are required','err');return}
+  const selLoads=LOADS.filter(l=>editTripSelLoads.includes(l.id));
+  const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const rpm=miles>0?gross/miles:0;
+  const minRate=+(curDrv?.minRate||0);
+  if(minRate>0&&rpm<minRate){
+    const comment=document.getElementById('et-under-min-comment').value.trim();
+    if(!comment){notify('Comment required when below minimum rate','err');return}
+    const{updateDoc,doc}=window._fb;
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment});
+  } else {
+    const{updateDoc,doc}=window._fb;
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null});
+  }
+  notify('Trip updated ✓');
+  cm('m-edit-trip');editTripId=null;editTripSelLoads=[];
+}
+async function deleteTripFromModal(){
+  if(!editTripId)return;
+  if(!confirm('Delete this trip? Loads will become individual again.'))return;
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'trips',editTripId));
+  notify('Trip deleted','inf');
+  cm('m-edit-trip');editTripId=null;editTripSelLoads=[];
+}
 async function delTrip(id){
   if(!confirm('Delete this trip? Loads will become individual again.'))return;
   const{deleteDoc,doc}=window._fb;
@@ -1762,6 +1872,34 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     <div class="mft">
       <button class="btn btn-ghost" onclick="cm('m-pay')">Cancel</button>
       <button class="btn btn-orange" onclick="confirmPayment()">✓ Mark as Paid</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- EDIT TRIP MODAL -->
+<div class="ov" id="m-edit-trip">
+  <div class="modal" style="max-width:560px">
+    <div class="mhd"><div class="mhd-t">✏️ Edit Trip</div><div class="mcl" onclick="cm('m-edit-trip')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <div class="g2">
+        <div class="fg"><label>Total Miles *</label><input type="number" id="et-miles" placeholder="e.g. 2500" oninput="updateEditTripCalc()"></div>
+        <div class="fg"><label>Calc Rate/Mile</label><input id="et-rpm" readonly></div>
+      </div>
+      <div class="fg"><label>Select Loads for this Trip</label></div>
+      <div id="et-load-list" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border)">
+        <span style="font-size:13px;font-family:var(--mono);color:var(--navy)">Selected: <strong id="et-sel-count">0</strong> · Gross: <strong id="et-sel-gross" style="color:var(--green)">$0</strong></span>
+      </div>
+      <div class="fg" id="et-under-min-row" style="display:none">
+        <label style="color:var(--red);font-weight:700">⚠️ Below minimum — comment required</label>
+        <textarea id="et-under-min-comment" placeholder="Explain why rate is below minimum…" style="min-height:55px"></textarea>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-edit-trip')">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTripFromModal()" style="margin-right:auto">🗑 Delete Trip</button>
+      <button class="btn btn-primary" onclick="saveEditTrip()">💾 Save Changes</button>
     </div>
   </div>
 </div>
