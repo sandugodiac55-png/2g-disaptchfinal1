@@ -483,6 +483,10 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="fg"><label>Total Miles (required)</label><input type="number" id="trip-miles" placeholder="e.g. 2500" oninput="updateTripCalc()"></div>
                 <div class="fg"><label>Calc Rate/Mile</label><input id="trip-rpm" readonly></div>
               </div>
+              <div class="fg" style="margin-bottom:12px">
+                <label>Google Maps Route URL <span style="color:var(--red)">*</span> <span style="font-size:10px;color:var(--text3);font-weight:400">— required, opens in KPI calendar</span></label>
+                <input id="trip-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px">
+              </div>
               <div id="trip-sel-loads" class="ls-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <div style="font-size:13px;font-family:var(--mono);color:var(--navy)">Selected: <strong id="trip-sel-count">0</strong> loads · Gross: <strong id="trip-sel-gross" style="color:var(--green)">$0</strong></div>
@@ -1158,15 +1162,21 @@ async function confirmTrip(){
   const miles=parseFloat(document.getElementById('trip-miles').value)||0;
   if(!miles){notify('Miles are required for trip','err');document.getElementById('trip-miles').classList.add('required-err');return}
   document.getElementById('trip-miles').classList.remove('required-err');
+  const mapsUrl=document.getElementById('trip-maps-url').value.trim();
+  if(!mapsUrl||!mapsUrl.startsWith('http')){
+    notify('Google Maps URL is required','err');
+    document.getElementById('trip-maps-url').style.borderColor='var(--red)';
+    return;
+  }
+  document.getElementById('trip-maps-url').style.borderColor='';
   const selLoads=LOADS.filter(l=>tripSelLoads.includes(l.id));
   const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const rpm=miles>0?gross/miles:0;
   const minRate=+(curDrv?.minRate||0);
-  // Use the week of the first selected load (not necessarily curW)
   const firstLoad=selLoads[0];
   const tripWeek=firstLoad?.week||curW;
   const tripWeekDate=wRange(tripWeek).start.toISOString().split('T')[0];
-  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
+  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,mapsUrl,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
   if(minRate>0&&rpm<minRate){
     // under minimum — require comment
     document.getElementById('trip-create-ui').classList.add('hidden');
@@ -1191,7 +1201,7 @@ async function saveTrip(data){
   notify('Trip created ✓');
   cancelTripCreate();
 }
-function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create-ui').classList.add('hidden');pendingTripData=null}
+function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create-ui').classList.add('hidden');pendingTripData=null;const mu=document.getElementById('trip-maps-url');if(mu)mu.value=''}
 
 /* ══ TRIP EDIT ══ */
 let editTripSelLoads=[];
@@ -1206,6 +1216,7 @@ function openEditTrip(tripId){
   editTripId=tripId;
   editTripSelLoads=[...(trip.loadIds||[])];
   document.getElementById('et-miles').value=trip.miles||'';
+  document.getElementById('et-maps-url').value=trip.mapsUrl||'';
   updateEditTripCalc();
   renderEditTripLoads();
   om('m-edit-trip');
@@ -1274,10 +1285,12 @@ async function saveEditTrip(){
     const comment=document.getElementById('et-under-min-comment').value.trim();
     if(!comment){notify('Comment required when below minimum rate','err');return}
     const{updateDoc,doc}=window._fb;
-    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment});
+    const mu2=document.getElementById('et-maps-url').value.trim();
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment,mapsUrl:mu2||null});
   } else {
     const{updateDoc,doc}=window._fb;
-    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null});
+    const mu3=document.getElementById('et-maps-url').value.trim();
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null,mapsUrl:mu3||null});
   }
   notify('Trip updated ✓');
   cm('m-edit-trip');editTripId=null;editTripSelLoads=[];
@@ -1515,8 +1528,11 @@ function renderKPI(){
     const rpm=miles>0?gross/miles:0;
     const overMin=disp.overMin||0;
     // Dispatcher header row
-    html+=`<tr class="cal-disp-row">
-      <td class="sticky-col"><div class="cal-disp-name">${disp.name||disp.email}</div></td>
+    const dispIdx=stats.indexOf(disp);
+    const dispBg=['#eff6ff','#f0fdf4','#fdf4ff','#fff7ed','#f0f9ff','#fefce8'][dispIdx%6];
+    const dispBorder=['#3b82f6','#22c55e','#a855f7','#f97316','#06b6d4','#eab308'][dispIdx%6];
+    html+=`<tr class="cal-disp-row" style="background:${dispBg}!important">
+      <td class="sticky-col" style="background:${dispBg}!important;border-left:3px solid ${dispBorder}"><div class="cal-disp-name">${disp.name||disp.email}</div></td>
       ${days.map(()=>`<td class="cal-week-total"></td>`).join('')}
       <td class="cal-week-total" style="text-align:right">
         <div style="font-size:11px;font-family:var(--mono);line-height:1.7">
@@ -1538,23 +1554,30 @@ function renderKPI(){
       const dRpm=dMiles>0?dGross/dMiles:0;
       const dOverMin=dTrips.reduce((s,t)=>s+tripOverMin(t,drv),0);
       const locked=drv.weekLocked===curW;
-      html+=`<tr>
-        <td class="sticky-col" style="padding-left:24px">
+      html+=`<tr style="background:${dispBg}08">
+        <td class="sticky-col" style="padding-left:28px;background:${dispBg}!important;border-left:3px solid ${dispBorder}40">
           <div style="font-size:12px;font-weight:600;color:var(--navy)">${drv.name}${locked?' 🔒':''}</div>
           <div style="font-size:10px;color:var(--text3)">${drv.company||'—'} · Min: $${drv.minRate||'—'}/mi</div>
         </td>
         ${(()=>{
           const allTrippedIds=new Set(dTrips.flatMap(t=>t.loadIds||[]));
           const minR=+(drv.minRate||0);
-          const tripRanges=dTrips.map(t=>{
+          // Only show trips where at least one load is Picked Up / Delivered / Invoiced
+          const visibleTrips=dTrips.filter(t=>{
+            const tl=LOADS.filter(l=>t.loadIds?.includes(l.id));
+            return tl.some(l=>l.status==='Picked Up'||l.status==='Delivered'||l.status==='Invoiced');
+          });
+          const tripRanges=visibleTrips.map(t=>{
             const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date);
             const dates=tLoads.map(l=>l.date).filter(Boolean).sort();
             const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
             const trpm=t.miles>0?tg/t.miles:0;
             const rpmOk=minR>0?trpm>=minR:true;
-            // green for ok, red for below min
-            const col=rpmOk?'#4ade80':'#f87171';
-            const textCol=rpmOk?'#14532d':'#7f1d1d';
+            // Original palette colors for ok, red for below min
+            const TRIP_COLORS=['#3b82f6','#0d9488','#8b5cf6','#f59e0b','#10b981','#06b6d4','#6366f1'];
+            const colIdx=TRIPS.indexOf(t)%TRIP_COLORS.length;
+            const col=rpmOk?TRIP_COLORS[colIdx<0?0:colIdx]:'#ef4444';
+            const textCol='#fff';
             const tLoadWeeks=new Set(tLoads.map(l=>l.week||curW));
             const spansWeeks=tLoadWeeks.size>1;
             return{t,tLoads,tg,trpm,col,textCol,rpmOk,spansWeeks,startDate:dates[0]||null,endDate:dates[dates.length-1]||null};
@@ -1575,18 +1598,18 @@ function renderKPI(){
                 const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
                 const marginL=isStart?'3px':'-1px';
                 const marginR=isEnd?'3px':'-1px';
-                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:${isStart?'5px 8px':'6px 4px'};cursor:pointer;min-height:38px;display:flex;flex-direction:column;justify-content:center" onclick="openDriverPage('${drv.id}')">
+                const clickAttr=r.t.mapsUrl?`onclick="event.stopPropagation();window.open('${r.t.mapsUrl}','_blank')"`:`onclick="openDriverPage('${drv.id}')"`;
+                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" ${clickAttr}>
                   ${isStart?`
-                    <div style="font-size:11px;font-weight:800;color:${r.textCol}">$${fmt(r.tg)}</div>
-                    <div style="font-size:9px;color:${r.textCol};opacity:.8">${r.tLoads[0]?.origin?.split(',')[0]||'?'} → ${r.tLoads[r.tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
-                    <div style="font-size:9px;color:${r.textCol};opacity:.75">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi</div>
-                    ${r.spansWeeks?`<div style="font-size:8px;font-weight:700;color:${r.textCol};opacity:.7">↔ multi-week</div>`:''}
-                  `:''}
+                    <div style="font-size:11px;font-weight:800;color:${r.textCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
+                    <div style="font-size:9px;color:${r.textCol};opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.tLoads[0]?.origin?.split(',')[0]||'?'} → ${r.tLoads[r.tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
+                    <div style="font-size:9px;color:${r.textCol};opacity:.8">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi${r.t.mapsUrl?' 🗺':''}</div>
+                  `:`<div style="height:100%"></div>`}
                 </div>`;
               }).join('')}
-              ${dayLoads.map(l=>`<div style="background:#94a3b8;border-radius:6px;margin:3px;padding:5px 8px;cursor:pointer;min-height:38px;display:flex;flex-direction:column;justify-content:center" onclick="openDriverPage('${drv.id}')">
+              ${dayLoads.map(l=>`<div style="background:#94a3b8;border-radius:6px;margin:3px;padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="openDriverPage('${drv.id}')">
                 <div style="font-size:11px;font-weight:800;color:#fff">$${fmt(+l.rate||0)}</div>
-                <div style="font-size:9px;color:rgba(255,255,255,.8)">${l.origin?.split(',')[0]||'?'} → ${l.dest?.split(',')[0]||'?'}</div>
+                <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.origin?.split(',')[0]||'?'} → ${l.dest?.split(',')[0]||'?'}</div>
               </div>`).join('')}
             </td>`;
           }).join('');
@@ -1934,6 +1957,11 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
         <div class="fg"><label>Total Miles *</label><input type="number" id="et-miles" placeholder="e.g. 2500" oninput="updateEditTripCalc()"></div>
         <div class="fg"><label>Calc Rate/Mile</label><input id="et-rpm" readonly></div>
       </div>
+      <div class="fg">
+        <label>Google Maps Route URL <span style="color:var(--red)">*</span></label>
+        <input id="et-maps-url" placeholder="https://maps.google.com/...">
+      </div>
+      <div class="fg"><label>Google Maps Route URL <span style="color:var(--red)">*</span></label><input id="et-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px"></div>
       <div class="fg"><label>Select Loads for this Trip</label></div>
       <div id="et-load-list" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
       <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border)">
