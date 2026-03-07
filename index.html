@@ -19,7 +19,6 @@ const firebaseConfig = {
   messagingSenderId: "1044545328129",
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
-
 const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
@@ -269,7 +268,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 .tot-cell .over{color:var(--green)}.tot-cell .under{color:var(--red)}
 
 /* LEADERBOARD */
-.lb-row-kpi{display:grid;grid-template-columns:40px 1fr 70px 110px 90px 110px 120px;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center}
+.lb-row-kpi{display:grid;grid-template-columns:40px 1fr 70px 110px 90px 90px 110px 120px;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center}
 .lb-th-kpi{background:var(--surface2);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
 .lb-row-kpi:last-child{border-bottom:none}
 .lb-row-kpi:hover{background:var(--bg)}
@@ -533,7 +532,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <!-- Summary leaderboard -->
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
             <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:14px;font-weight:800;color:var(--navy)">Dispatcher Rankings</div>
-            <div class="lb-row-kpi lb-th-kpi"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>MILES</div><div>$/MILE</div><div>BONUS</div></div>
+            <div class="lb-row-kpi lb-th-kpi"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>MILES</div><div>$/MILE</div><div>OVER MIN</div><div>BONUS</div></div>
             <div id="kpi-lb"></div>
           </div>
         </div>
@@ -1543,36 +1542,54 @@ function renderKPI(){
           <div style="font-size:12px;font-weight:600;color:var(--navy)">${drv.name}${locked?' 🔒':''}</div>
           <div style="font-size:10px;color:var(--text3)">${drv.company||'—'} · Min: $${drv.minRate||'—'}/mi</div>
         </td>
-        ${days.map(d=>{
-          const ds=d.toISOString().split('T')[0];
-          const isToday=d.getTime()===today.getTime();
-          const dayTrips=dTrips.filter(t=>{const wl=dLoads.filter(l=>t.loadIds?.includes(l.id));return wl.some(l=>l.date===ds)});
-          const dayLoads=dLoads.filter(l=>l.date===ds&&!dTrips.flatMap(t=>t.loadIds||[]).includes(l.id));
-          return`<td class="${isToday?'today-col':''}">
-            ${dayTrips.map((t,ti)=>{
-              const tLoads=dLoads.filter(l=>t.loadIds?.includes(l.id));
-              const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
-              const trpm=t.miles>0?tg/t.miles:0;
-              const colIdx=(TRIPS.indexOf(t))%COLORS.length;
-              const col=COLORS[colIdx>=0?colIdx:ti%COLORS.length];
-              const minR=+(drv.minRate||0);
-              const rpmOk=minR>0?trpm>=minR:true;
-              // Check if trip spans into another week
-              const tLoadWeeks=new Set(tLoads.map(l=>l.week||curW));
-              const spansWeeks=tLoadWeeks.size>1;
-              return`<div class="trip-chip" style="background:${rpmOk?col:'var(--red)'}${spansWeeks?';border:2px dashed rgba(255,255,255,.6)':''}" onclick="openDriverPage('${drv.id}')">
-                ${spansWeeks?`<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.9);background:rgba(0,0,0,.2);border-radius:3px;padding:1px 4px;margin-bottom:2px">↔ MULTI-WEEK</div>`:''}
-                <div class="tc-gross">$${fmt(tg)}</div>
-                <div class="tc-route">${tLoads[0]?.origin?.split(',')[0]||'?'} → ${tLoads[tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
-                <div class="tc-rpm">${trpm.toFixed(2)}/mi · ${(+t.miles||0).toLocaleString()}mi</div>
-              </div>`;
-            }).join('')}
-            ${dayLoads.map(l=>`<div class="trip-chip" style="background:var(--silver)" onclick="openDriverPage('${drv.id}')">
-              <div class="tc-gross">$${fmt(+l.rate||0)}</div>
-              <div class="tc-route">${l.origin?.split(',')[0]||'?'} → ${l.dest?.split(',')[0]||'?'}</div>
-            </div>`).join('')}
-          </td>`;
-        }).join('')}
+        ${(()=>{
+          // Pre-compute trip date ranges: from earliest load date to latest load date
+          const allTrippedIds=new Set(dTrips.flatMap(t=>t.loadIds||[]));
+          const tripRanges=dTrips.map((t,ti)=>{
+            const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date);
+            const dates=tLoads.map(l=>l.date).filter(Boolean).sort();
+            const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+            const trpm=t.miles>0?tg/t.miles:0;
+            const colIdx=TRIPS.indexOf(t)%COLORS.length;
+            const col=COLORS[colIdx>=0?colIdx:ti%COLORS.length];
+            const minR=+(drv.minRate||0);
+            const rpmOk=minR>0?trpm>=minR:true;
+            const tLoadWeeks=new Set(tLoads.map(l=>l.week||curW));
+            const spansWeeks=tLoadWeeks.size>1;
+            return{t,tLoads,tg,trpm,col,rpmOk,spansWeeks,startDate:dates[0]||null,endDate:dates[dates.length-1]||null};
+          });
+          return days.map(d=>{
+            const ds=d.toISOString().split('T')[0];
+            const isToday=d.getTime()===today.getTime();
+            // Trips that span this day (start <= ds <= end)
+            const dayTrips=tripRanges.filter(r=>r.startDate&&r.endDate&&ds>=r.startDate&&ds<=r.endDate);
+            const dayLoads=dLoads.filter(l=>l.date===ds&&!allTrippedIds.has(l.id));
+            return`<td class="${isToday?'today-col':''}">
+              ${dayTrips.map(r=>{
+                const isStart=ds===r.startDate;
+                const isEnd=ds===r.endDate;
+                const isMid=!isStart&&!isEnd;
+                const spanStyle=isMid
+                  ?`background:${r.rpmOk?r.col:'var(--red)'};opacity:.55;border-radius:0;margin:2px -1px;`
+                  :isStart
+                  ?`background:${r.rpmOk?r.col:'var(--red)'};border-radius:8px 0 0 8px;margin:2px -1px 2px 2px;`
+                  :`background:${r.rpmOk?r.col:'var(--red)'};border-radius:0 8px 8px 0;margin:2px 2px 2px -1px;`;
+                return`<div class="trip-chip" style="${spanStyle}${r.spansWeeks?';border-top:2px dashed rgba(255,255,255,.6);border-bottom:2px dashed rgba(255,255,255,.6)':''}" onclick="openDriverPage('${drv.id}')">
+                  ${isStart?`
+                    ${r.spansWeeks?`<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.9);background:rgba(0,0,0,.2);border-radius:3px;padding:1px 4px;margin-bottom:2px">↔ MULTI-WEEK</div>`:''}
+                    <div class="tc-gross">$${fmt(r.tg)}</div>
+                    <div class="tc-route">${r.tLoads[0]?.origin?.split(',')[0]||'?'} → ${r.tLoads[r.tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
+                    <div class="tc-rpm">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi</div>
+                  `:'&nbsp;'}
+                </div>`;
+              }).join('')}
+              ${dayLoads.map(l=>`<div class="trip-chip" style="background:var(--silver)" onclick="openDriverPage('${drv.id}')">
+                <div class="tc-gross">$${fmt(+l.rate||0)}</div>
+                <div class="tc-route">${l.origin?.split(',')[0]||'?'} → ${l.dest?.split(',')[0]||'?'}</div>
+              </div>`).join('')}
+            </td>`;
+          }).join('');
+        })()}
         <td class="tot-cell">
           <strong>$${fmt(dGross)}</strong><br>
           ${dMiles>0?`<span style="color:var(--text3)">${dMiles.toLocaleString()}mi</span><br>`:''}
@@ -1616,6 +1633,10 @@ function renderKPI(){
       <div style="font-family:var(--mono);color:var(--green);font-weight:700">$${fmt(s.gross)}</div>
       <div style="font-family:var(--mono)">${s.miles.toLocaleString()}</div>
       <div style="font-family:var(--mono);color:var(--blue);font-weight:700">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
+      <div style="font-family:var(--mono);font-weight:800;color:${s.overMin>0?'var(--green)':s.overMin<0?'var(--red)':'var(--text3)'}">
+        ${s.overMin!==0?(s.overMin>0?'+':'-')+'$'+fmt(Math.abs(s.overMin)):'—'}
+        ${s.overMin>0&&oWin&&s.email===oWin.email?'<span style="font-size:11px">⚡</span>':''}
+      </div>
       <div>${bTag}</div>
     </div>`;
   }).join('');
