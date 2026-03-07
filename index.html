@@ -77,10 +77,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 /* APP */
 #app{display:none;min-height:100vh;flex-direction:column}
 #app.show{display:flex}
-.layout{display:flex;flex:1;overflow:hidden}
+.layout{display:flex;flex:1;overflow:hidden;margin-left:240px}
 
 /* SIDEBAR */
-.sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;min-height:100vh}
+.sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
 .sb-logo{display:flex;align-items:center;gap:12px;padding:20px;border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-logo svg{width:34px;height:34px;flex-shrink:0}
 .sb-logo-name{font-size:17px;font-weight:800;color:#fff}
@@ -810,7 +810,7 @@ function buildNav(){
     admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
   const items=(maps[ROLE]||maps.dispatcher);
-  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.i} ${i.l}</div>`).join('')+`<div class="sni" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
+  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.i} ${i.l}</div>`).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
 
 /* ══ META ══ */
@@ -830,24 +830,28 @@ async function loadMeta(){
 function subLoads(){
   if(unsub)unsub();
   const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
-  const isAll=['admin','owner','manager','accounting'].includes(ROLE);
-  // Avoid composite index requirement: no orderBy with where, sort in JS
-  const q=isAll
-    ?query(collection(db,'loads'),orderBy('createdAt','desc'))
-    :query(collection(db,'loads'),where('dispEmail','==',CU.email));
+  // Dispatchers and admin load ALL loads (KPI needs all dispatchers' data)
+  // Dispatcher's own loads filtered in JS on dispatch/driver pages
+  const q=query(collection(db,'loads'),orderBy('createdAt','desc'));
   unsub=onSnapshot(q,snap=>{
     LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
     LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     renderCur();
+  },err=>{
+    // Fallback: if no index, load without orderBy
+    const q2=query(collection(db,'loads'),where('dispEmail','==',CU.email));
+    onSnapshot(q2,snap=>{
+      LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
+      LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+      renderCur();
+    });
   });
 }
 function subTrips(){
   if(unsubTrips)unsubTrips();
-  const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
-  const isAll=['admin','owner','manager','accounting'].includes(ROLE);
-  const q=isAll
-    ?query(collection(db,'trips'),orderBy('createdAt','desc'))
-    :query(collection(db,'trips'),where('dispEmail','==',CU.email));
+  const{onSnapshot,collection,query,orderBy}=window._fb,db=window._db;
+  // Load ALL trips so KPI shows all dispatchers
+  const q=query(collection(db,'trips'),orderBy('createdAt','desc'));
   unsubTrips=onSnapshot(q,snap=>{
     TRIPS=snap.docs.map(d=>({id:d.id,...d.data()}));
     TRIPS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
