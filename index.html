@@ -1405,8 +1405,8 @@ async function tgPaid(id,v,locked){
     om('m-pay');
     return;
   }
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',id),{paid:true});
+  const db=window._db;const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(db,'loads',id),{paid:true});
   notify('✓ Marked PAID');
 }
 async function delLoad(id){
@@ -1694,8 +1694,8 @@ function renderAcc(){
 }
 async function accPaid(id,v){
   if(!v){
-    const{updateDoc,doc}=window._fb;
-    await updateDoc(doc(window._db,'loads',id),{paid:false,paidDate:null});
+    const db=window._db;const{updateDoc,doc}=window._fb;
+    await updateDoc(doc(db,'loads',id),{paid:false,paidDate:null});
     notify('Moved to Pending');
     return;
   }
@@ -1709,34 +1709,48 @@ async function accPaid(id,v){
     return;
   }
   const note=prompt('Payment note (optional):');
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',id),{paid:true,accComment:note||undefined,paidDate:new Date().toISOString()});
+  const db=window._db;const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(db,'loads',id),{paid:true,accComment:note||undefined,paidDate:new Date().toISOString()});
   notify('✓ Marked Paid');
 }
 async function confirmPayment(){
   const how=document.getElementById('pay-how').value;
   if(!how){notify('Select payment method','err');return}
   const note=document.getElementById('pay-note').value.trim();
+  const db=window._db;
   const{updateDoc,doc}=window._fb;
-  if(pendingPaySource==='advStat'){
-    // Mark as Delivered + paid in one shot
-    const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    await updateDoc(doc(window._db,'loads',pendingPayId),{
-      status:'Delivered',deliveredDate:ts,
-      paid:true,paidDate:new Date().toISOString(),
-      driverPayMethod:how,driverPayNote:note||null,
-      accComment:'Driver paid via '+how+(note?' — '+note:'')
-    });
-    notify('✓ Delivered & PAID via '+how);
-  } else {
-    await updateDoc(doc(window._db,'loads',pendingPayId),{
-      paid:true,driverPayMethod:how,driverPayNote:note||null,
-      paidDate:new Date().toISOString(),
-      accComment:(how+(note?' — '+note:''))
-    });
-    notify('✓ Paid via '+how);
-  }
-  cm('m-pay');pendingPayId=null;pendingAdvStatNext='';
+  const ref=doc(db,'loads',pendingPayId);
+  const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const payComment=how+(note?' — '+note:'');
+  try{
+    if(pendingPaySource==='advStat'){
+      // Delivered + auto PAID in one write
+      await updateDoc(ref,{
+        status:'Delivered',
+        deliveredDate:ts,
+        paid:true,
+        paidDate:new Date().toISOString(),
+        driverPayMethod:how,
+        driverPayNote:note||null,
+        accComment:'Paid via '+payComment
+      });
+      notify('✓ Delivered & PAID via '+how);
+    } else {
+      // Just marking paid (tgPaid / accPaid path)
+      await updateDoc(ref,{
+        paid:true,
+        paidDate:new Date().toISOString(),
+        driverPayMethod:how,
+        driverPayNote:note||null,
+        accComment:payComment
+      });
+      notify('✓ Paid via '+how);
+    }
+  }catch(e){notify('Error: '+e.message,'err');return}
+  cm('m-pay');
+  pendingPayId=null;
+  pendingAdvStatNext='';
+  pendingPaySource='';
 }
 async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
 
