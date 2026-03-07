@@ -20,6 +20,7 @@ const firebaseConfig = {
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
 
+
 const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
@@ -1573,10 +1574,8 @@ function renderKPI(){
             const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
             const trpm=t.miles>0?tg/t.miles:0;
             const rpmOk=minR>0?trpm>=minR:true;
-            // Original palette colors for ok, red for below min
-            const TRIP_COLORS=['#3b82f6','#0d9488','#8b5cf6','#f59e0b','#10b981','#06b6d4','#6366f1'];
-            const colIdx=TRIPS.indexOf(t)%TRIP_COLORS.length;
-            const col=rpmOk?TRIP_COLORS[colIdx<0?0:colIdx]:'#ef4444';
+            // Only 2 colors: teal=ok, red=below min
+            const col=rpmOk?'#0d9488':'#ef4444';
             const textCol='#fff';
             const tLoadWeeks=new Set(tLoads.map(l=>l.week||curW));
             const spansWeeks=tLoadWeeks.size>1;
@@ -1598,7 +1597,7 @@ function renderKPI(){
                 const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
                 const marginL=isStart?'3px':'-1px';
                 const marginR=isEnd?'3px':'-1px';
-                const clickAttr=r.t.mapsUrl?`onclick="event.stopPropagation();window.open('${r.t.mapsUrl}','_blank')"`:`onclick="openDriverPage('${drv.id}')"`;
+                const clickAttr=`onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')"`;
                 return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" ${clickAttr}>
                   ${isStart?`
                     <div style="font-size:11px;font-weight:800;color:${r.textCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
@@ -1668,6 +1667,40 @@ function renderKPI(){
       <div style="min-height:24px">${bTag}</div>
     </div>`;
   }).join('');
+}
+
+/* ══ TRIP POPOVER ══ */
+function showTripPopover(e,tripId){
+  const trip=TRIPS.find(t=>t.id===tripId);if(!trip)return;
+  const tLoads=LOADS.filter(l=>trip.loadIds?.includes(l.id));
+  const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const trpm=trip.miles>0?tg/trip.miles:0;
+  const drv=DRIVERS.find(d=>d.name===trip.driverName);
+  const minR=+(drv?.minRate||0);
+  const rpmOk=minR>0?trpm>=minR:true;
+  document.getElementById('tp-title').textContent='Trip #'+(trip.tripNum||'?')+' — '+trip.driverName;
+  document.getElementById('tp-body').innerHTML=
+    `<div><span style="color:var(--text3)">Gross:</span> <strong style="color:var(--green)">$${fmt(tg)}</strong></div>`+
+    `<div><span style="color:var(--text3)">Miles:</span> <strong>${(+trip.miles||0).toLocaleString()}</strong></div>`+
+    `<div><span style="color:var(--text3)">$/mi:</span> <strong style="color:${rpmOk?'var(--teal)':'var(--red)'}">$${trpm.toFixed(2)}</strong>${minR>0?` <span style="font-size:10px;color:var(--text3)">(min $${minR})</span>`:''}</div>`+
+    `<div><span style="color:var(--text3)">Loads:</span> ${tLoads.map(l=>l.orderId||'?').join(', ')}</div>`+
+    (trip.underMinComment?`<div style="margin-top:6px;padding:6px 8px;background:#fff7ed;border-radius:6px;color:var(--orange);font-size:11px">💬 "${trip.underMinComment}"</div>`:'')+
+    (tLoads[0]?`<div style="margin-top:4px;color:var(--text3)">${tLoads[0].origin||'?'} → ${tLoads[tLoads.length-1].dest||'?'}</div>`:'')+
+    (trip.dispName?`<div style="margin-top:2px;font-size:11px;color:var(--text3)">Dispatcher: ${trip.dispName}</div>`:'');
+  const mapsBtn=document.getElementById('tp-maps-btn');
+  if(trip.mapsUrl){mapsBtn.href=trip.mapsUrl;mapsBtn.style.display='flex'}
+  else{mapsBtn.style.display='none'}
+  const pop=document.getElementById('trip-popover');
+  pop.style.display='block';
+  document.getElementById('trip-popover-overlay').style.display='block';
+  // Position near click
+  const x=Math.min(e.clientX,window.innerWidth-340);
+  const y=Math.min(e.clientY+10,window.innerHeight-280);
+  pop.style.left=x+'px';pop.style.top=y+'px';
+}
+function closeTripPopover(){
+  document.getElementById('trip-popover').style.display='none';
+  document.getElementById('trip-popover-overlay').style.display='none';
 }
 
 /* ══ ACCOUNTING ══ */
@@ -1979,6 +2012,21 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     </div>
   </div>
 </div>
+
+
+<!-- TRIP POPOVER -->
+<div id="trip-popover" style="display:none;position:fixed;z-index:9999;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:16px;min-width:260px;max-width:320px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <span id="tp-title" style="font-size:13px;font-weight:800;color:var(--navy)"></span>
+    <button onclick="closeTripPopover()" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3);padding:0 4px">×</button>
+  </div>
+  <div id="tp-body" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a id="tp-maps-btn" href="#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Open Google Maps</a>
+    <button onclick="closeTripPopover()" style="flex:1;background:var(--bg2);border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2)">Close</button>
+  </div>
+</div>
+<div id="trip-popover-overlay" onclick="closeTripPopover()" style="display:none;position:fixed;inset:0;z-index:9998"></div>
 
 </body>
 </html>
