@@ -20,7 +20,6 @@ const firebaseConfig = {
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
 
-
 const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
@@ -81,7 +80,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .layout{display:flex;flex:1;overflow:hidden}
 
 /* SIDEBAR */
-.sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;min-height:100vh}
 .sb-logo{display:flex;align-items:center;gap:12px;padding:20px;border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-logo svg{width:34px;height:34px;flex-shrink:0}
 .sb-logo-name{font-size:17px;font-weight:800;color:#fff}
@@ -93,6 +92,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .sb-sec{font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 5px;font-family:var(--mono)}
 .sni{display:flex;align-items:center;gap:10px;padding:9px 20px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all .15s}
 .sni:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85)}
+.sni.signout{margin-top:auto!important;border-top:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.35)!important;font-size:11px}
 .sni.on{background:rgba(242,101,34,.15);color:#fff;font-weight:600}
 .sb-bottom{margin-top:auto;padding:14px;border-top:1px solid rgba(255,255,255,.07)}
 .btn-so{width:100%;padding:9px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);border-radius:8px;font-family:var(--font);font-size:12px;cursor:pointer;transition:all .15s;font-weight:500}
@@ -430,8 +430,8 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <div class="sb-av" id="sb-av">?</div>
         <div><div class="sb-uname" id="sb-uname">—</div><div class="sb-urole" id="sb-urole">—</div></div>
       </div>
-      <nav id="sb-nav"></nav>
-      <div class="sb-bottom"><button class="btn-so" onclick="doLogout()">← Sign Out</button></div>
+      <nav id="sb-nav" style="flex:1;display:flex;flex-direction:column"></nav>
+
     </aside>
 
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -804,13 +804,13 @@ async function boot(user){
 function buildNav(){
   const maps={
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
-    accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'kpi',i:'📊',l:'KPI'}],
-    manager:[{id:'kpi',i:'📊',l:'KPI'},{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
-    owner:[{id:'owner',i:'🏠',l:'Dashboard'},{id:'kpi',i:'📊',l:'KPI'},{id:'accounting',i:'💰',l:'Accounting'}],
+    accounting:[{id:'accounting',i:'💰',l:'Accounting'}],
+    manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
+    owner:[{id:'owner',i:'🏠',l:'Dashboard'},{id:'accounting',i:'💰',l:'Accounting'}],
     admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
   const items=(maps[ROLE]||maps.dispatcher);
-  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.i} ${i.l}</div>`).join('');
+  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.i} ${i.l}</div>`).join('')+`<div class="sni" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
 
 /* ══ META ══ */
@@ -873,7 +873,7 @@ function renderCur(){const v=document.querySelector('.pg.show');if(v)renderPg(v.
 function renderPg(pg){
   if(pg==='dispatch')renderDispatch();
   if(pg==='driver'&&curDrv)renderDriverPage();
-  if(pg==='kpi')renderKPI();
+  if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
   if(pg==='accounting')renderAcc();
   if(pg==='owner')renderOwner();
   if(pg==='passwords')renderPasswords();
