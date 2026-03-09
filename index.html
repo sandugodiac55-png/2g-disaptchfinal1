@@ -3315,20 +3315,27 @@ function owSetTab(t){
 
 function renderOwner(){
   // Get owner's company
-  const ownerCo = CP.company ? COMPANIES.find(c=>c.name===CP.company||c.id===CP.company) : null;
+  // Match company case-insensitive and trimmed
+  const cpCo=(CP.company||'').trim().toLowerCase();
+  const ownerCo = cpCo ? COMPANIES.find(c=>c.name.trim().toLowerCase()===cpCo||c.id===CP.company) : null;
   const coName = ownerCo?.name || CP.company || null;
+  const coNameLower=(coName||'').trim().toLowerCase();
 
-  // Filter drivers & loads to owner's company only
-  const myDrivers = coName ? DRIVERS.filter(d=>d.company===coName) : DRIVERS;
+  // Filter drivers & loads to owner's company only (case-insensitive)
+  const myDrivers = coNameLower ? DRIVERS.filter(d=>(d.company||'').trim().toLowerCase()===coNameLower) : DRIVERS;
   const myLoads = coName ? LOADS.filter(l=>myDrivers.some(d=>d.name===l.driver)) : LOADS;
   const wLoads = myLoads.filter(l=>inW(l.date,curW));
   const allLoads = myLoads;
 
   // Set header
   document.getElementById('ow-co-name').textContent = coName || 'Owner Dashboard';
-  document.getElementById('ow-co-sub').textContent = coName
+
+  // Debug: show what company is set and what drivers exist
+  const driverCompanies=[...new Set(DRIVERS.map(d=>d.company||'(none)'))];
+  const debugMsg = coName
     ? `${myDrivers.length} drivers · ${myLoads.length} total loads`
-    : 'All companies';
+    : `⚠ No company set on this account. Available: ${driverCompanies.slice(0,3).join(', ')}`;
+  document.getElementById('ow-co-sub').textContent = debugMsg;
 
   // KPI cards
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
