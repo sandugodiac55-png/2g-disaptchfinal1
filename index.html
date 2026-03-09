@@ -19,6 +19,7 @@ const firebaseConfig = {
   messagingSenderId: "1044545328129",
   appId:             "1:1044545328129:web:f1116a3256bf1baa225c00"
 };
+
 const app = initializeApp(firebaseConfig);
 window._auth = getAuth(app);
 window._db   = getFirestore(app);
@@ -544,25 +545,75 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
         <!-- ACCOUNTING PAGE -->
         <div class="pg" id="pg-accounting">
-          <div class="ph">
-            <div><div class="ph-t">Accounting</div><div class="ph-s">Manage payments by company → driver</div></div>
-            <div class="ph-a">
-              <select class="sel" id="acc-co-sel" onchange="accCoChange(this.value)"><option value="">All Companies</option></select>
-              <select class="sel" id="acc-dr-sel" onchange="renderAcc()"><option value="">All Drivers</option></select>
+          <!-- VIEW 1: Company Dashboard -->
+          <div id="acc-view-companies">
+            <div class="ph">
+              <div><div class="ph-t">Accounting</div><div class="ph-s">Select a company to manage payments</div></div>
             </div>
+            <div id="acc-company-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:4px 0"></div>
           </div>
-          <div class="tabs">
-            <div class="tab on" onclick="setAccTab('pending',this)">Pending <span class="cpill" id="acc-np">0</span></div>
-            <div class="tab" onclick="setAccTab('paid',this)">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
-            <div class="tab" onclick="setAccTab('overdue',this)">⚠️ Overdue</div>
-            <div class="tab" onclick="setAccTab('all',this)">All</div>
+          <!-- VIEW 2: Driver list for selected company -->
+          <div id="acc-view-drivers" style="display:none">
+            <div class="ph">
+              <div>
+                <button onclick="accBack('companies')" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ All Companies</button>
+                <div class="ph-t" id="acc-co-title">Company</div>
+                <div class="ph-s" id="acc-co-sub">Select a driver</div>
+              </div>
+            </div>
+            <div id="acc-driver-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:4px 0"></div>
           </div>
-          <div class="tc">
-            <div class="tc-top"><div class="tc-title" id="acc-tt">Pending Payment</div><input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:160px"><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0</div></div>
-            <div class="tw"><table>
-              <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>$/MILE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead>
-              <tbody id="acc-tb"></tbody>
-            </table></div>
+          <!-- VIEW 3: Load table for selected driver -->
+          <div id="acc-view-loads" style="display:none">
+            <div class="ph">
+              <div>
+                <button onclick="accBack('drivers')" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ Back to Drivers</button>
+                <div class="ph-t" id="acc-drv-title">Driver</div>
+              </div>
+              <div class="ph-a">
+                <input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:160px">
+                <div style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0</div>
+              </div>
+            </div>
+            <!-- SECTION: Urgent Overdue (>15 days) -->
+            <div id="acc-sec-urgent" class="tc" style="margin-bottom:16px;border-left:4px solid var(--red)">
+              <div class="tc-top" style="background:#fef2f2">
+                <div class="tc-title" style="color:var(--red)">🚨 Urgent Overdue — Past 15+ Days</div>
+                <span class="cpill" id="acc-cnt-urgent" style="background:#fecaca;color:#991b1b">0</span>
+              </div>
+              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
+            </div>
+            <!-- SECTION: Bond -->
+            <div id="acc-sec-bond" class="tc" style="margin-bottom:16px;border-left:4px solid #7c3aed">
+              <div class="tc-top" style="background:#f5f3ff">
+                <div class="tc-title" style="color:#7c3aed">🔒 Bond — Secured Payments</div>
+                <span class="cpill" id="acc-cnt-bond" style="background:#ddd6fe;color:#5b21b6">0</span>
+              </div>
+              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
+            </div>
+            <!-- SECTION: Problematic -->
+            <div id="acc-sec-problem" class="tc" style="margin-bottom:16px;border-left:4px solid #ea580c">
+              <div class="tc-top" style="background:#fff7ed">
+                <div class="tc-title" style="color:#ea580c">⚠️ Problematic — Unlikely to Collect</div>
+                <span class="cpill" id="acc-cnt-problem" style="background:#fed7aa;color:#9a3412">0</span>
+              </div>
+              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-problem"></tbody></table></div>
+            </div>
+            <!-- SECTION: All Loads (pending/paid) -->
+            <div class="tc" style="margin-bottom:16px">
+              <div class="tc-top">
+                <div class="tc-title" id="acc-tt">All Loads</div>
+                <div class="tabs" style="margin:0;border:none;padding:0;gap:4px">
+                  <div class="tab on" onclick="setAccTab('pending',this)" style="padding:4px 10px;font-size:11px">Pending <span class="cpill" id="acc-np">0</span></div>
+                  <div class="tab" onclick="setAccTab('paid',this)" style="padding:4px 10px;font-size:11px">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
+                  <div class="tab" onclick="setAccTab('all',this)" style="padding:4px 10px;font-size:11px">All</div>
+                </div>
+              </div>
+              <div class="tw"><table>
+                <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead>
+                <tbody id="acc-tb"></tbody>
+              </table></div>
+            </div>
           </div>
         </div>
 
@@ -714,7 +765,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 /* ══ STATE ══ */
 let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[];
 let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
-let accTab='pending',accSrch='',accCo='';
+let accTab='pending',accSrch='',accCo='',accView='companies',accSelCo=null,accSelDrv=null;
 let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='',pendingAdvStatNext='',editTripId=null;
 
 /* ══ WEEK ══ */
@@ -760,26 +811,7 @@ function tripRPM(trip){return trip.miles>0?(trip.gross/trip.miles):0}
 function tripOverMin(trip,driver){if(!driver||!driver.minRate)return 0;const rpm=tripRPM(trip);return(rpm-(+driver.minRate||0))*(+trip.miles||0);}
 
 /* ══ EMAIL BROKER ══ */
-function sendBrokerEmail(orderId,email,broker,origin,dest){
-  if(!email){notify('No broker email on file','err');return}
-  const subject='Payment Order #'+orderId;
-  const greeting='Hello'+(broker?' '+broker:'')+',';
-  const route=origin&&dest?' ('+origin+' → '+dest+')':'';
-  const body=greeting+'\n\nI would like to know if you received the paperwork for order #'+orderId+route+' and to know if the payment corresponds to the contract\'s payment terms.\n\nThanks!';
-  // Fill modal
-  document.getElementById('email-to').value=email;
-  document.getElementById('email-subject').value=subject;
-  document.getElementById('email-body').value=body;
-  document.getElementById('email-mailto').href='mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  om('m-email');
-}
 
-function copyFullEmail(){
-  const subj=document.getElementById('email-subject').value;
-  const body=document.getElementById('email-body').value;
-  const to=document.getElementById('email-to').value;
-  copyText('To: '+to+'\nSubject: '+subj+'\n\n'+body,'Email');
-}
 
 /* ══ COPY TO CLIPBOARD ══ */
 function copyText(text,label){
@@ -929,7 +961,7 @@ function renderPg(pg){
   if(pg==='dispatch')renderDispatch();
   if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
-  if(pg==='accounting')renderAcc();
+  if(pg==='accounting'){accView='companies';renderAccView();}
   if(pg==='owner')renderOwner();
   if(pg==='passwords')renderPasswords();
   if(pg==='salary')renderSalary();
@@ -1904,84 +1936,216 @@ function closeTripPopover(){
 }
 
 /* ══ ACCOUNTING ══ */
-function accCoChange(v){accCo=v;const co=COMPANIES.find(c=>c.id===v);const sel=document.getElementById('acc-dr-sel');const drvs=v?DRIVERS.filter(d=>d.company===co?.name):DRIVERS;sel.innerHTML=`<option value="">All Drivers</option>`+drvs.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');renderAcc()}
-function setAccTab(k,el){accTab=k;document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('acc-tt').textContent={pending:'Pending',paid:'Paid ✓',overdue:'Overdue',all:'All Loads'}[k];renderAcc()}
+function accCoChange(v){accCo=v;renderAcc()}
+function setAccTab(k,el){accTab=k;el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderAcc()}
+/* ══ ACCOUNTING NAVIGATION ══ */
+function accBack(view){
+  accView=view;
+  if(view==='companies'){accSelCo=null;accSelDrv=null;}
+  if(view==='drivers'){accSelDrv=null;}
+  renderAccView();
+}
+function accSelectCo(coName){
+  accSelCo=coName;
+  accView='drivers';
+  renderAccView();
+}
+function accSelectDrv(drvName){
+  accSelDrv=drvName;
+  accView='loads';
+  accTab='pending';
+  accSrch='';
+  document.getElementById('acc-view-companies').style.display='none';
+  document.getElementById('acc-view-drivers').style.display='none';
+  document.getElementById('acc-view-loads').style.display='';
+  renderAcc();
+}
+function renderAccView(){
+  document.getElementById('acc-view-companies').style.display=accView==='companies'?'':'none';
+  document.getElementById('acc-view-drivers').style.display=accView==='drivers'?'':'none';
+  document.getElementById('acc-view-loads').style.display=accView==='loads'?'':'none';
+  if(accView==='companies')renderAccCompanies();
+  if(accView==='drivers')renderAccDrivers();
+}
+function getMyCompanies(){
+  // Accounting users see only their assigned companies (stored in user.companies[])
+  // Admin sees all
+  if(ROLE==='admin')return COMPANIES;
+  const me=USERS.find(u=>u.email===CU.email);
+  const myCos=me?.companies||[];
+  if(!myCos.length)return COMPANIES; // fallback: show all if none assigned
+  return COMPANIES.filter(c=>myCos.includes(c.id)||myCos.includes(c.name));
+}
+function renderAccCompanies(){
+  const grid=document.getElementById('acc-company-grid');if(!grid)return;
+  const myCos=getMyCompanies();
+  if(!myCos.length){grid.innerHTML=`<div class="em"><div class="e">🏢</div><p>No companies assigned.</p></div>`;return;}
+  grid.innerHTML=myCos.map(co=>{
+    const coLoads=LOADS.filter(l=>l.company===co.name);
+    const pending=coLoads.filter(l=>!l.paid);
+    const urgent=pending.filter(l=>{const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((new Date()-due)/86400000)>=15;});
+    const paid=coLoads.filter(l=>l.paid);
+    const total=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const pendingAmt=pending.reduce((s,l)=>s+(+l.rate||0),0);
+    return`<div onclick="accSelectCo('${co.name}')" style="background:var(--surface);border:1.5px solid ${urgent.length?'var(--red)':'var(--border)'};border-radius:var(--r);padding:18px;cursor:pointer;box-shadow:var(--shadow);transition:all .15s" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='${urgent.length?'var(--red)':'var(--border)'}'">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:800;color:var(--navy)">${co.name}</div>
+        ${urgent.length?`<span style="background:#fef2f2;color:var(--red);border:1px solid #fecaca;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">🚨 ${urgent.length} urgent</span>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px">
+        <div style="text-align:center;padding:8px;background:var(--surface2);border-radius:6px">
+          <div style="color:var(--text3)">Total</div>
+          <div style="font-weight:800;color:var(--navy);font-family:var(--mono)">$${fmt(total)}</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:#fef9f0;border-radius:6px">
+          <div style="color:var(--text3)">Pending</div>
+          <div style="font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(pendingAmt)}</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:#f0fdf4;border-radius:6px">
+          <div style="color:var(--text3)">Paid</div>
+          <div style="font-weight:800;color:var(--green);font-family:var(--mono)">${paid.length}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderAccDrivers(){
+  if(!accSelCo)return;
+  document.getElementById('acc-co-title').textContent=accSelCo;
+  document.getElementById('acc-co-sub').textContent='Select a driver to view payments';
+  const drvs=DRIVERS.filter(d=>d.company===accSelCo);
+  const grid=document.getElementById('acc-driver-grid');if(!grid)return;
+  if(!drvs.length){grid.innerHTML=`<div class="em"><p>No drivers for this company.</p></div>`;return;}
+  grid.innerHTML=drvs.map(drv=>{
+    const dLoads=LOADS.filter(l=>l.driver===drv.name);
+    const pending=dLoads.filter(l=>!l.paid);
+    const urgent=pending.filter(l=>{const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((new Date()-due)/86400000)>=15;});
+    const pendingAmt=pending.reduce((s,l)=>s+(+l.rate||0),0);
+    return`<div onclick="accSelectDrv('${drv.name}')" style="background:var(--surface);border:1.5px solid ${urgent.length?'var(--red)':'var(--border)'};border-radius:var(--r);padding:16px;cursor:pointer;box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="sb-av" style="width:36px;height:36px;font-size:13px">${avL(drv.name)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">${drv.name}</div>
+          <div style="font-size:10px;color:var(--text3)">${drv.company||'—'}</div>
+        </div>
+        ${urgent.length?`<span style="margin-left:auto;background:#fef2f2;color:var(--red);border-radius:10px;padding:2px 7px;font-size:10px;font-weight:700">🚨 ${urgent.length}</span>`:''}
+      </div>
+      <div style="display:flex;gap:8px;font-size:11px">
+        <div style="flex:1;text-align:center;padding:6px;background:#fef9f0;border-radius:6px">
+          <div style="color:var(--text3)">Pending</div>
+          <div style="font-weight:700;color:var(--orange);font-family:var(--mono)">$${fmt(pendingAmt)}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:6px;background:#f0fdf4;border-radius:6px">
+          <div style="color:var(--text3)">Loads</div>
+          <div style="font-weight:700;color:var(--navy)">${dLoads.length}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function accLoadRow(l,canEdit,cols){
+  // cols: which columns to show
+  const dueTag=lateTag(l.date,l.payMethod,l.paid);
+  const days=l.paid?'':(()=>{const due=getDueDate(l.date,l.payMethod);if(!due)return '';const d=Math.floor((new Date()-due)/86400000);return d>0?`<span style="color:var(--red);font-weight:800;font-size:11px">${d}d overdue</span>`:`<span style="color:var(--text3);font-size:10px">Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`})();
+  return`<tr>
+    <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" style="cursor:pointer">${l.orderId||'—'} <span style="font-size:9px;opacity:.4">⎘</span></td>
+    ${cols.route?`<td style="font-size:11px">${l.origin||'—'} → ${l.dest||'—'}</td>`:''}
+    ${cols.disp?`<td style="color:var(--blue);font-size:11px">${l.dispName||'—'}</td>`:''}
+    ${cols.driver?`<td style="font-weight:600;font-size:11px">${l.driver||'—'}</td>`:''}
+    <td class="money">$${fmt(+l.rate||0)}</td>
+    <td style="font-size:11px">${l.payMethod||'—'}</td>
+    <td style="font-size:11px;max-width:140px">${l.brokerEmail?`<span onclick="copyText('${l.brokerEmail}','Email')" style="cursor:pointer;color:var(--blue);font-size:10px">${l.brokerEmail} <span style="opacity:.4">⎘</span></span>`:'—'}</td>
+    <td><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></td>
+    <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
+    <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
+    <td>${cols.overdue?days:dueTag}</td>
+    <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+  </tr>`;
+}
+function renderAccSections(loads,canEdit){
+  const now=new Date();
+  // Urgent: unpaid + overdue >= 15 days
+  const urgent=loads.filter(l=>{if(l.paid||l.accFlag==='bond'||l.accFlag==='problem')return false;const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((now-due)/86400000)>=15;});
+  // Bond: flagged as bond
+  const bond=loads.filter(l=>l.accFlag==='bond');
+  // Problem: flagged as problematic
+  const problem=loads.filter(l=>l.accFlag==='problem');
+  // Regular: everything else not in above
+  const urgentIds=new Set([...urgent,...bond,...problem].map(l=>l.id));
+  const regular=loads.filter(l=>!urgentIds.has(l.id));
+
+  const uSec=document.getElementById('acc-sec-urgent');
+  const bSec=document.getElementById('acc-sec-bond');
+  const pSec=document.getElementById('acc-sec-problem');
+  document.getElementById('acc-cnt-urgent').textContent=urgent.length;
+  document.getElementById('acc-cnt-bond').textContent=bond.length;
+  document.getElementById('acc-cnt-problem').textContent=problem.length;
+  uSec.style.display=urgent.length?'':'none';
+  bSec.style.display=bond.length?'':'none';
+  pSec.style.display=problem.length?'':'none';
+
+  const cols={route:true,overdue:true};
+  document.getElementById('acc-tb-urgent').innerHTML=urgent.map(l=>accLoadRow(l,canEdit,{...cols,flagBtn:true})).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No urgent items</td></tr>';
+  document.getElementById('acc-tb-bond').innerHTML=bond.map(l=>accLoadRow(l,canEdit,cols)).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No bond items</td></tr>';
+  document.getElementById('acc-tb-problem').innerHTML=problem.map(l=>accLoadRow(l,canEdit,cols)).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No problematic items</td></tr>';
+  return{regular};
+}
+
 function renderAcc(){
-  // ALL loads — no week filter
-  let loads=[...LOADS];
-  const drv=document.getElementById('acc-dr-sel')?.value||'';
-  if(accCo){const co=COMPANIES.find(c=>c.id===accCo);if(co)loads=loads.filter(l=>l.company===co.name)}
-  if(drv)loads=loads.filter(l=>l.driver===drv);
-  document.getElementById('acc-np').textContent=loads.filter(l=>!l.paid).length;
-  document.getElementById('acc-pp').textContent=loads.filter(l=>l.paid).length;
-  let fl=accTab==='pending'?loads.filter(l=>!l.paid):accTab==='paid'?loads.filter(l=>l.paid):accTab==='overdue'?loads.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);return due&&new Date()>due}):loads;
-  if(accSrch){const q=accSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q))}
-  document.getElementById('acc-cnt').textContent=`${fl.length}`;
-  const tb=document.getElementById('acc-tb');
-  if(!fl.length){tb.innerHTML=`<tr><td colspan="13"><div class="em"><div class="e">💰</div><p>No loads.</p></div></td></tr>`;return}
+  if(accView!=='loads'){renderAccView();return;}
   const canEdit=ROLE==='accounting'||ROLE==='admin';
-
-  // Group by week, newest first
+  // All loads for selected driver
+  let loads=LOADS.filter(l=>accSelDrv?l.driver===accSelDrv:(accSelCo?l.company===accSelCo:true));
+  // Update header
+  const title=document.getElementById('acc-drv-title');
+  if(title)title.textContent=(accSelDrv||accSelCo||'All')+'  — Loads';
+  // Sections
+  renderAccSections(loads,canEdit);
+  // Regular table with tab filter
+  const now=new Date();
+  const specialIds=new Set(loads.filter(l=>{
+    if(l.accFlag==='bond'||l.accFlag==='problem')return true;
+    if(!l.paid){const due=getDueDate(l.date,l.payMethod);if(due&&Math.floor((now-due)/86400000)>=15)return true;}
+    return false;
+  }).map(l=>l.id));
+  let fl=loads.filter(l=>!specialIds.has(l.id));
+  const np=fl.filter(l=>!l.paid).length;
+  const pp=fl.filter(l=>l.paid).length;
+  document.getElementById('acc-np').textContent=np;
+  document.getElementById('acc-pp').textContent=pp;
+  fl=accTab==='pending'?fl.filter(l=>!l.paid):accTab==='paid'?fl.filter(l=>l.paid):fl;
+  if(accSrch){const q=accSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q));}
+  document.getElementById('acc-cnt').textContent=fl.length;
+  const tb=document.getElementById('acc-tb');
+  if(!fl.length){tb.innerHTML=`<tr><td colspan="12"><div class="em" style="padding:20px"><p>No loads in this category.</p></div></td></tr>`;return;}
+  // Group by week
   const byWeek={};
-  fl.forEach(l=>{const w=l.week||CWfrom(new Date((l.date||'2000-01-01')+'T00:00:00'));if(!byWeek[w])byWeek[w]=[];byWeek[w].push(l)});
+  fl.forEach(l=>{const w=l.week||CWfrom(new Date((l.date||'2000-01-01')+'T00:00:00'));if(!byWeek[w])byWeek[w]=[];byWeek[w].push(l);});
   const sortedWks=Object.keys(byWeek).sort((a,b)=>b.localeCompare(a));
-
   let rows='';
   sortedWks.forEach(w=>{
     const wLoads=byWeek[w].sort((a,b)=>new Date(b.date)-new Date(a.date));
     const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
     const wPaid=wLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
     const wUnpaid=wGross-wPaid;
-    // Find if week is closed (any driver has this week locked)
-    const isClosedWeek=DRIVERS.some(d=>d.weekLocked===w);
-    const isCurW=w===curW;
-
-    // Week separator
+    const isClosedWeek=DRIVERS.some(d=>(d.closedWeeks||[]).includes(w)||d.weekLocked===w);
     rows+=`<tr style="background:${isClosedWeek?'var(--navy)':'var(--surface2)'}">
-      <td colspan="14" style="padding:10px 16px;border-top:2px solid ${isClosedWeek?'var(--navy)':'var(--border2)'}">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:800;color:${isClosedWeek?'#fff':'var(--navy)'}">
-            ${isClosedWeek?'🔒':'📅'} ${wLbl(w)}${isCurW?' <span style="font-size:10px;background:var(--orange);color:#fff;border-radius:4px;padding:1px 6px">current</span>':''}
-          </span>
-          <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wGross)}</span>
+      <td colspan="12" style="padding:8px 16px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;color:${isClosedWeek?'#fff':'var(--navy)'}">${isClosedWeek?'🔒':'📅'} ${wLbl(w)}</span>
+          <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wGross)}</span>
           ${wPaid>0?`<span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.6)':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
           ${wUnpaid>0?`<span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.5)':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
           <span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.4)':'var(--text3)'};">${wLoads.length} loads</span>
-          ${isClosedWeek?`<span style="font-size:10px;background:rgba(255,255,255,.15);color:#fff;border-radius:4px;padding:1px 8px;font-weight:700">CLOSED</span>`:''}
         </div>
-      </td>
-    </tr>`;
-
-    // Load rows
+      </td></tr>`;
     wLoads.forEach(l=>{
-      const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
-      rows+=`<tr style="${isClosedWeek?'background:#f8f9fc;opacity:.95':''}">
-        <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" title="Click to copy" style="cursor:pointer">${l.orderId||'—'} <span style="font-size:9px;color:var(--text3);opacity:.5">⎘</span></td>
-        <td style="color:var(--blue);font-size:12px">${l.dispName||'—'}</td>
-        <td style="font-weight:600">${l.driver||'—'}</td>
-        <td style="font-size:11px">${l.company||'—'}</td>
-        <td>${l.origin||'—'} → ${l.dest||'—'}</td>
-        <td class="money">$${fmt(+l.rate||0)}</td>
-        <td style="font-family:var(--mono);color:var(--blue)">${rpm!=='—'?'$'+rpm:'—'}</td>
-        <td style="font-size:11px">${l.payMethod||'—'}</td>
-        <td style="font-size:11px;max-width:160px">
-          ${l.brokerEmail?`
-            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-              <span onclick="copyText('${l.brokerEmail}','Email')" title="Click to copy" style="cursor:pointer;color:var(--blue);font-size:10px;display:inline-flex;align-items:center;gap:2px">${l.brokerEmail}<span style="opacity:.5;font-size:9px">⎘</span></span>
-              <button onclick="sendBrokerEmail('${l.orderId||'?'}','${l.brokerEmail}','${(l.broker||'').replace(/'/g,'')}','${(l.origin||'').replace(/'/g,'')}','${(l.dest||'').replace(/'/g,'')}')" title="Send payment inquiry email" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:5px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap">✉ Send</button>
-            </div>
-          `:'<span style="color:var(--text3);font-size:10px">—</span>'}
-        </td>
-        <td><span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span></td>
-        <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
-        <td style="font-size:11px">${l.date||'—'}</td>
-        <td>${lateTag(l.date,l.payMethod,l.paid)}</td>
-        <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
-      </tr>`;
+      rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:true,overdue:false});
     });
   });
   tb.innerHTML=rows;
 }
+
 async function accPaid(id,v){
   if(!v){
     const db=window._db;const{updateDoc,doc}=window._fb;
@@ -2043,6 +2207,11 @@ async function confirmPayment(){
   pendingPaySource='';
 }
 async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
+async function setAccFlag(id,flag){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',id),{accFlag:flag||''});
+  notify(flag==='bond'?'🔒 Marked as Bond':flag==='problem'?'⚠️ Marked as Problematic':'✓ Flag removed');
+}
 
 /* ══ OWNER ══ */
 function renderOwner(){
@@ -2137,12 +2306,41 @@ function exportSalary(){
 }
 
 /* ══ ADMIN ══ */
+async function toggleAccCoAssign(userId,coId,isAssigned){
+  const{updateDoc,doc,arrayUnion,arrayRemove}=window._fb;
+  if(isAssigned){
+    await updateDoc(doc(window._db,'users',userId),{companies:arrayRemove(coId)});
+    notify('Company removed');
+  } else {
+    await updateDoc(doc(window._db,'users',userId),{companies:arrayUnion(coId)});
+    notify('✓ Company assigned');
+  }
+  await loadMeta();
+  renderAdmin();
+}
 function renderAdmin(){
   loadEditRequests().then(()=>{
     const panel=document.getElementById('adm-req-panel');
     if(panel)panel.style.display=EDIT_REQUESTS.length?'':'none';
   });
-  document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`<div class="ur"><div class="ua">${avL(u.name)}</div><div><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div><span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span></div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
+  document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`
+    <div class="ur" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <div class="ua">${avL(u.name)}</div>
+        <div style="flex:1"><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div>
+        <span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span>
+      </div>
+      ${u.role==='accounting'?`
+        <div style="padding-left:46px;width:100%">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600">ASSIGNED COMPANIES:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
+            ${COMPANIES.map(co=>{
+              const assigned=(u.companies||[]).includes(co.id)||(u.companies||[]).includes(co.name);
+              return`<button onclick="toggleAccCoAssign('${u.id}','${co.id}',${assigned})" style="font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;border:1px solid ${assigned?'var(--teal)':'var(--border)'};background:${assigned?'#f0fdf4':'var(--surface2)'};color:${assigned?'var(--teal)':'var(--text3)'};font-weight:${assigned?'700':'400'}">${assigned?'✓ ':''}${co.name}</button>`;
+            }).join('')}
+          </div>
+        </div>`:''}
+    </div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
   const disps=USERS.filter(u=>u.role==='dispatcher');
   document.getElementById('adm-d').innerHTML=disps.map(d=>{const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px"><div style="display:flex;align-items:center;gap:10px;width:100%"><div class="ua">${avL(d.name)}</div><div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div></div><div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0">🚛 ${dr.name} · $${dr.minRate||'?'}/mi · ${dr.salaryPct||'?'}%</div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div></div>`}).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
   document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
@@ -2225,46 +2423,6 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
 </div>
 
-
-<!-- BROKER EMAIL MODAL -->
-<div class="ov" id="m-email">
-  <div class="mw" style="max-width:500px">
-    <div class="mhd">
-      <div class="mhd-t">✉️ Send Payment Inquiry</div>
-      <div class="mcl" onclick="cm('m-email')">×</div>
-    </div>
-    <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
-      <div class="fg">
-        <label>To</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="email-to" readonly style="background:var(--surface2);flex:1;font-size:12px">
-          <button onclick="copyText(document.getElementById('email-to').value,'Email')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">⎘ Copy</button>
-        </div>
-      </div>
-      <div class="fg">
-        <label>Subject</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="email-subject" readonly style="background:var(--surface2);flex:1;font-size:12px">
-          <button onclick="copyText(document.getElementById('email-subject').value,'Subject')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">⎘ Copy</button>
-        </div>
-      </div>
-      <div class="fg">
-        <label>Message</label>
-        <textarea id="email-body" style="min-height:140px;font-size:12px;line-height:1.6;resize:vertical" onclick="this.select()"></textarea>
-      </div>
-      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 12px;font-size:11px;color:#0369a1">
-        💡 Copy the message and send manually, or click <strong>Open in Mail</strong> to open your email client.
-      </div>
-    </div>
-    <div class="mft" style="justify-content:space-between">
-      <button class="btn btn-ghost" onclick="cm('m-email')">Close</button>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="copyFullEmail()">⎘ Copy All</button>
-        <a id="email-mailto" href="#" target="_blank" class="btn btn-orange" onclick="cm('m-email')" style="text-decoration:none;display:inline-flex;align-items:center">✉️ Open in Mail</a>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- EDIT REQUEST MODAL -->
 <div class="ov" id="m-edit-req">
