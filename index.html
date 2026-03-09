@@ -603,12 +603,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             <div class="tc" style="margin-bottom:16px">
               <div class="tc-top">
                 <div class="tc-title" id="acc-tt">All Loads</div>
-                <div class="tabs" style="margin:0;border:none;padding:0;gap:4px">
-                  <div class="tab on" onclick="setAccTab('pending',this)" style="padding:4px 10px;font-size:11px">Pending <span class="cpill" id="acc-np">0</span></div>
-                  <div class="tab" onclick="setAccTab('paid',this)" style="padding:4px 10px;font-size:11px">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
-                  <div class="tab" onclick="setAccTab('overdue',this)" style="padding:4px 10px;font-size:11px">⚠️ Overdue</div>
-                  <div class="tab" onclick="setAccTab('all',this)" style="padding:4px 10px;font-size:11px">All</div>
-                </div>
+                <div style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0</div>
               </div>
               <div class="tw"><table>
                 <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead>
@@ -2258,13 +2253,10 @@ function renderAcc(){
     return false;
   }).map(l=>l.id));
   let fl=loads.filter(l=>!specialIds.has(l.id));
-  const np=fl.filter(l=>!l.paid).length;
-  const pp=fl.filter(l=>l.paid).length;
-  document.getElementById('acc-np').textContent=np;
-  document.getElementById('acc-pp').textContent=pp;
-  fl=accTab==='pending'?fl.filter(l=>!l.paid):accTab==='paid'?fl.filter(l=>l.paid):accTab==='overdue'?fl.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);return due&&new Date()>due;}):fl;
+
+  // No tab filter — show all loads sorted newest first
   if(accSrch){const q=accSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q));}
-  document.getElementById('acc-cnt').textContent=fl.length;
+  document.getElementById('acc-cnt').textContent=fl.length+' loads';
   const tb=document.getElementById('acc-tb');
   if(!fl.length){tb.innerHTML=`<tr><td colspan="12"><div class="em" style="padding:20px"><p>No loads in this category.</p></div></td></tr>`;return;}
   // Group by week
