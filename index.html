@@ -1057,8 +1057,13 @@ function renderCur(){
   const v=document.querySelector('.pg.show');
   if(!v)return;
   const pg=v.id.replace('pg-','');
-  if(pg==='accounting'&&accView==='flag'&&_accFlagPg){renderAccByFlag(_accFlagPg);return;}
-  if(pg==='accounting'&&accView==='loads'){renderAcc();return;}
+  // Never reset accounting view on data refresh
+  if(pg==='accounting'){
+    if(accView==='flag'&&_accFlagPg){renderAccByFlag(_accFlagPg);return;}
+    if(accView==='loads'){renderAcc();return;}
+    if(accView==='drivers'){renderAccDrivers();return;}
+    renderAccCompanies();return;
+  }
   renderPg(pg);
 }
 function renderPg(pg){
@@ -2056,7 +2061,16 @@ function closeTripPopover(){
 
 /* ══ ACCOUNTING ══ */
 function accCoChange(v){accCo=v;renderAcc()}
-function setAccTab(k,el){accTab=k;el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderAcc()}
+function setAccTab(k,el){
+  accTab=k;
+  ['all','paid','overdue'].forEach(t=>{
+    const b=document.getElementById('acc-tab-'+t);
+    if(!b)return;
+    if(t===k){b.style.borderColor='#6366f1';b.style.background='#eef2ff';b.style.color='#6366f1';}
+    else{b.style.borderColor='#e2e8f0';b.style.background='#fff';b.style.color='#94a3b8';}
+  });
+  renderAcc();
+}
 /* ══ ACCOUNTING NAVIGATION ══ */
 function accBack(view){
   accView=view;
@@ -2072,7 +2086,7 @@ function accSelectCo(coName){
 function accSelectDrv(drvName){
   accSelDrv=drvName;
   accView='loads';
-  accTab='pending';
+  accTab='all';
   accSrch='';
   document.getElementById('acc-view-companies').style.display='none';
   document.getElementById('acc-view-drivers').style.display='none';
@@ -2289,7 +2303,7 @@ function setAccTab(tab,el){
   renderAcc();
 }
 function renderAcc(){
-  if(accView!=='loads'){renderAccView();return;}
+  if(accView!=='loads')return; // Don't redirect — renderCur handles other views
   const canEdit=ROLE==='accounting'||ROLE==='admin'||ROLE==='accounting_manager';
   // Restore thead for driver view: ORDER ID | DISPATCHER | DRIVER | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb')?.closest('table')?.querySelector('thead tr');
