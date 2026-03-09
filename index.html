@@ -9,7 +9,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -26,7 +26,7 @@ window._auth    = getAuth(app);
 window._db      = getFirestore(app);
 window._storage = getStorage(app);
 window._fb   = { signInWithEmailAndPassword, signOut, onAuthStateChanged,
-                 collection, addDoc, getDocs, updateDoc, deleteDoc, doc,
+                 collection, addDoc, getDocs, updateDoc, deleteDoc, doc, setDoc,
                  query, where, orderBy, onSnapshot, serverTimestamp,
                  arrayUnion, arrayRemove,
                  ref, uploadBytes, getDownloadURL };
@@ -748,10 +748,49 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <!-- SALARY PAGE -->
         <div class="pg" id="pg-salary">
           <div class="ph">
-            <div><div class="ph-t">Salary Calculator</div><div class="ph-s">Admin only — configure & export</div></div>
-            <button class="btn btn-orange" onclick="exportSalary()">⬇ Export CSV</button>
+            <div><div class="ph-t">Salary & Finance</div><div class="ph-s">Employees · Founders · Expenses</div></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost" onclick="openSalarySettingsModal()">⚙ Settings</button>
+              <button class="btn btn-orange" onclick="exportSalary()">⬇ Export CSV</button>
+            </div>
           </div>
-          <div class="tc"><div class="tc-top"><div class="tc-title">Driver Salary</div></div><div id="sal-table"></div></div>
+
+          <!-- Month selector + week range -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:6px 14px">
+              <button onclick="salMonthNav(-1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 4px">‹</button>
+              <span style="font-size:13px;font-weight:700;color:var(--navy);min-width:110px;text-align:center" id="sal-month-lbl">—</span>
+              <button onclick="salMonthNav(1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 4px">›</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:6px 14px">
+              <span style="font-size:11px;color:var(--text3);font-weight:600">SĂPTĂMÂNI ÎN LUNĂ:</span>
+              <button onclick="setSalWeekCount(4,this)" id="sal-wk4" style="padding:3px 12px;border-radius:6px;border:1.5px solid #6366f1;background:#eef2ff;color:#6366f1;font-size:11px;font-weight:700;cursor:pointer">4</button>
+              <button onclick="setSalWeekCount(5,this)" id="sal-wk5" style="padding:3px 12px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">5</button>
+            </div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="sal-weeks-range"></div>
+          </div>
+
+          <!-- Tabs -->
+          <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0">
+            <button onclick="setSalTab('emp',this)" id="sal-tab-emp" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--navy);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">👥 Employees</button>
+            <button onclick="setSalTab('founders',this)" id="sal-tab-founders" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--surface2);color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🏆 Founders</button>
+            <button onclick="setSalTab('expenses',this)" id="sal-tab-expenses" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--surface2);color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📊 Expenses</button>
+          </div>
+
+          <!-- TAB: Employees -->
+          <div id="sal-pane-emp">
+            <div id="sal-emp-content"></div>
+          </div>
+
+          <!-- TAB: Founders -->
+          <div id="sal-pane-founders" style="display:none">
+            <div id="sal-founders-content"></div>
+          </div>
+
+          <!-- TAB: Expenses -->
+          <div id="sal-pane-expenses" style="display:none">
+            <div id="sal-expenses-content"></div>
+          </div>
         </div>
 
         <!-- ADMIN PAGE -->
@@ -1026,6 +1065,7 @@ async function boot(user){
   document.getElementById('sb-urole').textContent=ROLE.toUpperCase();
   buildNav();
   await loadMeta();
+  await loadSalaryConfig();
   subLoads();
   subTrips();
   subManagerTasks();
@@ -1178,7 +1218,7 @@ function renderPg(pg){
   }
   if(pg==='owner')renderOwner();
   if(pg==='passwords')renderPasswords();
-  if(pg==='salary')renderSalary();
+  if(pg==='salary'){if(!salMonth)salInit();else renderSalary();}
   if(pg==='admin')renderAdmin();
 }
 
@@ -3204,45 +3244,409 @@ async function delPw(id){
 }
 
 /* ══ SALARY ══ */
-function renderSalary(){
-  const loads=LOADS.filter(l=>inW(l.date,curW));
-  const trips=TRIPS.filter(t=>inW(t.weekDate||t.createdDate,curW));
-  const rows=DRIVERS.map(d=>{
-    const dl=loads.filter(l=>l.driver===d.name);
-    const dt=trips.filter(t=>t.driverName===d.name);
-    const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
-    const overMin=dt.reduce((s,t)=>s+tripOverMin(t,d),0);
-    const sal=gross*(+(d.salaryPct||0)/100);
-    return{...d,loads:dl.length,gross,salary:sal,overMin};
-  });
-  const el=document.getElementById('sal-table');
-  el.innerHTML=`<div class="sal-row sal-head"><div>Driver</div><div>Loads</div><div>Gross</div><div>Min$/mi</div><div>Over Min</div><div>Sal%</div><div>Salary</div><div>Total</div></div>`+
-    rows.map(r=>`<div class="sal-row">
-      <div style="font-weight:600">${r.name}</div>
-      <div style="font-family:var(--mono)">${r.loads}</div>
-      <div style="font-family:var(--mono);color:var(--green)">$${fmt(r.gross)}</div>
-      <div style="font-family:var(--mono)">$${r.minRate||'—'}</div>
-      <div style="font-family:var(--mono);color:var(--orange)">$${fmt(r.overMin)}</div>
-      <div>${ROLE==='admin'?`<input type="number" value="${r.salaryPct||''}" placeholder="%" style="width:55px;border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:12px;font-family:var(--mono)" onblur="saveSalPct('${r.id}',this.value)">`:r.salaryPct?r.salaryPct+'%':'—'}</div>
-      <div style="font-family:var(--mono);color:var(--blue)">$${fmt(r.salary)}</div>
-      <div style="font-family:var(--mono);font-weight:700">$${fmt(r.salary+r.overMin)}</div>
-    </div>`).join('')+
-    `<div class="sal-row" style="font-weight:700;background:var(--surface2);border-top:2px solid var(--border)">
-      <div>TOTAL</div><div>${rows.reduce((s,r)=>s+r.loads,0)}</div>
-      <div style="color:var(--green);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.gross,0))}</div>
-      <div></div><div style="color:var(--orange);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.overMin,0))}</div>
-      <div></div>
-      <div style="color:var(--blue);font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary,0))}</div>
-      <div style="font-family:var(--mono)">$${fmt(rows.reduce((s,r)=>s+r.salary+r.overMin,0))}</div>
-    </div>`;
+/* ══ SALARY ══ */
+let salMonth=null; // 'YYYY-MM'
+let salWeekCount=4;
+let salTab='emp';
+
+function salInit(){
+  const now=new Date();
+  salMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  renderSalary();
 }
-async function saveSalPct(id,val){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'drivers',id),{salaryPct:parseFloat(val)||0});await loadMeta();notify('Saved')}
+
+function salMonthNav(dir){
+  const [y,m]=salMonth.split('-').map(Number);
+  const d=new Date(y,m-1+dir,1);
+  salMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  renderSalary();
+}
+
+function setSalWeekCount(n,btn){
+  salWeekCount=n;
+  ['sal-wk4','sal-wk5'].forEach(id=>{
+    const b=document.getElementById(id);
+    if(!b)return;
+    const active=id===`sal-wk${n}`;
+    b.style.background=active?'#eef2ff':'var(--surface2)';
+    b.style.borderColor=active?'#6366f1':'var(--border)';
+    b.style.color=active?'#6366f1':'var(--text3)';
+  });
+  renderSalary();
+}
+
+function setSalTab(tab,btn){
+  salTab=tab;
+  ['emp','founders','expenses'].forEach(t=>{
+    const b=document.getElementById(`sal-tab-${t}`);
+    const p=document.getElementById(`sal-pane-${t}`);
+    if(b){b.style.background=t===tab?'var(--navy)':'var(--surface2)';b.style.color=t===tab?'#fff':'var(--text3)';}
+    if(p)p.style.display=t===tab?'':'none';
+  });
+}
+
+function getSalWeeks(){
+  // Get all ISO weeks that fall within salMonth, limited to salWeekCount
+  if(!salMonth)return[];
+  const [y,m]=salMonth.split('-').map(Number);
+  const weeks=[];
+  const d=new Date(y,m-1,1);
+  // find all mondays in this month
+  while(d.getMonth()===m-1){
+    if(d.getDay()===1){
+      weeks.push(CWfrom(new Date(d)));
+    }
+    d.setDate(d.getDate()+1);
+  }
+  // Also check if first week starts in prev month
+  const first=new Date(y,m-1,1);
+  const firstW=CWfrom(first);
+  if(!weeks.includes(firstW))weeks.unshift(firstW);
+  // Dedupe and limit to salWeekCount
+  const unique=[...new Set(weeks)].sort();
+  return unique.slice(0,salWeekCount);
+}
+
+function renderSalary(){
+  if(!salMonth)salInit();
+  const [y,m]=salMonth.split('-').map(Number);
+  const monthName=new Date(y,m-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const lbl=document.getElementById('sal-month-lbl');
+  if(lbl)lbl.textContent=monthName;
+
+  const weeks=getSalWeeks();
+  const rangeEl=document.getElementById('sal-weeks-range');
+  if(rangeEl&&weeks.length){
+    const{start}=wRange(weeks[0]),{end}=wRange(weeks[weeks.length-1]);
+    rangeEl.textContent=`${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}  (${weeks.length} wks)`;
+  }
+
+  if(salTab==='emp') renderSalEmp(weeks);
+  else if(salTab==='founders') renderSalFounders();
+  else renderSalExpenses();
+}
+
+function renderSalEmp(weeks){
+  const el=document.getElementById('sal-emp-content');
+  if(!el)return;
+  const dispatchers=USERS.filter(u=>u.role==='dispatcher');
+  if(!dispatchers.length){el.innerHTML=`<div class="em"><div class="e">👥</div><p>No dispatchers.</p></div>`;return;}
+
+  let html='';
+  dispatchers.forEach(disp=>{
+    const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===disp.email);
+    // Calc gross per driver per week
+    let dispTotalSalary=0;
+    let dispTotalKpi=0;
+
+    // KPI bonus config for this dispatcher this month
+    const salCfg=(SALARY_CONFIG||{})[disp.id]||{};
+    const kpiWeeks=salCfg.kpiWeeks||{}; // {weekStr: {enabled:bool, amount:number}}
+
+    html+=`<div class="tc" style="margin-bottom:20px">
+      <div class="tc-top" style="background:linear-gradient(90deg,var(--navy),#243055)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="ua" style="width:30px;height:30px;font-size:12px">${avL(disp.name)}</div>
+          <div>
+            <div class="tc-title" style="color:#fff">${disp.name}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">${disp.email}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="text-align:right">
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">SALARY</div>
+            <div style="font-size:14px;font-weight:800;color:#34d399;font-family:var(--mono)" id="disp-sal-${disp.id}">$0</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">KPI BONUS</div>
+            <div style="font-size:14px;font-weight:800;color:#fbbf24;font-family:var(--mono)" id="disp-kpi-${disp.id}">$0</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">TOTAL</div>
+            <div style="font-size:14px;font-weight:800;color:#fff;font-family:var(--mono)" id="disp-tot-${disp.id}">$0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI weeks -->
+      <div style="padding:10px 16px;background:#fffbeb;border-bottom:1px solid #fde68a;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px">🎯 KPI Bonus pe săptămâni:</span>
+        ${weeks.map(w=>{
+          const kw=kpiWeeks[w]||{};
+          const enabled=kw.enabled||false;
+          const amt=kw.amount||0;
+          return`<div style="display:flex;align-items:center;gap:5px;background:${enabled?'#fef3c7':'var(--surface2)'};border:1.5px solid ${enabled?'#f59e0b':'var(--border)'};border-radius:8px;padding:4px 10px">
+            <input type="checkbox" ${enabled?'checked':''} onchange="toggleKpiWeek('${disp.id}','${w}',this.checked)" style="cursor:pointer;accent-color:#f59e0b">
+            <span style="font-size:10px;font-weight:600;color:var(--text2)">${wLbl(w).split('–')[0].trim()}</span>
+            ${enabled?`<input type="number" value="${amt}" min="0" placeholder="$" style="width:60px;border:1px solid #fcd34d;border-radius:5px;padding:2px 6px;font-size:11px;font-family:var(--mono);font-weight:700;color:#92400e" onblur="setKpiAmount('${disp.id}','${w}',this.value)" onclick="event.stopPropagation()">`:``}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Drivers table -->
+      <div class="tw"><table>
+        <thead><tr><th>DRIVER</th><th>SAL %</th>${weeks.map(w=>`<th style="font-size:9px">${wLbl(w).split('–')[0].trim()}<br><span style="font-weight:400;opacity:.6">gross/sal</span></th>`).join('')}<th>TOTAL GROSS</th><th>SALARY</th></tr></thead>
+        <tbody>`;
+
+    myDrivers.forEach(dr=>{
+      let driverTotalGross=0;
+      let driverTotalSal=0;
+      const pct=+(dr.salaryPct||0);
+      html+=`<tr>
+        <td style="font-weight:600">${dr.name}<br><span style="font-size:9px;color:var(--text3)">${dr.company||''}</span></td>
+        <td><input type="number" value="${pct||''}" placeholder="%" style="width:52px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--mono)" onblur="saveSalPct('${dr.id}',this.value)" title="Salary %"></td>`;
+      weeks.forEach(w=>{
+        const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
+        const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+        const sal=gross*(pct/100);
+        driverTotalGross+=gross;
+        driverTotalSal+=sal;
+        html+=`<td style="font-size:11px;font-family:var(--mono)">
+          <span style="color:var(--green)">$${fmt(gross)}</span><br>
+          <span style="color:var(--blue);font-size:10px">$${fmt(sal)}</span>
+        </td>`;
+      });
+      dispTotalSalary+=driverTotalSal;
+      html+=`<td style="font-family:var(--mono);color:var(--green);font-weight:700">$${fmt(driverTotalGross)}</td>
+        <td style="font-family:var(--mono);color:var(--blue);font-weight:700">$${fmt(driverTotalSal)}</td>
+      </tr>`;
+    });
+
+    // calc KPI total
+    weeks.forEach(w=>{const kw=kpiWeeks[w]||{};if(kw.enabled)dispTotalKpi+=+(kw.amount||0);});
+
+    html+=`</tbody></table></div></div>`;
+
+    // Update header totals after render via setTimeout
+    setTimeout(()=>{
+      const sEl=document.getElementById(`disp-sal-${disp.id}`);
+      const kEl=document.getElementById(`disp-kpi-${disp.id}`);
+      const tEl=document.getElementById(`disp-tot-${disp.id}`);
+      if(sEl)sEl.textContent=`$${fmt(dispTotalSalary)}`;
+      if(kEl)kEl.textContent=`$${fmt(dispTotalKpi)}`;
+      if(tEl)tEl.textContent=`$${fmt(dispTotalSalary+dispTotalKpi)}`;
+    },0);
+  });
+
+  el.innerHTML=html;
+}
+
+function renderSalFounders(){
+  const el=document.getElementById('sal-founders-content');
+  if(!el)return;
+  const cfg=SALARY_CONFIG||{};
+  const founders=cfg.founders||[];
+  const[y,m]=salMonth.split('-').map(Number);
+  const monthKey=salMonth;
+
+  let total=0;
+  let html=`<div class="tc">
+    <div class="tc-top">
+      <div class="tc-title">🏆 Founders Salary</div>
+      <button onclick="addFounderRow()" class="btn btn-ghost btn-sm">＋ Add Founder</button>
+    </div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:10px" id="founders-rows">`;
+
+  if(!founders.length){
+    html+=`<div style="color:var(--text3);font-size:13px;padding:10px 0">Niciun fondator adăugat. Apasă ＋ Add Founder.</div>`;
+  } else {
+    founders.forEach((f,i)=>{
+      const salaries=f.salaries||{};
+      const amt=salaries[monthKey]||0;
+      total+=amt;
+      html+=`<div style="display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:10px;padding:12px 16px;border:1px solid var(--border)">
+        <div style="flex:1">
+          <input value="${escQ(f.name||'')}" placeholder="Nume fondator" style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;font-weight:600;font-family:inherit;width:100%;box-sizing:border-box" onblur="updateFounderName(${i},this.value)">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--text3);font-weight:600">Salariu ${new Date(y,m-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'})}:</span>
+          <div style="position:relative">
+            <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3)">$</span>
+            <input type="number" value="${amt||''}" placeholder="0" style="border:1.5px solid var(--border);border-radius:8px;padding:6px 10px 6px 22px;font-size:14px;font-weight:700;font-family:var(--mono);width:120px;color:var(--navy)" onblur="setFounderSalary(${i},'${monthKey}',this.value)">
+          </div>
+        </div>
+        <button onclick="removeFounder(${i})" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px">🗑</button>
+      </div>`;
+    });
+  }
+
+  html+=`</div>
+    <div style="padding:12px 16px;border-top:2px solid var(--border);display:flex;justify-content:flex-end;align-items:center;gap:16px;background:var(--surface2)">
+      <span style="font-size:12px;font-weight:700;color:var(--text3)">TOTAL FONDATORI</span>
+      <span style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--navy)">$${fmt(total)}</span>
+    </div>
+  </div>`;
+  el.innerHTML=html;
+}
+
+function renderSalExpenses(){
+  const el=document.getElementById('sal-expenses-content');
+  if(!el)return;
+  const cfg=SALARY_CONFIG||{};
+  const expenses=cfg.expenses||[];
+  const monthKey=salMonth;
+
+  let totalFixed=0,totalVariable=0;
+
+  const fixedExp=expenses.filter(e=>e.type==='fixed');
+  const varExp=expenses.filter(e=>e.type==='variable');
+
+  fixedExp.forEach(e=>totalFixed+=+(e.amounts?.[monthKey]||e.amount||0));
+  varExp.forEach(e=>totalVariable+=+(e.amounts?.[monthKey]||e.amount||0));
+
+  const renderExpList=(list,type)=>list.map((e,i)=>{
+    const globalIdx=expenses.indexOf(e);
+    const amt=+(e.amounts?.[monthKey]||e.amount||0);
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><input value="${escQ(e.name||'')}" placeholder="Denumire cheltuială" style="border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box" onblur="updateExpName(${globalIdx},this.value)"></div>
+      <div style="position:relative">
+        <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">$</span>
+        <input type="number" value="${amt||''}" placeholder="0" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 9px 5px 20px;font-size:13px;font-weight:700;font-family:var(--mono);width:110px" onblur="setExpAmount(${globalIdx},'${monthKey}',this.value)" title="${type==='fixed'?'Sumă fixă (se aplică lunar)':'Sumă pentru această lună'}">
+      </div>
+      <button onclick="removeExpense(${globalIdx})" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">🗑</button>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <!-- Fixed -->
+    <div class="tc">
+      <div class="tc-top"><div class="tc-title">📌 Cheltuieli Fixe</div><button onclick="addExpense('fixed')" class="btn btn-ghost btn-sm">＋ Add</button></div>
+      ${renderExpList(fixedExp,'fixed')}
+      <div style="padding:10px 14px;border-top:2px solid var(--border);display:flex;justify-content:space-between;background:var(--surface2)">
+        <span style="font-size:11px;font-weight:700;color:var(--text3)">TOTAL FIX</span>
+        <span style="font-size:15px;font-weight:800;font-family:var(--mono);color:var(--red)">$${fmt(totalFixed)}</span>
+      </div>
+    </div>
+    <!-- Variable -->
+    <div class="tc">
+      <div class="tc-top"><div class="tc-title">📊 Cheltuieli Flotante</div><button onclick="addExpense('variable')" class="btn btn-ghost btn-sm">＋ Add</button></div>
+      ${renderExpList(varExp,'variable')}
+      <div style="padding:10px 14px;border-top:2px solid var(--border);display:flex;justify-content:space-between;background:var(--surface2)">
+        <span style="font-size:11px;font-weight:700;color:var(--text3)">TOTAL FLOTANT</span>
+        <span style="font-size:15px;font-weight:800;font-family:var(--mono);color:var(--orange)">$${fmt(totalVariable)}</span>
+      </div>
+    </div>
+  </div>
+  <!-- Grand total -->
+  <div style="margin-top:14px;background:linear-gradient(135deg,#1e293b,#334155);border-radius:12px;padding:16px 24px;display:flex;justify-content:space-between;align-items:center">
+    <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:700">TOTAL CHELTUIELI</span>
+    <span style="color:#fff;font-size:22px;font-weight:800;font-family:var(--mono)">$${fmt(totalFixed+totalVariable)}</span>
+  </div>`;
+}
+
+// ── Salary Config Helpers ──
+let SALARY_CONFIG={};
+async function loadSalaryConfig(){
+  const{getDocs,collection,query,where}=window._fb;
+  const snap=await getDocs(collection(window._db,'salaryConfig'));
+  SALARY_CONFIG=snap.empty?{}:{id:snap.docs[0].id,...snap.docs[0].data()};
+}
+async function saveSalaryConfig(){
+  const{setDoc,doc,addDoc,collection}=window._fb;
+  if(SALARY_CONFIG.id){
+    const{id,...data}=SALARY_CONFIG;
+    await setDoc(doc(window._db,'salaryConfig',id),data);
+  } else {
+    const{addDoc,collection}=window._fb;
+    const ref=await addDoc(collection(window._db,'salaryConfig'),SALARY_CONFIG);
+    SALARY_CONFIG.id=ref.id;
+  }
+}
+
+async function toggleKpiWeek(dispId,week,enabled){
+  if(!SALARY_CONFIG[dispId])SALARY_CONFIG[dispId]={};
+  if(!SALARY_CONFIG[dispId].kpiWeeks)SALARY_CONFIG[dispId].kpiWeeks={};
+  SALARY_CONFIG[dispId].kpiWeeks[week]={...( SALARY_CONFIG[dispId].kpiWeeks[week]||{}),enabled};
+  await saveSalaryConfig();
+  renderSalary();
+}
+async function setKpiAmount(dispId,week,val){
+  if(!SALARY_CONFIG[dispId])SALARY_CONFIG[dispId]={};
+  if(!SALARY_CONFIG[dispId].kpiWeeks)SALARY_CONFIG[dispId].kpiWeeks={};
+  SALARY_CONFIG[dispId].kpiWeeks[week]={...(SALARY_CONFIG[dispId].kpiWeeks[week]||{}),amount:parseFloat(val)||0};
+  await saveSalaryConfig();
+  renderSalary();
+}
+
+async function addFounderRow(){
+  if(!SALARY_CONFIG.founders)SALARY_CONFIG.founders=[];
+  SALARY_CONFIG.founders.push({name:'',salaries:{}});
+  await saveSalaryConfig();
+  renderSalFounders();
+}
+async function updateFounderName(i,name){
+  if(!SALARY_CONFIG.founders?.[i])return;
+  SALARY_CONFIG.founders[i].name=name;
+  await saveSalaryConfig();
+}
+async function setFounderSalary(i,monthKey,val){
+  if(!SALARY_CONFIG.founders?.[i])return;
+  if(!SALARY_CONFIG.founders[i].salaries)SALARY_CONFIG.founders[i].salaries={};
+  SALARY_CONFIG.founders[i].salaries[monthKey]=parseFloat(val)||0;
+  await saveSalaryConfig();
+  renderSalFounders();
+}
+async function removeFounder(i){
+  if(!confirm('Ștergi fondatorul?'))return;
+  SALARY_CONFIG.founders.splice(i,1);
+  await saveSalaryConfig();
+  renderSalFounders();
+}
+
+async function addExpense(type){
+  if(!SALARY_CONFIG.expenses)SALARY_CONFIG.expenses=[];
+  SALARY_CONFIG.expenses.push({name:'',type,amounts:{}});
+  await saveSalaryConfig();
+  renderSalExpenses();
+}
+async function updateExpName(i,name){
+  if(!SALARY_CONFIG.expenses?.[i])return;
+  SALARY_CONFIG.expenses[i].name=name;
+  await saveSalaryConfig();
+}
+async function setExpAmount(i,monthKey,val){
+  if(!SALARY_CONFIG.expenses?.[i])return;
+  if(!SALARY_CONFIG.expenses[i].amounts)SALARY_CONFIG.expenses[i].amounts={};
+  SALARY_CONFIG.expenses[i].amounts[monthKey]=parseFloat(val)||0;
+  await saveSalaryConfig();
+  renderSalExpenses();
+}
+async function removeExpense(i){
+  if(!confirm('Ștergi cheltuiala?'))return;
+  SALARY_CONFIG.expenses.splice(i,1);
+  await saveSalaryConfig();
+  renderSalExpenses();
+}
+
+async function saveSalPct(id,val){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',id),{salaryPct:parseFloat(val)||0});
+  await loadMeta();
+  notify('Saved ✓');
+}
+
+function openSalarySettingsModal(){ notify('Settings — coming soon','inf'); }
+
 function exportSalary(){
-  const loads=LOADS.filter(l=>inW(l.date,curW));
-  const trips=TRIPS.filter(t=>inW(t.weekDate||t.createdDate,curW));
-  let csv='Driver,Loads,Gross,Min$/mi,Over Min,Sal%,Salary,Total\n';
-  DRIVERS.forEach(d=>{const dl=loads.filter(l=>l.driver===d.name);const dt=trips.filter(t=>t.driverName===d.name);const g=dl.reduce((s,l)=>s+(+l.rate||0),0);const ov=dt.reduce((s,t)=>s+tripOverMin(t,d),0);const sal=g*(+(d.salaryPct||0)/100);csv+=`"${d.name}",${dl.length},$${fmt(g)},$${d.minRate||0},$${fmt(ov)},${d.salaryPct||0}%,$${fmt(sal)},$${fmt(sal+ov)}\n`});
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`salary_${curW}.csv`;a.click();notify('Exported ✓');
+  const weeks=getSalWeeks();
+  let csv=`Salary Export — ${salMonth}\n\n`;
+  const dispatchers=USERS.filter(u=>u.role==='dispatcher');
+  dispatchers.forEach(disp=>{
+    const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===disp.email);
+    csv+=`\nDispatcher: ${disp.name}\n`;
+    csv+=`Driver,Sal%,${weeks.map(w=>wLbl(w).split('–')[0].trim()).join(',')},Total Gross,Salary\n`;
+    myDrivers.forEach(dr=>{
+      const pct=+(dr.salaryPct||0);
+      let tg=0,ts=0;
+      const wcols=weeks.map(w=>{
+        const g=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w)).reduce((s,l)=>s+(+l.rate||0),0);
+        tg+=g;ts+=g*(pct/100);
+        return`$${fmt(g)}/$${fmt(g*(pct/100))}`;
+      }).join(',');
+      csv+=`"${dr.name}",${pct}%,${wcols},$${fmt(tg)},$${fmt(ts)}\n`;
+    });
+  });
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`salary_${salMonth}.csv`;a.click();notify('Exported ✓');
 }
 
 /* ══ ADMIN ══ */
