@@ -4040,15 +4040,21 @@ function exportSalary(){
 
 /* ══ ADMIN ══ */
 let _editUserId=null;
+function euToggleCo(){
+  const rl=document.getElementById('eu-rl').value;
+  document.getElementById('eu-co-wrap').style.display=rl==='owner'?'':'none';
+}
 function openEditUserModal(userId){
   const u=USERS.find(x=>x.id===userId);
   if(!u)return;
   _editUserId=userId;
   document.getElementById('eu-nm').value=u.name||'';
   document.getElementById('eu-rl').value=u.role||'dispatcher';
+  document.getElementById('eu-subtitle').textContent=u.email||'';
   // Populate company dropdown
   const coSel=document.getElementById('eu-co');
-  coSel.innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}" ${u.company===c.name?'selected':''}>${c.name}</option>`).join('');
+  coSel.innerHTML=`<option value="">— Selectează compania —</option>`+COMPANIES.map(c=>`<option value="${c.name}" ${u.company===c.name?'selected':''}>${c.name}</option>`).join('');
+  euToggleCo();
   om('m-edit-user');
 }
 
@@ -4978,31 +4984,50 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 
 <!-- EDIT USER MODAL -->
 <div class="ov" id="m-edit-user">
-  <div class="md" style="max-width:420px;width:95%">
-    <div class="mh"><span>✏ Edit User</span><button class="mc" onclick="cm('m-edit-user')">×</button></div>
-    <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:12px">
-      <div class="fg"><label>Full Name</label><input id="eu-nm" placeholder="John Smith"></div>
-      <div class="fg"><label>Role</label>
-        <select id="eu-rl">
-          <option value="dispatcher">Dispatcher</option>
-          <option value="accounting">Accounting</option>
-          <option value="accounting_manager">Accounting Manager</option>
-          <option value="manager">Manager</option>
-          <option value="owner">Owner</option>
-          <option value="admin">Admin</option>
+  <div class="md" style="max-width:440px;width:95%;padding:0;overflow:hidden;border-radius:18px">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a2744 0%,#243156 100%);padding:24px 24px 20px;position:relative">
+      <button onclick="cm('m-edit-user')" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;font-weight:700;margin-bottom:6px">ADMIN PANEL</div>
+      <div style="font-size:20px;font-weight:800;color:#fff">Edit User</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:3px" id="eu-subtitle">Update user details</div>
+    </div>
+    <!-- Body -->
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:var(--surface)">
+      <!-- Name -->
+      <div>
+        <label style="font-size:10px;font-weight:800;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px">Full Name</label>
+        <input id="eu-nm" placeholder="John Smith" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:14px;color:var(--navy);background:var(--bg);outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <!-- Role -->
+      <div>
+        <label style="font-size:10px;font-weight:800;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px">Role</label>
+        <select id="eu-rl" onchange="euToggleCo()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:14px;color:var(--navy);background:var(--bg);outline:none;box-sizing:border-box;cursor:pointer">
+          <option value="dispatcher">🚛 Dispatcher</option>
+          <option value="accounting">💰 Accounting</option>
+          <option value="accounting_manager">💰 Accounting Manager</option>
+          <option value="manager">📊 Manager</option>
+          <option value="owner">🏢 Owner</option>
+          <option value="admin">⚙️ Admin</option>
         </select>
       </div>
-      <div class="fg">
-        <label>Company <span style="font-size:10px;color:var(--orange);font-weight:600">(obligatoriu pentru Owner)</span></label>
-        <select id="eu-co"><option value="">— None —</option></select>
+      <!-- Company (shown for owner) -->
+      <div id="eu-co-wrap">
+        <label style="font-size:10px;font-weight:800;color:var(--orange);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px">Company <span style="color:var(--text3);font-weight:600">(obligatoriu pentru Owner)</span></label>
+        <select id="eu-co" style="width:100%;padding:10px 14px;border:1.5px solid var(--orange);border-radius:10px;font-family:var(--font);font-size:14px;color:var(--navy);background:var(--bg);outline:none;box-sizing:border-box;cursor:pointer">
+          <option value="">— Selectează compania —</option>
+        </select>
       </div>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;font-size:12px;color:#1e40af">
-        💡 Emailul nu se poate modifica. Pentru a schimba emailul, șterge și recreează userul.
+      <!-- Info note -->
+      <div style="display:flex;gap:10px;align-items:flex-start;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:11px 13px">
+        <span style="font-size:16px;flex-shrink:0">💡</span>
+        <span style="font-size:12px;color:#0369a1;line-height:1.5">Emailul nu poate fi modificat. Pentru a schimba emailul, șterge și recreează userul.</span>
       </div>
     </div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-edit-user')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditUser()">Save Changes</button>
+    <!-- Footer -->
+    <div style="display:flex;gap:10px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface)">
+      <button onclick="cm('m-edit-user')" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;color:var(--text2)">Cancel</button>
+      <button onclick="saveEditUser()" style="flex:2;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#243156'" onmouseout="this.style.background='var(--navy)'">Save Changes</button>
     </div>
   </div>
 </div>
