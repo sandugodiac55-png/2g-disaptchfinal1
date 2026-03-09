@@ -1009,6 +1009,7 @@ async function boot(user){
   subTrips();
   subManagerTasks();
   subDailyTasks();
+  subEscalations();
   curW=CW(); // Always start on current real week
   updateWkLbl();
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
@@ -1026,10 +1027,12 @@ function buildNav(){
   };
   const items=(maps[ROLE]||maps.dispatcher);
   const pendingMgrTasks=(MANAGER_TASKS||[]).filter(t=>t.status==='pending').length;
+  const pendingEsc=(ESCALATIONS||[]).filter(e=>e.status==='pending').length;
+  const problemBadgeCount=pendingMgrTasks+pendingEsc;
   document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>{
     const isSubItem=i.id.startsWith('acc-');
-    const badge=(i.id==='acc-problem'&&pendingMgrTasks>0)
-      ?` <span style="background:var(--orange);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${pendingMgrTasks}</span>`:'';
+    const badge=(i.id==='acc-problem'&&problemBadgeCount>0)
+      ?` <span style="background:var(--orange);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${problemBadgeCount}</span>`:'';
     return`<div class="sni" data-pg="${i.id}" onclick="${i.id==='accounting'?'accView=\'companies\';accSelCo=null;accSelDrv=null;':''} showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}${badge}</div>`;
   }).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
@@ -2118,9 +2121,8 @@ function renderAccView(){
   if(accView==='drivers')renderAccDrivers();
 }
 function getMyCompanies(){
-  // Accounting users see only their assigned companies (stored in user.companies[])
-  // Admin sees all
-  if(ROLE==='admin')return COMPANIES;
+  // Admin and accounting_manager see all companies
+  if(ROLE==='admin'||ROLE==='accounting_manager')return COMPANIES;
   const me=USERS.find(u=>u.email===CU.email);
   const myCos=me?.companies||[];
   if(!myCos.length)return COMPANIES; // fallback: show all if none assigned
@@ -2219,7 +2221,7 @@ function accLoadRow(l,canEdit,cols){
     <td style="white-space:nowrap">${canEdit?(
       l.accFlag==='problem'
         ?`<span style="font-size:9px;background:#fff7ed;border:1px solid #fed7aa;color:#ea580c;border-radius:4px;padding:2px 6px;font-weight:700">🤝 Escalated</span>`
-        :`<button onclick="openEscalateModal('${l.id}')" title="Escalate to Accounting Manager" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🆘 Escalate</button>`
+        :`<button onclick="openEscalateModal()" title="Escalate to Accounting Manager" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🆘 Escalate</button>`
     ):''}</td>
   </tr>`;
 }
@@ -2507,43 +2509,55 @@ function openManagerTask(loadId){
   om('m-manager-task');
 }
 function openEscalateModal(loadId){
-  const l=LOADS.find(x=>x.id===loadId);if(!l)return;
-  document.getElementById('esc-load-id').value=loadId;
-  document.getElementById('esc-load-info').querySelector('span:last-child').innerHTML=
-    `<strong>${l.orderId||'?'}</strong> &nbsp;·&nbsp; ${l.driver||'?'} &nbsp;·&nbsp; <span style="color:#16a34a">$${fmt(+l.rate||0)}</span> &nbsp;·&nbsp; ${l.payMethod||'—'} &nbsp;·&nbsp; ${l.origin||'—'} → ${l.dest||'—'}`;
+  // loadId is now optional — escalation is a standalone task
+  document.getElementById('esc-title').value='';
   document.getElementById('esc-desc').value='';
-  document.getElementById('esc-file-preview').textContent='';
+  document.getElementById('esc-files-preview').innerHTML='';
+  const fi=document.getElementById('esc-files');if(fi)fi.value='';
   om('m-escalate');
 }
-function previewEscFile(input){
-  document.getElementById('esc-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
+function previewEscFiles(input){
+  const prev=document.getElementById('esc-files-preview');
+  prev.innerHTML=[...input.files].map(f=>`<span style="background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:2px 8px;font-size:10px;color:#dc2626;font-weight:600">📄 ${f.name}</span>`).join('');
 }
+// keep old name for backward compat
+function previewEscFile(input){previewEscFiles(input);}
 async function submitEscalate(){
+  const title=document.getElementById('esc-title').value.trim();
   const desc=document.getElementById('esc-desc').value.trim();
-  if(!desc){notify('Please describe the issue','err');return}
-  const loadId=document.getElementById('esc-load-id').value;
-  const l=LOADS.find(x=>x.id===loadId);
-  const{addDoc,collection,updateDoc,doc,serverTimestamp}=window._fb;
-  // 1. Flag load as problem → appears in Manager Inv. section
-  await updateDoc(doc(window._db,'loads',loadId),{accFlag:'problem'});
-  // 2. Create manager task notification with full load info
-  await addDoc(collection(window._db,'managerTasks'),{
-    loadId,
-    orderId:l?.orderId||'?',
-    driver:l?.driver||'?',
-    company:l?.company||'?',
-    rate:l?.rate||0,
-    payMethod:l?.payMethod||'—',
-    route:(l?.origin||'—')+' → '+(l?.dest||'—'),
+  if(!title){notify('Please add a title','err');return;}
+  if(!desc){notify('Please describe the issue','err');return;}
+  const btn=document.getElementById('esc-submit-btn');
+  btn.disabled=true;btn.textContent='Sending…';
+  const{addDoc,collection,serverTimestamp}=window._fb;
+  // Deadline = 2 days from now
+  const deadline=new Date();deadline.setDate(deadline.getDate()+2);
+  const deadlineStr=deadline.toISOString().split('T')[0];
+  // Convert attached files to base64 for Firestore storage
+  const fileInput=document.getElementById('esc-files');
+  const attachments=[];
+  if(fileInput?.files?.length){
+    for(const f of fileInput.files){
+      const b64=await new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(f);});
+      attachments.push({name:f.name,type:f.type,data:b64});
+    }
+  }
+  await addDoc(collection(window._db,'escalations'),{
+    title,
     description:desc,
+    attachments,
     status:'pending',
+    deadline:deadlineStr,
     createdBy:CU.email,
     createdByName:CP.name||CU.email,
-    createdAt:serverTimestamp()
+    createdAt:serverTimestamp(),
+    resolutionComment:'',
+    resolvedBy:'',
+    resolvedAt:null
   });
+  btn.disabled=false;btn.textContent='🆘 Send to Manager';
   cm('m-escalate');
-  notify('🆘 Escalated to Accounting Manager');
-  // Rebuild nav badge
+  notify('🆘 Escalation sent — 2-day deadline set');
   buildNav();
 }
 function previewMTaskFile(input){
@@ -2569,7 +2583,7 @@ async function submitManagerTask(){
 }
 
 /* ══ DAILY TASKS ══ */
-let MANAGER_TASKS=[], DAILY_TASKS=[];
+let MANAGER_TASKS=[], DAILY_TASKS=[], ESCALATIONS=[];
 function subManagerTasks(){
   const{onSnapshot,collection,query,orderBy}=window._fb;
   onSnapshot(query(collection(window._db,'managerTasks'),orderBy('createdAt','desc')),snap=>{
@@ -2584,39 +2598,86 @@ function subDailyTasks(){
     if(document.getElementById('pg-acc-tasks')?.classList.contains('act'))renderTasksPage();
   });
 }
+function subEscalations(){
+  const{onSnapshot,collection,query,orderBy}=window._fb;
+  onSnapshot(query(collection(window._db,'escalations'),orderBy('createdAt','desc')),snap=>{
+    ESCALATIONS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    buildNav();
+    const pg=document.getElementById('pg-acc-tasks');
+    if(pg?.classList.contains('show'))renderTasksPage();
+  });
+}
 function renderTasksPage(){
   const canCreate=ROLE==='admin'||ROLE==='accounting_manager';
-  // Add task button (only admin/accounting_manager)
+  const canSeeEsc=ROLE==='admin'||ROLE==='accounting_manager'||ROLE==='accounting';
+  const canResolve=ROLE==='admin'||ROLE==='accounting_manager';
+  // Add task button
   const btnArea=document.getElementById('tasks-add-btn-area');
-  if(btnArea)btnArea.innerHTML=canCreate?`<button class="btn btn-orange" onclick="om('m-add-task')">＋ Add Task</button>`:'';
+  if(btnArea){
+    let btns='';
+    if(canCreate) btns+=`<button class="btn btn-orange" onclick="om('m-add-task')">＋ Add Task</button>`;
+    if(canSeeEsc) btns+=`<button class="btn btn-sm" style="background:#fef2f2;border:1.5px solid #fecaca;color:#dc2626;font-weight:700" onclick="openEscalateModal()">🆘 Escalate Issue</button>`;
+    btnArea.innerHTML=btns;
+  }
   document.getElementById('tasks-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  // Manager task notifications
-  const pending=MANAGER_TASKS.filter(t=>t.status==='pending');
+
+  // ── ESCALATIONS SECTION ──
   const mReqs=document.getElementById('tasks-manager-reqs');
-  if(mReqs){
-    if(pending.length&&(ROLE==='accounting_manager'||ROLE==='admin')){
-      mReqs.innerHTML=`<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:var(--r);overflow:hidden">
-        <div style="padding:12px 16px;background:#fff3e0;display:flex;align-items:center;gap:8px">
-          <span style="font-size:16px">🤝</span>
-          <div style="font-weight:700;color:#ea580c">Manager Involvement Required — ${pending.length} load${pending.length!==1?'s':''}</div>
+  if(mReqs&&canSeeEsc){
+    const pendingEsc=ESCALATIONS.filter(e=>e.status==='pending');
+    const resolvedEsc=ESCALATIONS.filter(e=>e.status==='resolved').slice(0,5);
+    let html='';
+    if(pendingEsc.length){
+      html+=`<div style="background:#fff;border:1.5px solid #fecaca;border-radius:var(--r);overflow:hidden;margin-bottom:12px">
+        <div style="padding:12px 16px;background:#fef2f2;display:flex;align-items:center;gap:8px;border-bottom:1px solid #fecaca">
+          <span style="font-size:16px">🆘</span>
+          <div style="font-weight:700;color:#dc2626;font-size:13px">Pending Escalations — ${pendingEsc.length}</div>
         </div>
-        ${pending.map(t=>`<div style="padding:12px 16px;border-top:1px solid #fed7aa;display:flex;align-items:flex-start;gap:12px">
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;color:var(--navy)">Load ${t.orderId} · ${t.driver} · <span style="color:var(--green)">$${fmt(+t.rate||0)}</span></div>
-            <div style="font-size:11px;color:var(--text3)">${t.company||''} · ${t.payMethod||''} · ${t.route||''}</div>
-            <div style="font-size:11px;color:var(--text2);margin:4px 0;background:#fff;border-radius:5px;padding:5px 8px">${t.description}</div>
-            <div style="font-size:10px;color:var(--text3)">Escalated by: <strong>${t.createdByName}</strong></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-            <button onclick="openTaskForEscalation('${t.id}','${t.orderId}','${t.driver}')" style="background:#fff3e0;border:1px solid #fed7aa;color:#ea580c;border-radius:5px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer">📋 Create Task</button>
-            <button onclick="resolveManagerTask('${t.id}','${t.loadId}')" class="btn btn-sm btn-teal">✓ Resolved</button>
-          </div>
+        ${pendingEsc.map(e=>{
+          const deadline=e.deadline?new Date(e.deadline+'T23:59:59'):null;
+          const daysLeft=deadline?Math.ceil((deadline-new Date())/86400000):null;
+          const overdue=daysLeft!==null&&daysLeft<0;
+          const deadlineBadge=daysLeft===null?''
+            :overdue?`<span style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">🔴 ${Math.abs(daysLeft)}d overdue</span>`
+            :daysLeft===0?`<span style="background:#fff7ed;border:1px solid #fed7aa;color:#ea580c;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">⚠️ Due today</span>`
+            :`<span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">📅 ${daysLeft}d left</span>`;
+          return`<div style="padding:14px 16px;border-bottom:1px solid #fee2e2;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#fef9f9'" onmouseout="this.style.background=''" onclick="openEscDetailModal('${e.id}')">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+                  <span style="font-size:13px;font-weight:700;color:#1e293b">${e.title||'Untitled'}</span>
+                  ${deadlineBadge}
+                </div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:6px">${(e.description||'').slice(0,120)}${(e.description||'').length>120?'…':''}</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:10px;color:#94a3b8">By: <strong>${e.createdByName||e.createdBy}</strong></span>
+                  ${e.deadline?`<span style="font-size:10px;color:#94a3b8">Deadline: ${e.deadline}</span>`:''}
+                  ${e.attachments?.length?`<span style="font-size:10px;color:#dc2626">📎 ${e.attachments.length} file${e.attachments.length>1?'s':''}</span>`:''}
+                </div>
+              </div>
+              <span style="font-size:11px;color:#94a3b8;flex-shrink:0;margin-top:2px">Click to view ›</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    if(resolvedEsc.length){
+      html+=`<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px;opacity:.7">
+        <div style="padding:10px 16px;background:var(--surface2);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">
+          <span style="font-size:13px">✅</span>
+          <div style="font-weight:700;color:var(--text2);font-size:12px">Recently Resolved (${resolvedEsc.length})</div>
+        </div>
+        ${resolvedEsc.map(e=>`<div style="padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''" onclick="openEscDetailModal('${e.id}')">
+          <div style="font-size:12px;font-weight:600;color:var(--text2)">${e.title||'Untitled'}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Resolved${e.resolvedAt?' · '+e.resolvedAt.split('T')[0]:''} ${e.resolvedBy?'by '+e.resolvedBy:''}</div>
         </div>`).join('')}
       </div>`;
-    } else mReqs.innerHTML='';
+    }
+    if(!pendingEsc.length&&!resolvedEsc.length) html='';
+    mReqs.innerHTML=html;
   }
+
   // Daily tasks
-  const today=new Date().toISOString().split('T')[0];
   const active=DAILY_TASKS.filter(t=>t.status!=='done');
   const done=DAILY_TASKS.filter(t=>t.status==='done').slice(0,10);
   const priBg={low:'#eff6ff',normal:'var(--surface)',high:'#fff7ed'};
@@ -2640,9 +2701,98 @@ function renderTasksPage(){
 async function resolveManagerTask(id,loadId){
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'managerTasks',id),{status:'resolved',resolvedAt:new Date().toISOString()});
-  // Also clear the problem flag on the load
   if(loadId){await updateDoc(doc(window._db,'loads',loadId),{accFlag:''});}
-  notify('✓ Resolved — load removed from Manager Inv.');
+  notify('✓ Resolved');
+}
+
+let _escDetailId=null;
+function openEscDetailModal(escId){
+  const e=ESCALATIONS.find(x=>x.id===escId);if(!e)return;
+  _escDetailId=escId;
+  const canResolve=ROLE==='admin'||ROLE==='accounting_manager';
+  const isResolved=e.status==='resolved';
+
+  document.getElementById('esc-detail-title').textContent=e.title||'Untitled';
+  document.getElementById('esc-detail-meta').textContent=`Created by ${e.createdByName||e.createdBy} · ${e.createdAt?.toDate?.()?.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})||''}`;
+  document.getElementById('esc-detail-desc').textContent=e.description||'';
+  document.getElementById('esc-detail-by').textContent=`Escalated by: ${e.createdByName||e.createdBy}`;
+
+  // Deadline badge
+  const deadline=e.deadline?new Date(e.deadline+'T23:59:59'):null;
+  const daysLeft=deadline?Math.ceil((deadline-new Date())/86400000):null;
+  const overdue=daysLeft!==null&&daysLeft<0;
+  const dbEl=document.getElementById('esc-detail-deadline-badge');
+  if(daysLeft===null||isResolved){dbEl.innerHTML=isResolved?`<span style="background:rgba(255,255,255,.2);border-radius:6px;padding:3px 10px;font-size:10px;color:#fff;font-weight:700">✅ Resolved</span>`:''}
+  else if(overdue){dbEl.innerHTML=`<span style="background:#7f1d1d;border-radius:6px;padding:3px 10px;font-size:10px;color:#fca5a5;font-weight:700">🔴 ${Math.abs(daysLeft)}d overdue</span>`}
+  else if(daysLeft===0){dbEl.innerHTML=`<span style="background:rgba(0,0,0,.3);border-radius:6px;padding:3px 10px;font-size:10px;color:#fcd34d;font-weight:700">⚠️ Due today</span>`}
+  else{dbEl.innerHTML=`<span style="background:rgba(255,255,255,.15);border-radius:6px;padding:3px 10px;font-size:10px;color:#fff;font-weight:700">📅 ${daysLeft}d left</span>`}
+
+  // Attachments
+  const attWrap=document.getElementById('esc-detail-attachments-wrap');
+  const attDiv=document.getElementById('esc-detail-attachments');
+  if(e.attachments?.length){
+    attWrap.style.display='';
+    attDiv.innerHTML=e.attachments.map(a=>{
+      const isImg=a.type?.startsWith('image/');
+      return isImg
+        ?`<a href="${a.data}" download="${a.name}" target="_blank"><img src="${a.data}" alt="${a.name}" style="max-width:120px;max-height:90px;border-radius:8px;border:1px solid var(--border);cursor:pointer;object-fit:cover" title="${a.name}"></a>`
+        :`<a href="${a.data}" download="${a.name}" style="display:flex;align-items:center;gap:5px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--blue);text-decoration:none;font-weight:600">📄 ${a.name}</a>`;
+    }).join('');
+  } else { attWrap.style.display='none'; }
+
+  // Resolution section
+  const commentInput=document.getElementById('esc-detail-comment');
+  const resWrap=document.getElementById('esc-detail-resolution-wrap');
+  const resDiv=document.getElementById('esc-detail-resolution');
+  const resolveBtn=document.getElementById('esc-detail-resolve-btn');
+
+  if(isResolved){
+    commentInput.style.display='none';
+    resWrap.style.display='';
+    resDiv.textContent=e.resolutionComment||'—';
+    resolveBtn.style.display='none';
+  } else {
+    commentInput.style.display='';
+    commentInput.value='';
+    resWrap.style.display='none';
+    if(canResolve){
+      resolveBtn.style.display='';
+      resolveBtn.disabled=true;
+      resolveBtn.style.cssText='padding:9px 18px;border-radius:8px;border:none;background:#d1fae5;color:#6b7280;font-size:12px;font-weight:700;cursor:not-allowed;font-family:inherit;transition:all .2s';
+    } else {
+      resolveBtn.style.display='none';
+    }
+  }
+
+  om('m-esc-detail');
+}
+
+function onEscDetailCommentInput(){
+  const val=document.getElementById('esc-detail-comment').value.trim();
+  const btn=document.getElementById('esc-detail-resolve-btn');
+  if(!btn)return;
+  if(val){
+    btn.disabled=false;
+    btn.style.cssText='padding:9px 18px;border-radius:8px;border:none;background:var(--green);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 2px 8px rgba(16,185,129,.3)';
+  } else {
+    btn.disabled=true;
+    btn.style.cssText='padding:9px 18px;border-radius:8px;border:none;background:#d1fae5;color:#6b7280;font-size:12px;font-weight:700;cursor:not-allowed;font-family:inherit;transition:all .2s';
+  }
+}
+
+async function resolveEscalationTask(){
+  if(ROLE!=='admin'&&ROLE!=='accounting_manager'){notify('No permission','err');return;}
+  const comment=document.getElementById('esc-detail-comment').value.trim();
+  if(!comment){notify('Please add a resolution comment','err');return;}
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'escalations',_escDetailId),{
+    status:'resolved',
+    resolutionComment:comment,
+    resolvedBy:CP.name||CU.email,
+    resolvedAt:new Date().toISOString()
+  });
+  cm('m-esc-detail');
+  notify('✅ Escalation resolved');
 }
 function openAccTaskModal(){
   // Create task specifically for manager from Manager Inv. page
@@ -3097,46 +3247,88 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
 </div>
 
-<!-- ESCALATE MODAL -->
+<!-- ESCALATE MODAL — standalone task, no load required -->
 <div class="ov" id="m-escalate">
-  <div class="mw" style="max-width:500px;border-radius:16px;overflow:hidden;padding:0">
-    <!-- Header -->
+  <div class="mw" style="max-width:520px;border-radius:16px;overflow:hidden;padding:0">
     <div style="background:linear-gradient(135deg,#7f1d1d 0%,#dc2626 100%);padding:24px 28px 20px;position:relative">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🆘</div>
         <div>
           <div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:-.2px">Escalate to Manager</div>
-          <div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:1px">This load will be flagged for manager review</div>
+          <div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:1px">Creates a task for admin & accounting manager · 2-day deadline</div>
         </div>
       </div>
-      <div onclick="cm('m-escalate')" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+      <div onclick="cm('m-escalate')" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
     </div>
-    <!-- Load info pill -->
-    <div style="background:#fef2f2;padding:12px 28px;border-bottom:1px solid #fecaca">
-      <div id="esc-load-info" style="font-size:12px;color:#991b1b;font-weight:600;display:flex;align-items:center;gap:6px"><span>📦</span><span></span></div>
-    </div>
-    <input type="hidden" id="esc-load-id">
-    <!-- Body -->
     <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;background:#fff">
       <div>
-        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Problem Description <span style="color:#ef4444">*</span></label>
-        <textarea id="esc-desc" style="width:100%;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:100px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="What happened? What did you try? What do you need from the manager..." onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#fecaca'"></textarea>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Title <span style="color:#ef4444">*</span></label>
+        <input id="esc-title" style="width:100%;border:1.5px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" placeholder="Short summary of the issue…" onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#fecaca'">
       </div>
       <div>
-        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Attach Document / Photo <span style="font-weight:400;text-transform:none">(optional)</span></label>
-        <div onclick="document.getElementById('esc-file').click()" style="border:2px dashed #fecaca;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#fef9f9;transition:all .2s" onmouseover="this.style.borderColor='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#fecaca';this.style.background='#fef9f9'">
-          <div style="font-size:26px;margin-bottom:4px">📎</div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Description <span style="color:#ef4444">*</span></label>
+        <textarea id="esc-desc" style="width:100%;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:90px;outline:none;box-sizing:border-box;color:#1e293b" placeholder="What happened? What do you need from the manager?" onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#fecaca'"></textarea>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Attach Photos / Documents <span style="font-weight:400;text-transform:none">(optional, multiple)</span></label>
+        <div onclick="document.getElementById('esc-files').click()" style="border:2px dashed #fecaca;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#fef9f9;transition:all .2s" onmouseover="this.style.borderColor='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#fecaca';this.style.background='#fef9f9'">
+          <div style="font-size:24px;margin-bottom:4px">📎</div>
           <div style="font-size:12px;font-weight:600;color:#dc2626">Click to upload</div>
-          <div style="font-size:10px;color:#94a3b8;margin-top:2px">PDF, JPG, PNG</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">PDF, JPG, PNG — multiple files allowed</div>
         </div>
-        <input type="file" id="esc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewEscFile(this)">
-        <div id="esc-file-preview" style="margin-top:6px;font-size:11px;color:#dc2626;font-weight:600"></div>
+        <input type="file" id="esc-files" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="previewEscFiles(this)">
+        <div id="esc-files-preview" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
     </div>
-    <!-- Footer -->
     <div style="padding:16px 28px 22px;background:#fef9f9;border-top:1px solid #fee2e2;display:flex;justify-content:flex-end;gap:10px">
       <button onclick="cm('m-escalate')" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
-      <button onclick="submitEscalate()" style="padding:10px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(220,38,38,.35)">🆘 Send to Manager</button>
+      <button onclick="submitEscalate()" id="esc-submit-btn" style="padding:10px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(220,38,38,.35)">🆘 Send to Manager</button>
+    </div>
+  </div>
+</div>
+
+<!-- ESCALATION TASK DETAIL MODAL -->
+<div class="ov" id="m-esc-detail">
+  <div class="mw" style="max-width:560px;border-radius:16px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);padding:20px 28px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px">🆘</div>
+        <div style="flex:1">
+          <div id="esc-detail-title" style="color:#fff;font-size:15px;font-weight:700"></div>
+          <div id="esc-detail-meta" style="color:rgba(255,255,255,.6);font-size:10px;margin-top:2px"></div>
+        </div>
+        <div id="esc-detail-deadline-badge"></div>
+      </div>
+      <div onclick="cm('m-esc-detail')" style="position:absolute;top:16px;right:16px;width:26px;height:26px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:15px" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+    </div>
+    <div style="padding:20px 28px;background:#fff;display:flex;flex-direction:column;gap:16px;max-height:65vh;overflow-y:auto">
+      <!-- Description -->
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px">Description</div>
+        <div id="esc-detail-desc" style="font-size:13px;color:#1e293b;background:#f8fafc;border-radius:8px;padding:12px 14px;line-height:1.6"></div>
+      </div>
+      <!-- Attachments -->
+      <div id="esc-detail-attachments-wrap">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:8px">Attachments</div>
+        <div id="esc-detail-attachments" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+      <!-- Resolution comment -->
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px">Resolution Comment <span style="color:#ef4444">*</span> <span style="font-weight:400;text-transform:none;color:#94a3b8">— required to resolve</span></div>
+        <textarea id="esc-detail-comment" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;outline:none;box-sizing:border-box;color:#1e293b" placeholder="Describe what was done to resolve this issue…" oninput="onEscDetailCommentInput()" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+      </div>
+      <!-- Existing resolution comment (if already resolved) -->
+      <div id="esc-detail-resolution-wrap" style="display:none">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:6px">✓ Resolution</div>
+        <div id="esc-detail-resolution" style="font-size:12px;color:#1e293b;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px"></div>
+      </div>
+    </div>
+    <div style="padding:14px 28px 20px;background:#f8fafc;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div id="esc-detail-by" style="font-size:11px;color:#94a3b8"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="cm('m-esc-detail')" style="padding:9px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Close</button>
+        <button id="esc-detail-resolve-btn" onclick="resolveEscalationTask()" disabled style="padding:9px 18px;border-radius:8px;border:none;background:#d1fae5;color:#6b7280;font-size:12px;font-weight:700;cursor:not-allowed;font-family:inherit;transition:all .2s">✓ Mark Resolved</button>
+      </div>
     </div>
   </div>
 </div>
