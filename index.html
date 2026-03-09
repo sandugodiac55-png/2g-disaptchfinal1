@@ -765,13 +765,14 @@ function isLocked(drvName,week){
   const w=week||curW;
   const d=DRIVERS.find(x=>x.name===drvName);
   if(!d)return false;
-  // Admin is never locked
   if(ROLE==='admin')return false;
-  // Check if admin granted edit permission for this week
+  // Admin granted explicit edit access for this week
   if((d.unlockedWeeks||[]).includes(w))return false;
-  // Locked if this specific week is locked
+  // Week is in closedWeeks array = permanently locked
+  if((d.closedWeeks||[]).includes(w))return true;
+  // Week is currently locked (not yet opened new week)
   if(d.weekLocked===w)return true;
-  // Locked if this week is older than the currently locked week
+  // Week is older than current lock (belt-and-suspenders)
   if(d.weekLocked&&w<d.weekLocked)return true;
   return false;
 }
@@ -1595,8 +1596,11 @@ async function rejectEditReq(reqId){
 async function toggleLock(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
   if(ROLE!=='admin'){notify('Only admin can unlock','err');return}
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:''});
+  const dUnlock=DRIVERS.find(x=>x.id===drvId);
+  const{updateDoc,doc,arrayRemove:aRem}=window._fb;
+  const updUnlock={weekLocked:''};
+  if(dUnlock?.weekLocked)updUnlock.closedWeeks=aRem(dUnlock.weekLocked);
+  await updateDoc(doc(window._db,'drivers',drvId),updUnlock);
   await loadMeta();notify('Week unlocked');
 }
 async function closeWeek(drvId){
@@ -1633,17 +1637,21 @@ async function closeWeek(drvId){
 
   if(!confirm('Close week for '+d.name+'?\nGross: $'+fmt(gross)+'\n\n'+wLoads.length+' loads in '+wTrips.length+' trips.'))return;
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:curW,weekClosedGross:gross,weekClosedAt:new Date().toISOString()});
+  const{arrayUnion:aU2}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:curW,weekClosedGross:gross,weekClosedAt:new Date().toISOString(),closedWeeks:aU2(curW)});
   await loadMeta();
   notify('Week closed! Gross: $'+fmt(gross)+' 🔒');
 }
 async function openNewWeek(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
   if(!confirm('Open new week for '+d.name+'?'))return;
-  const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:''});
+  const{updateDoc,doc,arrayUnion}=window._fb;
+  // Save the closed week to closedWeeks[] before clearing weekLocked
+  const closedWk=d.weekLocked;
+  const updateData={weekLocked:''};
+  if(closedWk)updateData.closedWeeks=arrayUnion(closedWk);
+  await updateDoc(doc(window._db,'drivers',drvId),updateData);
   await loadMeta();
-  // Go to current real week, not next
   curW=CW();
   updateWkLbl();
   renderCur();
