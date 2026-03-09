@@ -912,64 +912,62 @@ function copyText(text,label){
   });
 }
 
-/* ══ DISPATCHER WEEK LOCK ══ */
-// CP.activeWeek = săptămâna în care lucrează dispatcher-ul curent
-// null / undefined = lucrează în săptămâna reală curentă (CW())
-// dacă e setat = lucrează în acea săptămână, celelalte sunt blocate
+/* ══ PER-DRIVER WEEK LOCK ══
+   Storage: driver doc gets driverWeeks[driverId] = { activeWeek, closedWeeks[] }
+   - activeWeek: the week the dispatcher is currently working on for that driver
+   - null = working on the real current week (CW())
+   - closedWeeks[]: list of week strings that are locked for that driver
+   Admin can always edit/delete anything regardless of lock state.
+══ */
 
-function getDispActiveWeek(){
-  // Săptămâna activă a dispatcher-ului curent
-  if(ROLE==='admin')return CW(); // admin vede tot
-  return CP.activeWeek||null; // null = nu a deschis încă o săptămână nouă
+function getDrvActiveWeek(drvId){
+  // Returns the active work week for a specific driver
+  if(ROLE==='admin') return CW();
+  const dw=(CP.driverWeeks||{})[drvId];
+  return (dw&&dw.activeWeek)||null;
 }
 
-function getWorkWeek(){
-  // Săptămâna în care dispatcher-ul adaugă loaduri
-  if(ROLE==='admin')return CW();
-  return CP.activeWeek||CW();
+function getDrvWorkWeek(drvId){
+  // The week new loads go into for this driver
+  if(ROLE==='admin') return CW();
+  return getDrvActiveWeek(drvId)||CW();
 }
 
-function isWeekLocked(week){
-  // Admin: nimic nu e blocat
-  if(ROLE==='admin')return false;
-  // Dispatcher: săptămâna e blocată dacă activeWeek e setat și week != activeWeek
-  const aw=CP.activeWeek||null;
-  if(!aw)return false; // nu a deschis săptămână = totul liber (săptămâna curentă)
-  return week!==aw;
+function isDrvWeekClosed(drvId, week){
+  // True if this week is closed (locked) for this driver
+  if(ROLE==='admin') return false;
+  const dw=(CP.driverWeeks||{})[drvId];
+  return dw ? (dw.closedWeeks||[]).includes(week) : false;
 }
 
-async function dispCloseWeek(){
-  if(ROLE!=='dispatcher'){notify('Doar dispatcherii pot face asta','err');return;}
-  const workW=getWorkWeek();
-  const wLoads=LOADS.filter(l=>l.dispEmail===CU.email&&(l.week===workW));
+async function closeDriverWeek(drvId){
+  if(ROLE!=='dispatcher'){ notify('Only dispatchers can close weeks','err'); return; }
+  const drv=DRIVERS.find(d=>d.id===drvId);
+  if(!drv) return;
+  const workW=getDrvWorkWeek(drvId);
+  const wLoads=LOADS.filter(l=>l.driver===drv.name && l.week===workW);
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
-  if(!confirm(`Închide săptămâna ${wLbl(workW)}?\n${wLoads.length} loaduri · Gross: $${fmt(gross)}\n\nDupă închidere nu mai poți modifica nimic în această săptămână.`))return;
+  if(!confirm(`Close week for ${drv.name}?\n${wLbl(workW)}\n${wLoads.length} loads · Gross: $${fmt(gross)}\n\nAfter closing, you won't be able to edit or delete loads in this week.`)) return;
 
-  // Calculăm săptămâna următoare
-  const d=new Date(wRange(workW).start);
-  d.setDate(d.getDate()+7);
-  const nextW=CWfrom(d);
+  // Next week
+  const nd=new Date(wRange(workW).start);
+  nd.setDate(nd.getDate()+7);
+  const nextW=CWfrom(nd);
+
+  const userDoc=USERS.find(u=>u.email===CU.email);
+  if(!userDoc){ notify('User not found','err'); return; }
+
+  const driverWeeks={...(CP.driverWeeks||{})};
+  const existing=driverWeeks[drvId]||{activeWeek:null,closedWeeks:[]};
+  const closed=[...(existing.closedWeeks||[])];
+  if(!closed.includes(workW)) closed.push(workW);
+  driverWeeks[drvId]={activeWeek:nextW, closedWeeks:closed};
 
   const{updateDoc,doc}=window._fb;
-  // Salvăm: closedWeeks[] += workW, activeWeek = nextW
-  const userDoc=USERS.find(u=>u.email===CU.email);
-  if(!userDoc){notify('User not found','err');return;}
-  const closed=[...(CP.closedWeeks||[])];
-  if(!closed.includes(workW))closed.push(workW);
-  await updateDoc(doc(window._db,'users',userDoc.id),{
-    closedWeeks:closed,
-    activeWeek:nextW
-  });
-  CP.closedWeeks=closed;
-  CP.activeWeek=nextW;
-  notify(`✅ Săptămâna ${wLbl(workW)} închisă! Acum lucrezi în ${wLbl(nextW)}`);
+  await updateDoc(doc(window._db,'users',userDoc.id),{driverWeeks});
+  CP.driverWeeks=driverWeeks;
+  notify(`✅ Week closed for ${drv.name}! Now working on ${wLbl(nextW)}`);
   renderDriverPage();
-}
-
-function isDispWeekClosed(week){
-  // Verifică dacă o săptămână e închisă pentru dispatcher-ul curent
-  if(ROLE==='admin')return false;
-  return (CP.closedWeeks||[]).includes(week);
 }
 
 /* ══ AUTH ══ */
@@ -996,7 +994,7 @@ async function boot(user){
   document.getElementById('app').classList.add('show');
   const{getDocs,collection,query,where}=window._fb;
   const snap=await getDocs(query(collection(window._db,'users'),where('email','==',user.email)));
-  CP=snap.empty?{name:user.email,role:'dispatcher',activeWeek:null,closedWeeks:[]}:{id:snap.docs[0].id,...snap.docs[0].data()};
+  CP=snap.empty?{name:user.email,role:'dispatcher',driverWeeks:{}}:{id:snap.docs[0].id,...snap.docs[0].data()};
   ROLE=CP.role||'dispatcher';
   document.getElementById('sb-av').textContent=avL(CP.name);
   document.getElementById('sb-uname').textContent=CP.name||user.email;
@@ -1044,8 +1042,7 @@ async function loadMeta(){
   if(CU){
     const freshCP=USERS.find(u=>u.email===CU.email);
     if(freshCP){
-      CP.activeWeek=freshCP.activeWeek||null;
-      CP.closedWeeks=freshCP.closedWeeks||[];
+      CP.driverWeeks=freshCP.driverWeeks||{};
     }
   }
   // fill acc selects
@@ -1228,38 +1225,26 @@ function renderDriverPage(){
   document.getElementById('btn-add-load').style.display=canEdit?'':'none';
   document.getElementById('btn-create-trip').style.display=canEdit?'':'none';
   const allDrvLoads=LOADS.filter(l=>l.driver===curDrv.name);
-  const workW=getWorkWeek();
+  const drvId=curDrv.id;
+  const workW=getDrvWorkWeek(drvId);
   const wLoads=allDrvLoads.filter(l=>l.week===workW||inW(l.date,workW));
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
 
-  // Build week status badge + Close Week button for dispatcher
+  // Per-driver week status badge + Close Week button
   let weekStatusHtml='';
   if(ROLE==='dispatcher'){
-    const aw=CP.activeWeek||null;
-    const isRealCurW=!aw; // nu a deschis săptămână nouă, lucrează în real curW
+    const activeW=getDrvActiveWeek(drvId);
     const workWLabel=wLbl(workW);
-    if(isRealCurW){
-      weekStatusHtml=`
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">
-            📅 Săptămâna activă: ${workWLabel}
-          </div>
-          <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="dispCloseWeek()">
-            🔒 Închide Săptămâna
-          </button>
-        </div>`;
-    } else {
-      weekStatusHtml=`
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">
-            📅 Săptămâna activă: ${workWLabel}
-          </div>
-          <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="dispCloseWeek()">
-            🔒 Închide Săptămâna
-          </button>
-        </div>`;
-    }
+    weekStatusHtml=`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">
+          📅 Active week: ${workWLabel}
+        </div>
+        <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="closeDriverWeek('${drvId}')">
+          🔒 Close Week
+        </button>
+      </div>`;
   }
 
   document.getElementById('drv-hd-info').innerHTML=`
@@ -1301,15 +1286,15 @@ function renderDrvTrips(allDrvLoads){
     return;
   }
 
-  const workW=getWorkWeek(); // săptămâna activă a dispatcher-ului
+  const workW=getDrvWorkWeek(curDrv?.id); // active week for this specific driver
 
   let totalLoads=0;
   sortedWeeks.forEach((w,wi)=>{
     const wk=weeks[w];
     totalLoads+=wk.length;
     const wGross=wk.reduce((s,l)=>s+(+l.rate||0),0);
-    // locked = săptămână închisă de dispatcher (nu o poate edita)
-    const locked=ROLE==='dispatcher'?isDispWeekClosed(w):false;
+    // locked = this week is closed for this driver
+    const locked=ROLE==='dispatcher'?isDrvWeekClosed(curDrv?.id,w):false;
     const isActiveW=w===workW;
     const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
@@ -1323,9 +1308,9 @@ function renderDrvTrips(allDrvLoads){
     html+=`<tr style="background:${sepBg}">
       <td colspan="10" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
         <span style="font-size:12px;font-weight:800;color:${sepText}">
-          ${locked?'🔒':'📅'} Week ${wNum}${isActiveW?' (activ)':locked?' (închis)':''} — ${wLbl(w)}
+          ${locked?'🔒':'📅'} Week ${wNum}${isActiveW?' (active)':locked?' (closed)':''} — ${wLbl(w)}
         </span>
-        ${locked?`<span style="margin-left:10px;font-size:10px;color:rgba(255,255,255,.45);font-weight:500">Blocat — contact admin pentru modificări</span>`:''}
+        ${locked?`<span style="margin-left:10px;font-size:10px;color:rgba(255,255,255,.45);font-weight:500">Locked — contact admin for changes</span>`:''}
       </td>
     </tr>`;
 
@@ -1658,9 +1643,12 @@ async function saveLoad(){
   // Block dispatcher from editing loads in closed weeks
   if(editLoadId&&ROLE==='dispatcher'){
     const origLoad=LOADS.find(l=>l.id===editLoadId);
-    if(origLoad&&isDispWeekClosed(origLoad.week)){
-      notify('🔒 Săptămâna este închisă — nu poți modifica','err');
-      cm('m-load');return;
+    if(origLoad){
+      const drvId=DRIVERS.find(d=>d.name===origLoad.driver)?.id;
+      if(drvId&&isDrvWeekClosed(drvId,origLoad.week)){
+        notify('🔒 This week is closed — contact admin to make changes','err');
+        cm('m-load');return;
+      }
     }
   }
   const oid=document.getElementById('fl-oid').value.trim(),pay=document.getElementById('fl-pay').value;
@@ -1687,12 +1675,12 @@ async function saveLoad(){
     if(editLoadId){
       // CRITICAL: preserve original week — never overwrite it on edit
       const origLoad=LOADS.find(l=>l.id===editLoadId);
-      const origWeek=origLoad?.week||getWorkWeek();
+      const origWeek=origLoad?.week||getDrvWorkWeek(curDrv?.id);
       await updateDoc(doc(db,'loads',editLoadId),{...data,week:origWeek,updatedAt:serverTimestamp()});
     }
     else{
-      // Nou load: merge în săptămâna activă a dispatcher-ului
-      const targetWeek=getWorkWeek();
+      // New load: goes into the active work week for this driver
+      const targetWeek=getDrvWorkWeek(curDrv?.id);
       await addDoc(collection(db,'loads'),{...data,week:targetWeek,status:'Assigned',paid:false,createdAt:serverTimestamp()});
     }
     notify(editLoadId?'Load updated':'Load added ✓');cm('m-load');
@@ -1750,8 +1738,11 @@ async function tgPaid(id,v,locked){
 async function delLoad(id){
   if(ROLE==='dispatcher'){
     const l=LOADS.find(x=>x.id===id);
-    if(l&&isDispWeekClosed(l.week)){
-      notify('🔒 Săptămâna este închisă — contact admin','err');return;
+    if(l){
+      const drvId=DRIVERS.find(d=>d.name===l.driver)?.id;
+      if(drvId&&isDrvWeekClosed(drvId,l.week)){
+        notify('🔒 This week is closed — contact admin to delete','err');return;
+      }
     }
   }
   if(!confirm('Delete this load?'))return;
@@ -2833,25 +2824,28 @@ function renderAdmin(){
   const disps=USERS.filter(u=>u.role==='dispatcher');
   document.getElementById('adm-d').innerHTML=disps.map(d=>{
     const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
-    const aw=d.activeWeek||null;
-    const closed=d.closedWeeks||[];
-    const weekStatusHtml=aw
-      ?`<div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-left:46px;flex-wrap:wrap">
-          <span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:2px 8px;color:#1e40af;font-weight:700">📅 Activ: ${wLbl(aw)}</span>
-          ${closed.length?`<span style="font-size:10px;color:var(--text3)">${closed.length} săptămâni închise</span>`:''}
-          <button onclick="adminResetDispWeek('${d.id}')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:600">🔓 Reset Săptămână</button>
-        </div>`
-      :`<div style="padding-left:46px;margin-top:4px">
-          <span style="font-size:10px;color:var(--text3)">📅 Lucrează în săptămâna curentă${closed.length?` · ${closed.length} închise`:''}</span>
-          ${closed.length?`<button onclick="adminResetDispWeek('${d.id}')" style="margin-left:8px;font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:600">🔓 Reset</button>`:''}
-        </div>`;
+    const driverWeeks=d.driverWeeks||{};
+    // Per-driver week rows
+    const driverWeekRows=drs.map(dr=>{
+      const dw=driverWeeks[dr.id]||{};
+      const aw=dw.activeWeek||null;
+      const closed=dw.closedWeeks||[];
+      const statusBadge=aw
+        ?`<span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 7px;color:#1e40af;font-weight:700">Active: ${wLbl(aw)}</span>
+           <button onclick="adminResetDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:1px 7px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:600">🔓 Unlock</button>`
+        :`<span style="font-size:10px;color:var(--text3)">Current week</span>${closed.length?`<span style="font-size:10px;color:var(--text3);margin-left:4px">· ${closed.length} closed</span>`:''}`;
+      return`<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text2)">🚛 ${dr.name}</span>
+        <span style="font-size:10px;color:var(--text3)">$${dr.minRate||'?'}/mi</span>
+        ${statusBadge}
+      </div>`;
+    }).join('');
     return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px">
       <div style="display:flex;align-items:center;gap:10px;width:100%">
         <div class="ua">${avL(d.name)}</div>
         <div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div>
       </div>
-      <div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0">🚛 ${dr.name} · $${dr.minRate||'?'}/mi · ${dr.salaryPct||'?'}%</div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div>
-      ${weekStatusHtml}
+      <div style="padding-left:46px">${drs.length?driverWeekRows:'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div>
     </div>`;
   }).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
   document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
@@ -2864,12 +2858,16 @@ function renderAdmin(){
 }
 function openUserModal(){['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('u-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');om('m-user')}
 
-async function adminResetDispWeek(userId){
+async function adminResetDriverWeek(userId, drvId, drvName){
   const u=USERS.find(x=>x.id===userId);if(!u)return;
-  if(!confirm(`Reset săptămâna pentru ${u.name}?\nVa putea lucra din nou în săptămâna curentă. Săptămânile închise rămân în istoric.`))return;
+  if(!confirm(`Unlock week for driver: ${drvName}?\nThe dispatcher will be able to work on the current week again. Closed weeks remain in history.`))return;
+  const driverWeeks={...(u.driverWeeks||{})};
+  if(driverWeeks[drvId]){
+    driverWeeks[drvId]={...driverWeeks[drvId],activeWeek:null};
+  }
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'users',userId),{activeWeek:null});
-  notify(`✅ Resetat săptămâna pentru ${u.name}`);
+  await updateDoc(doc(window._db,'users',userId),{driverWeeks});
+  notify(`✅ Week unlocked for ${drvName}`);
   await loadMeta();
   renderAdmin();
 }
