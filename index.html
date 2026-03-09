@@ -1236,7 +1236,8 @@ function renderPg(pg){
 function renderDispatch(){
   document.getElementById('d-wlbl').textContent=wLbl(curW);
   const isAll=['admin','owner','manager'].includes(ROLE);
-  const myDrivers=isAll?DRIVERS:DRIVERS.filter(d=>d.dispatcherEmail===CU.email);
+  const cuEmail=(CU.email||"").trim().toLowerCase();
+  const myDrivers=isAll?DRIVERS:DRIVERS.filter(d=>(d.dispatcherEmail||"").trim().toLowerCase()===cuEmail);
   const wLoads=LOADS.filter(l=>inW(l.date,curW));
   const myLoads=isAll?wLoads:wLoads.filter(l=>l.dispEmail===CU.email);
   const gross=myLoads.reduce((s,l)=>s+(+l.rate||0),0),miles=0;
@@ -3124,7 +3125,7 @@ function getPwAccessibleCompanies(){
   // Admin sees all companies
   if(ROLE==='admin') return COMPANIES;
   // Dispatcher sees only companies they have at least one driver assigned to
-  const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===CU.email);
+  const myDrivers=DRIVERS.filter(d=>(d.dispatcherEmail||"").trim().toLowerCase()===(CU.email||"").trim().toLowerCase());
   const myCoNames=new Set(myDrivers.map(d=>d.company).filter(Boolean));
   return COMPANIES.filter(c=>myCoNames.has(c.name)||myCoNames.has(c.id));
 }
