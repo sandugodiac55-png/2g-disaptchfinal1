@@ -1408,7 +1408,10 @@ function renderDispatch(){
   // Get all unique weeks across all loads for this dispatcher
   const allMyLoads=isAll?LOADS:LOADS.filter(l=>l.dispEmail===CU.email);
 
-  grid.innerHTML=myDrivers.map(d=>{
+  // Group drivers by company
+  const companies=[...new Set(myDrivers.map(d=>d.company||'—'))].sort();
+  
+  const driverCardHtml=(d)=>{
     const allDL=allMyLoads.filter(l=>l.driver===d.name);
     const dl=wLoads.filter(l=>l.driver===d.name); // current week
     const dg=dl.reduce((s,l)=>s+(+l.rate||0),0),dm=dl.reduce((s,l)=>s+(+l.miles||0),0);
@@ -1445,7 +1448,7 @@ function renderDispatch(){
       ${locked?`<div class="lock-badge">🔒 Locked</div>`:''}
       <div class="dc-head">
         <div class="dc-av">${avL(d.name)}</div>
-        <div style="flex:1"><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||'—'}</div></div>
+        <div style="flex:1"><div class="dc-name">${d.name}</div></div>
         <div style="text-align:right"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:15px;font-weight:800;color:var(--green);font-family:var(--mono)">${fK(totalGross)}</div></div>
       </div>
       <div class="dc-stats" style="margin-bottom:10px">
@@ -1458,7 +1461,36 @@ function renderDispatch(){
       </div>
       ${weekRows?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px">${weekRows}</div>`:''}
     </div>`;
-  }).join('');
+  };
+
+  // Render grouped by company
+  grid.innerHTML=`<div style="grid-column:1/-1">` + companies.map(co=>{
+    const coDrvs=myDrivers.filter(d=>(d.company||'—')===co);
+    const coLoads=wLoads.filter(l=>coDrvs.some(d=>d.name===l.driver));
+    const coGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const coTotal=allMyLoads.filter(l=>coDrvs.some(d=>d.name===l.driver)).reduce((s,l)=>s+(+l.rate||0),0);
+    return`
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 16px;background:var(--navy);border-radius:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>
+            <span style="font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px">${co}</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:500">${coDrvs.length} driver${coDrvs.length!==1?'s':''}</span>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="text-align:right">
+              <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">THIS WEEK</div>
+              <div style="font-size:14px;font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(coGross)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">ALL TIME</div>
+              <div style="font-size:14px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(coTotal)}</div>
+            </div>
+          </div>
+        </div>
+        <div class="driver-grid" style="margin:0">${coDrvs.map(d=>driverCardHtml(d)).join('')}</div>
+      </div>`;
+  }).join('') + '</div>';
 }
 
 /* ══ DRIVER PAGE ══ */
