@@ -1056,9 +1056,18 @@ async function boot(user){
   CU=user;
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').classList.add('show');
-  const{getDocs,collection,query,where}=window._fb;
+  const{getDocs,collection,query,where,setDoc,doc:docFn}=window._fb;
   const snap=await getDocs(query(collection(window._db,'users'),where('email','==',user.email)));
-  CP=snap.empty?{name:user.email,role:'dispatcher',driverWeeks:{}}:{id:snap.docs[0].id,...snap.docs[0].data()};
+  if(!snap.empty){
+    CP={id:snap.docs[0].id,...snap.docs[0].data()};
+    // Sync user doc to uid-keyed path so Firestore Rules can verify role
+    if(snap.docs[0].id!==user.uid){
+      try{await setDoc(docFn(window._db,'users',user.uid),{...CP,uid:user.uid},{merge:true});}
+      catch(e){console.warn('uid-sync:',e);}
+    }
+  } else {
+    CP={name:user.email,role:'dispatcher',driverWeeks:{}};
+  }
   ROLE=CP.role||'dispatcher';
   document.getElementById('sb-av').textContent=avL(CP.name);
   document.getElementById('sb-uname').textContent=CP.name||user.email;
