@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- saved from url=(0055)file:///C:/Users/user/Downloads/GDispatch-TMS-v3_2.html -->
+<!-- saved from url=(0055)file:///C:/Users/user/Downloads/GDispatch-TMS-v3_5.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>G-Dispatch TMS</title>
-<link href="./G-Dispatch TMS new one_files/css2" rel="stylesheet">
+<link href="./G-Dispatch TMS2_files/css2" rel="stylesheet">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -375,7 +375,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 <body>
 
 <!-- LOADING -->
-<div id="loading" style="display: none;">
+<div id="loading">
   <svg class="logo-pulse" viewBox="0 0 100 100" fill="none">
     <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"></polygon>
     <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"></path>
@@ -386,7 +386,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 </div>
 
 <!-- LOGIN -->
-<div id="login-page" style="display: block;">
+<div id="login-page">
   <div class="lw">
     <div class="ll">
       <div class="ll-logo">
@@ -1247,7 +1247,7 @@ function renderDrvTrips(allDrvLoads){
     const unlockedByAdmin=(curDrv?.unlockedWeeks||[]).includes(w);
     const canEdit=ROLE==='admin'?true:(!locked&&ROLE==='dispatcher')||unlockedByAdmin;
 
-    // Week separator row
+    // Week separator row (header — fără sumă)
     const sepBg=locked?(isCurW?'#1e3a5f':'#2d3748'):(isCurW?'#eff6ff':'#f8fafc');
     const sepBorder=locked?(isCurW?'#2563eb':'#4a5568'):(isCurW?'#3b82f6':'#e2e8f0');
     const sepText=locked?'#e2e8f0':(isCurW?'#1e40af':'#374151');
@@ -1257,7 +1257,6 @@ function renderDrvTrips(allDrvLoads){
           <span style="font-size:12px;font-weight:800;color:${sepText}">
             ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
           </span>
-          <span style="font-size:13px;font-weight:800;color:${locked?'#68d391':'var(--green)'};font-family:var(--mono)">$${fmt(wGross)}</span>
           ${ROLE==='admin'&&locked&&!isCurW?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:${unlockedByAdmin?'rgba(239,68,68,.2)':'rgba(255,255,255,.15)'};color:${unlockedByAdmin?'#fca5a5':'rgba(255,255,255,.8)'};border:1px solid ${unlockedByAdmin?'rgba(239,68,68,.4)':'rgba(255,255,255,.2)'}" onclick="event.stopPropagation();toggleWeekUnlock('${curDrv.id}','${w}',${unlockedByAdmin})">${unlockedByAdmin?'🔒 Revoke Edit':'🔓 Grant Edit'}</button>`:''}
         </div>
       </td>
@@ -1339,7 +1338,20 @@ function renderDrvTrips(allDrvLoads){
         })()}</div></td>
       </tr>`;
     });
-  });
+
+    // Week total footer row — AFTER all loads
+    const wPaid=wk.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    const wUnpaid=wGross-wPaid;
+    html+=`<tr style="background:${locked?'rgba(139,92,246,.12)':'rgba(139,92,246,.05)'};border-top:1px solid ${locked?'rgba(139,92,246,.35)':'rgba(196,181,253,.5)'}">
+      <td colspan="10" style="padding:7px 16px 9px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">TOTAL $${fmt(wGross)}</span>
+          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:var(--teal)">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:var(--red)">✗ $${fmt(wUnpaid)} pending</span>`:''}
+        </div>
+      </td>
+    </tr>
+    <tr><td colspan="10" style="padding:0;height:8px;background:var(--bg)"></td></tr>`;
 
   document.getElementById('drv-load-cnt').textContent=`${totalLoads} load${totalLoads!==1?'s':''}`;
   tb.innerHTML=html;
@@ -3086,7 +3098,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
   <div id="tp-body" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a id="tp-maps-btn" href="file:///C:/Users/user/Downloads/GDispatch-TMS-v3_2.html#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Open Google Maps</a>
+    <a id="tp-maps-btn" href="file:///C:/Users/user/Downloads/GDispatch-TMS-v3_5.html#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Open Google Maps</a>
     <button onclick="closeTripPopover()" style="flex:1;background:var(--bg2);border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2)">Close</button>
   </div>
 </div>
