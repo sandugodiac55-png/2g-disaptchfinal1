@@ -600,13 +600,10 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
               </div>
               <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
             </div>
-            <!-- SECTION: Problematic -->
-            <div id="acc-sec-problem" class="tc" style="margin-bottom:16px;border-left:4px solid #ea580c">
-              <div class="tc-top" style="background:#fff7ed">
-                <div class="tc-title" style="color:#ea580c">🤝 Manager Involvement Required</div>
-                <span class="cpill" id="acc-cnt-problem" style="background:#fed7aa;color:#9a3412">0</span>
-              </div>
-              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th></th></tr></thead><tbody id="acc-tb-problem"></tbody></table></div>
+            <!-- SECTION: Problematic — hidden, loads appear in All Loads with highlighted row -->
+            <div id="acc-sec-problem" style="display:none">
+              <span id="acc-cnt-problem"></span>
+              <tbody id="acc-tb-problem"></tbody>
             </div>
             <!-- SECTION: All Loads (pending/paid) -->
             <div class="tc" style="margin-bottom:16px">
@@ -623,7 +620,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 </div>
               </div>
               <div class="tw"><table>
-                <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th></th></tr></thead>
+                <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th>MGR NOTE</th><th></th></tr></thead>
                 <tbody id="acc-tb"></tbody>
               </table></div>
             </div>
@@ -2268,11 +2265,15 @@ function renderAccDrivers(){
   }).join('');
 }
 function accLoadRow(l,canEdit,cols){
-  // cols: which columns to show
   const dueTag=lateTag(l.date,l.payMethod,l.paid);
   const days=l.paid?'':(()=>{const due=getDueDate(l.date,l.payMethod);if(!due)return '';const d=Math.floor((new Date()-due)/86400000);return d>0?`<span style="color:var(--red);font-weight:800;font-size:11px">${d}d overdue</span>`:`<span style="color:var(--text3);font-size:10px">Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`})();
-  return`<tr>
-    <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" style="cursor:pointer">${l.orderId||'—'} <span style="font-size:9px;opacity:.4">⎘</span></td>
+  const isProblem=l.accFlag==='problem';
+  const canSolve=isProblem&&(ROLE==='admin'||ROLE==='accounting_manager');
+  const rowStyle=isProblem?'background:linear-gradient(90deg,rgba(251,191,36,.12),rgba(251,191,36,.05));border-left:3px solid #f59e0b;':'';
+  const problemBadge=isProblem?`<span style="display:inline-flex;align-items:center;gap:3px;background:#fff7ed;border:1px solid #fcd34d;color:#b45309;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;white-space:nowrap">🤝 MGR</span> `:'';
+  const mgrNoteCell=cols.mgrNote!==false?`<td style="font-size:11px;min-width:120px">${l.mgrComment?`<span style="color:#92400e;font-weight:600;font-size:11px;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:2px 6px;display:inline-block">✓ ${l.mgrComment}</span><div style="font-size:9px;color:var(--text3);margin-top:2px">${l.mgrResolvedBy||''}</div>`:'<span style="color:var(--text3);font-size:10px">—</span>'}</td>`:'';
+  return`<tr style="${rowStyle}">
+    <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" style="cursor:pointer">${problemBadge}${l.orderId||'—'} <span style="font-size:9px;opacity:.4">⎘</span></td>
     ${cols.disp?`<td style="color:var(--blue);font-size:11px">${l.dispName||'—'}</td>`:''}
     ${cols.driver?`<td style="font-weight:600;font-size:12px">${l.driver||'—'}</td>`:''}
     ${cols.company?`<td style="font-size:11px;color:var(--text3)">${l.company||'—'}</td>`:''}
@@ -2290,52 +2291,48 @@ function accLoadRow(l,canEdit,cols){
     <td style="white-space:nowrap">${days}</td>
     <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
     <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
-    <td style="white-space:nowrap">${canEdit?(
-      l.accFlag==='problem'
-        ?`<span style="font-size:9px;background:#fff7ed;border:1px solid #fed7aa;color:#ea580c;border-radius:4px;padding:2px 6px;font-weight:700">🤝 Escalated</span>`
-        :`<button onclick="openEscalateModal()" title="Escalate to Accounting Manager" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🆘 Escalate</button>`
-    ):''}</td>
+    ${mgrNoteCell}
+    <td style="white-space:nowrap">${canSolve
+      ?`<button onclick="openSolveModal('${l.id}')" style="background:linear-gradient(135deg,#d97706,#f59e0b);border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,.35)">🤝 Solve</button>`
+      :canEdit&&!isProblem?`<button onclick="openEscalateModal()" title="Escalate" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🆘 Escalate</button>`
+      :''
+    }</td>
   </tr>`;
 }
 function renderAccSections(loads,canEdit){
   const now=new Date();
-  // STRICT PRIORITY — each load appears in only ONE section
-  // 1st: Manager Involvement (manual flag)
-  const problem=loads.filter(l=>l.accFlag==='problem');
-  const problemIds=new Set(problem.map(l=>l.id));
-  // 2nd: Bond (manual flag OR 20+ days) — exclude problem
+  // Bond (manual flag OR 20+ days unpaid)
   const bond=loads.filter(l=>{
-    if(l.paid||problemIds.has(l.id))return false;
+    if(l.paid)return false;
     if(l.accFlag==='bond')return true;
     const due=getDueDate(l.date,l.payMethod);
     return due&&Math.floor((now-due)/86400000)>=20;
   });
   const bondIds=new Set(bond.map(l=>l.id));
-  // 3rd: Urgent (10-19 days) — exclude bond and problem
+  // Urgent (10-19 days) — exclude bond
   const urgent=loads.filter(l=>{
-    if(l.paid||bondIds.has(l.id)||problemIds.has(l.id))return false;
-    if(l.accFlag==='bond'||l.accFlag==='problem')return false;
+    if(l.paid||bondIds.has(l.id))return false;
+    if(l.accFlag==='bond')return false;
     const due=getDueDate(l.date,l.payMethod);
     return due&&Math.floor((now-due)/86400000)>=10;
   });
-  // Regular: everything else not in above
-  const urgentIds=new Set([...urgent,...bond,...problem].map(l=>l.id));
-  const regular=loads.filter(l=>!urgentIds.has(l.id));
+  // Problem loads stay in main table — just count for badge
+  const problem=loads.filter(l=>l.accFlag==='problem');
 
   const uSec=document.getElementById('acc-sec-urgent');
   const bSec=document.getElementById('acc-sec-bond');
-  const pSec=document.getElementById('acc-sec-problem');
   document.getElementById('acc-cnt-urgent').textContent=urgent.length;
   document.getElementById('acc-cnt-bond').textContent=bond.length;
   document.getElementById('acc-cnt-problem').textContent=problem.length;
   uSec.style.display=urgent.length?'':'none';
   bSec.style.display=bond.length?'':'none';
-  pSec.style.display=problem.length?'':'none';
 
   const cols={route:true,driver:true,company:true,disp:false,overdue:true};
-  document.getElementById('acc-tb-urgent').innerHTML=urgent.map(l=>accLoadRow(l,canEdit,{...cols,flagBtn:true})).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No urgent items</td></tr>';
-  document.getElementById('acc-tb-bond').innerHTML=bond.map(l=>accLoadRow(l,canEdit,cols)).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No bond items</td></tr>';
-  document.getElementById('acc-tb-problem').innerHTML=problem.map(l=>accLoadRow(l,canEdit,cols)).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No problematic items</td></tr>';
+  document.getElementById('acc-tb-urgent').innerHTML=urgent.map(l=>accLoadRow(l,canEdit,{...cols,mgrNote:false,flagBtn:true})).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No urgent items</td></tr>';
+  document.getElementById('acc-tb-bond').innerHTML=bond.map(l=>accLoadRow(l,canEdit,{...cols,mgrNote:false})).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No bond items</td></tr>';
+  // Problem section hidden — loads appear in main table with highlight
+  const urgentAndBondIds=new Set([...urgent,...bond].map(l=>l.id));
+  const regular=loads.filter(l=>!urgentAndBondIds.has(l.id));
   return{regular};
 }
 
@@ -2344,24 +2341,24 @@ function renderAccByFlag(pg){
   const now=new Date();
   // Sidebar shortcuts: show ALL loads across all companies the user manages
   const myCos=getMyCompanies().map(c=>c.name);
-  let loads=ROLE==='admin'?[...LOADS]:LOADS.filter(l=>myCos.includes(l.company));
+  let loads=ROLE==='admin'||ROLE==='accounting_manager'?[...LOADS]:LOADS.filter(l=>myCos.includes(l.company));
   // Filter by flag type
   if(pg==='acc-urgent'){
-    // Urgent = 10-19 days (not bond/problem, not 20+)
     loads=loads.filter(l=>{
-      if(l.paid||l.accFlag==='bond'||l.accFlag==='problem')return false;
+      if(l.paid||l.accFlag==='bond')return false;
       const due=getDueDate(l.date,l.payMethod);
       const d=due?Math.floor((now-due)/86400000):0;
       return d>=10&&d<20;
     });
   } else if(pg==='acc-bond'){
     loads=loads.filter(l=>{
-      if(l.paid||l.accFlag==='problem')return false;
+      if(l.paid)return false;
       if(l.accFlag==='bond')return true;
       const due=getDueDate(l.date,l.payMethod);
       return due&&Math.floor((now-due)/86400000)>=20;
     });
   } else {
+    // acc-problem page — show as all loads but only problem flagged, with MGR NOTE col
     loads=loads.filter(l=>l.accFlag==='problem');
   }
   // Hide special sections
@@ -2369,16 +2366,16 @@ function renderAccByFlag(pg){
   document.getElementById('acc-sec-bond').style.display='none';
   document.getElementById('acc-sec-problem').style.display='none';
   const tb=document.getElementById('acc-tb');
-  // Update thead to match exact cols: ORDER ID | DRIVER | COMPANY | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE/OVERDUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb').closest('table').querySelector('thead tr');
   if(thead){
-    thead.innerHTML=`<th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>${pg==='acc-urgent'?'OVERDUE':'DUE'}</th><th>PAID</th><th>COMMENT</th><th></th>`;
+    const mgrCol=pg==='acc-problem'?'<th>MGR NOTE</th>':'';
+    thead.innerHTML=`<th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>${pg==='acc-urgent'?'OVERDUE':'DUE'}</th><th>PAID</th><th>COMMENT</th>${mgrCol}<th></th>`;
   }
   if(!loads.length){
     tb.innerHTML=`<tr><td colspan="13"><div class="em" style="padding:20px;text-align:center;color:var(--text3)"><p>No items in this category.</p></div></td></tr>`;
     return;
   }
-  const cols={route:true,driver:true,company:true,overdue:pg==='acc-urgent'};
+  const cols={route:true,driver:true,company:true,overdue:pg==='acc-urgent',mgrNote:pg==='acc-problem'};
   tb.innerHTML=loads.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(l=>accLoadRow(l,canEdit,cols)).join('');
 }
 
@@ -2402,7 +2399,7 @@ function renderAcc(){
   // Restore thead for driver view: ORDER ID | DISPATCHER | DRIVER | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb')?.closest('table')?.querySelector('thead tr');
   if(thead){
-    thead.innerHTML=`<th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th></th>`;
+    thead.innerHTML=`<th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th></th>`;
   }
   // All loads for selected driver
   let loads=LOADS.filter(l=>accSelDrv?l.driver===accSelDrv:(accSelCo?l.company===accSelCo:true));
@@ -2417,7 +2414,7 @@ function renderAcc(){
   const now=new Date();
   // Exclude loads already shown in sections from normal table
   const specialIds=new Set(loads.filter(l=>{
-    if(l.accFlag==='problem'||l.accFlag==='bond')return true;
+    if(l.accFlag==='bond')return true;
     if(!l.paid){
       const due=getDueDate(l.date,l.payMethod);
       const daysLate=due?Math.floor((now-due)/86400000):0;
@@ -2470,6 +2467,28 @@ function renderAcc(){
   tb.innerHTML=rows;
 }
 
+function openSolveModal(id){
+  if(ROLE!=='admin'&&ROLE!=='accounting_manager'){notify('No permission','err');return;}
+  const l=LOADS.find(x=>x.id===id);if(!l)return;
+  document.getElementById('solve-load-id').value=id;
+  document.getElementById('solve-load-info').innerHTML=`<strong>Order ${l.orderId||'?'}</strong> · ${l.driver||'?'} · <span style="color:var(--green)">$${fmt(+l.rate||0)}</span> · ${l.payMethod||'—'}`;
+  document.getElementById('solve-comment').value='';
+  om('m-solve-problem');
+}
+async function confirmSolveProblem(){
+  const comment=document.getElementById('solve-comment').value.trim();
+  if(!comment){notify('Please enter a resolution comment','err');return;}
+  const id=document.getElementById('solve-load-id').value;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',id),{
+    accFlag:'',
+    mgrComment:comment,
+    mgrResolvedBy:CP.name||CU.email,
+    mgrResolvedAt:new Date().toISOString()
+  });
+  cm('m-solve-problem');
+  notify('✓ Situation solved — load returned to normal');
+}
 async function accPaid(id,v){
   if(!v){
     const db=window._db;const{updateDoc,doc}=window._fb;
@@ -3277,6 +3296,34 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     <div style="padding:14px 26px 20px;background:#f0fdf4;border-top:1px solid #a7f3d0;display:flex;justify-content:flex-end;gap:10px">
       <button onclick="cm('m-bf-paid')" style="padding:9px 18px;border-radius:8px;border:1.5px solid #d1fae5;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
       <button onclick="confirmBfPaid()" id="bf-confirm-btn" style="padding:9px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#065f46,#10b981);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(16,185,129,.3)">✓ Confirm Paid</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOLVE MANAGER INVOLVEMENT MODAL -->
+<div class="ov" id="m-solve-problem">
+  <div class="mw" style="max-width:420px;border-radius:14px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,#78350f,#d97706);padding:18px 24px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px">🤝</div>
+        <div>
+          <div style="color:#fff;font-size:14px;font-weight:700">Solve Manager Involvement</div>
+          <div style="color:rgba(255,255,255,.65);font-size:10px;margin-top:1px">Leave a comment — load returns to normal</div>
+        </div>
+      </div>
+      <div onclick="cm('m-solve-problem')" style="position:absolute;top:14px;right:14px;width:24px;height:24px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:14px" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+    </div>
+    <input type="hidden" id="solve-load-id">
+    <div style="padding:20px 24px;background:#fff;display:flex;flex-direction:column;gap:14px">
+      <div id="solve-load-info" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 13px;font-size:12px;color:#92400e;font-weight:600"></div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;text-transform:uppercase;margin-bottom:6px">Resolution Comment <span style="color:#ef4444">*</span></label>
+        <textarea id="solve-comment" style="width:100%;border:1.5px solid #fde68a;border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;outline:none;box-sizing:border-box" placeholder="Describe how the situation was resolved…" onfocus="this.style.borderColor='#d97706'" onblur="this.style.borderColor='#fde68a'"></textarea>
+      </div>
+    </div>
+    <div style="padding:12px 24px 18px;background:#fffbeb;border-top:1px solid #fde68a;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="cm('m-solve-problem')" style="padding:8px 16px;border-radius:8px;border:1.5px solid #fde68a;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="confirmSolveProblem()" style="padding:8px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,#78350f,#d97706);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 8px rgba(217,119,6,.3)">✓ Mark Solved</button>
     </div>
   </div>
 </div>
