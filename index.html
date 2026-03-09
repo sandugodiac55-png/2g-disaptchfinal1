@@ -945,6 +945,9 @@ async function closeDriverWeek(drvId){
   const drv=DRIVERS.find(d=>d.id===drvId);
   if(!drv) return;
   const workW=getDrvWorkWeek(drvId);
+  // Block closing future weeks
+  const realCurW=CW();
+  if(workW>realCurW){ notify("⛔ You can't close a future week","err"); return; }
   const wLoads=LOADS.filter(l=>l.driver===drv.name && l.week===workW);
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   if(!confirm(`Close week for ${drv.name}?\n${wLbl(workW)}\n${wLoads.length} loads · Gross: $${fmt(gross)}\n\nAfter closing, you won't be able to edit or delete loads in this week.`)) return;
@@ -1234,16 +1237,17 @@ function renderDriverPage(){
   // Per-driver week status badge + Close Week button
   let weekStatusHtml='';
   if(ROLE==='dispatcher'){
-    const activeW=getDrvActiveWeek(drvId);
     const workWLabel=wLbl(workW);
+    const isFuture=workW>CW();
     weekStatusHtml=`
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">
           📅 Active week: ${workWLabel}
         </div>
-        <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="closeDriverWeek('${drvId}')">
-          🔒 Close Week
-        </button>
+        ${isFuture
+          ? `<span style="font-size:10px;color:var(--text3);font-style:italic">Future week — cannot close yet</span>`
+          : `<button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="closeDriverWeek('${drvId}')">🔒 Close Week</button>`
+        }
       </div>`;
   }
 
