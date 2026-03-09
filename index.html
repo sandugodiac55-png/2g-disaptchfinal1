@@ -1030,7 +1030,7 @@ function buildNav(){
     const isSubItem=i.id.startsWith('acc-');
     const badge=(i.id==='acc-problem'&&pendingMgrTasks>0)
       ?` <span style="background:var(--orange);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${pendingMgrTasks}</span>`:'';
-    return`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}${badge}</div>`;
+    return`<div class="sni" data-pg="${i.id}" onclick="${i.id==='accounting'?'accView=\'companies\';accSelCo=null;accSelDrv=null;':''} showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}${badge}</div>`;
   }).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
 
@@ -1108,6 +1108,8 @@ function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner')
 function goHome(){
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
   curDrv=null;
+  // Reset accounting to companies view
+  accView='companies'; accSelCo=null; accSelDrv=null;
   showPg(def[ROLE]||'dispatch');
 }
 function renderCur(){
