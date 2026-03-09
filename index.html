@@ -639,39 +639,57 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
         <!-- ADD DAILY TASK MODAL -->
         <div class="ov" id="m-add-task">
-          <div class="mw" style="max-width:460px">
-            <div class="mhd"><div class="mhd-t">📋 Add Daily Task</div><div class="mcl" onclick="cm('m-add-task')">×</div></div>
-            <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
-              <div class="fg">
-                <label>Task Description <span style="color:var(--red)">*</span></label>
-                <textarea id="task-desc" style="min-height:70px" placeholder="What needs to be done today..."></textarea>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="fg">
-                  <label>Due Date</label>
-                  <input type="date" id="task-due">
-                </div>
-                <div class="fg">
-                  <label>Priority</label>
-                  <select id="task-priority" class="sel">
-                    <option value="low">🔵 Low</option>
-                    <option value="normal" selected>🟡 Normal</option>
-                    <option value="high">🔴 High</option>
-                  </select>
+          <div class="mw" style="max-width:500px;border-radius:16px;overflow:hidden;padding:0">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);padding:24px 28px 20px;position:relative">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:36px;height:36px;background:rgba(255,255,255,.12);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📋</div>
+                <div>
+                  <div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:-.2px">Add Daily Task</div>
+                  <div style="color:rgba(255,255,255,.5);font-size:11px;margin-top:1px">Create a task for the accounting team</div>
                 </div>
               </div>
-              <div class="fg">
-                <label>Attach Photo / File (optional)</label>
-                <div style="border:2px dashed var(--border2);border-radius:8px;padding:10px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById('task-file').click()">
-                  <div style="font-size:11px;color:var(--text3)">📎 Click to attach</div>
+              <div onclick="cm('m-add-task')" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">×</div>
+            </div>
+            <!-- Body -->
+            <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;background:#fff">
+              <!-- Description -->
+              <div>
+                <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Task Description <span style="color:#ef4444">*</span></label>
+                <textarea id="task-desc" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:90px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="Describe what needs to be done..." onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+              </div>
+              <!-- Priority chips + Due Date row -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+                <div>
+                  <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:8px">Priority</label>
+                  <div style="display:flex;gap:6px" id="task-pri-chips">
+                    <div onclick="setTaskPri('low',this)" data-val="low" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #dbeafe;background:#eff6ff;color:#3b82f6;transition:all .15s">🔵 Low</div>
+                    <div onclick="setTaskPri('normal',this)" data-val="normal" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #6366f1;background:#eef2ff;color:#6366f1;box-shadow:0 0 0 3px #c7d2fe;transition:all .15s">🟡 Normal</div>
+                    <div onclick="setTaskPri('high',this)" data-val="high" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #fed7aa;background:#fff7ed;color:#ea580c;transition:all .15s">🔴 High</div>
+                  </div>
+                  <input type="hidden" id="task-priority" value="normal">
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Due Date</label>
+                  <input type="date" id="task-due" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
+                </div>
+              </div>
+              <!-- File upload -->
+              <div>
+                <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Attach File / Photo <span style="font-weight:400;text-transform:none">(optional)</span></label>
+                <div onclick="document.getElementById('task-file').click()" style="border:2px dashed #cbd5e1;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s" onmouseover="this.style.borderColor='#6366f1';this.style.background='#eef2ff'" onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc'">
+                  <div style="font-size:24px;margin-bottom:4px">📎</div>
+                  <div style="font-size:12px;font-weight:600;color:#475569">Click to upload</div>
+                  <div style="font-size:10px;color:#94a3b8;margin-top:2px">PDF, JPG, PNG</div>
                 </div>
                 <input type="file" id="task-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewTaskFile(this)">
-                <div id="task-file-preview" style="font-size:11px;color:var(--blue);margin-top:4px"></div>
+                <div id="task-file-preview" style="font-size:11px;color:#6366f1;margin-top:6px;font-weight:600"></div>
               </div>
             </div>
-            <div class="mft">
-              <button class="btn btn-ghost" onclick="cm('m-add-task')">Cancel</button>
-              <button class="btn btn-orange" onclick="saveTask()">💾 Save Task</button>
+            <!-- Footer -->
+            <div style="padding:16px 28px 22px;background:#f8fafc;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:10px">
+              <button onclick="cm('m-add-task')" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+              <button onclick="saveTask()" style="padding:10px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(99,102,241,.3)">💾 Save Task</button>
             </div>
           </div>
         </div>
@@ -2404,8 +2422,8 @@ function openManagerTask(loadId){
 function openEscalateModal(loadId){
   const l=LOADS.find(x=>x.id===loadId);if(!l)return;
   document.getElementById('esc-load-id').value=loadId;
-  document.getElementById('esc-load-info').innerHTML=
-    `<strong>${l.orderId||'?'}</strong> · Driver: ${l.driver||'?'} · $${fmt(+l.rate||0)} · ${l.payMethod||'—'} · ${l.origin||'—'} → ${l.dest||'—'}`;
+  document.getElementById('esc-load-info').querySelector('span:last-child').innerHTML=
+    `<strong>${l.orderId||'?'}</strong> &nbsp;·&nbsp; ${l.driver||'?'} &nbsp;·&nbsp; <span style="color:#16a34a">$${fmt(+l.rate||0)}</span> &nbsp;·&nbsp; ${l.payMethod||'—'} &nbsp;·&nbsp; ${l.origin||'—'} → ${l.dest||'—'}`;
   document.getElementById('esc-desc').value='';
   document.getElementById('esc-file-preview').textContent='';
   om('m-escalate');
@@ -2551,12 +2569,29 @@ function openAccTaskModal(){
 function openTaskForEscalation(mTaskId,orderId,driver){
   // Pre-fill daily task modal with escalation context
   document.getElementById('task-desc').value='[Escalation] Load '+orderId+' ('+driver+') — review and resolve issue';
-  document.getElementById('task-priority').value='high';
+  setTimeout(()=>setTaskPri('high',document.querySelector('#task-pri-chips div[data-val="high"]')),50);
   document.getElementById('task-due').value=new Date().toISOString().split('T')[0];
   document.getElementById('task-file-preview').textContent='';
   // Store reference
   document.getElementById('m-add-task').dataset.mTaskId=mTaskId;
   om('m-add-task');
+}
+function setTaskPri(val,el){
+  document.getElementById('task-priority').value=val;
+  const chips=document.querySelectorAll('#task-pri-chips div[data-val]');
+  const styles={
+    low:{border:'#dbeafe',bg:'#eff6ff',color:'#3b82f6'},
+    normal:{border:'#6366f1',bg:'#eef2ff',color:'#6366f1'},
+    high:{border:'#fed7aa',bg:'#fff7ed',color:'#ea580c'}
+  };
+  chips.forEach(c=>{
+    const s=styles[c.dataset.val];
+    c.style.border='2px solid '+(c===el?s.border:s.border.replace(s.border,'#e2e8f0'));
+    c.style.background=c===el?s.bg:'#f8fafc';
+    c.style.color=c===el?s.color:'#94a3b8';
+    c.style.boxShadow=c===el?'0 0 0 3px '+s.border+'44':'none';
+    c.style.transform=c===el?'scale(1.04)':'scale(1)';
+  });
 }
 function previewTaskFile(input){
   document.getElementById('task-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
@@ -2855,31 +2890,44 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 
 <!-- ESCALATE MODAL -->
 <div class="ov" id="m-escalate">
-  <div class="mw" style="max-width:480px">
-    <div class="mhd">
-      <div class="mhd-t" style="color:#dc2626">🆘 Escalate to Accounting Manager</div>
-      <div class="mcl" onclick="cm('m-escalate')">×</div>
-    </div>
-    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
-      <input type="hidden" id="esc-load-id">
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;color:#991b1b" id="esc-load-info"></div>
-      <div class="fg">
-        <label>Problem description <span style="color:var(--red)">*</span></label>
-        <textarea id="esc-desc" style="min-height:90px" placeholder="Describe the issue in detail — what happened, what you tried, what you need from the manager..."></textarea>
+  <div class="mw" style="max-width:500px;border-radius:16px;overflow:hidden;padding:0">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#7f1d1d 0%,#dc2626 100%);padding:24px 28px 20px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🆘</div>
+        <div>
+          <div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:-.2px">Escalate to Manager</div>
+          <div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:1px">This load will be flagged for manager review</div>
+        </div>
       </div>
-      <div class="fg">
-        <label>Attach document / photo (optional)</label>
-        <div style="border:2px dashed #fecaca;border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:#fef9f9" onclick="document.getElementById('esc-file').click()">
-          <div style="font-size:20px">📎</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">Click to attach file or photo</div>
+      <div onclick="cm('m-escalate')" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+    </div>
+    <!-- Load info pill -->
+    <div style="background:#fef2f2;padding:12px 28px;border-bottom:1px solid #fecaca">
+      <div id="esc-load-info" style="font-size:12px;color:#991b1b;font-weight:600;display:flex;align-items:center;gap:6px"><span>📦</span><span></span></div>
+    </div>
+    <input type="hidden" id="esc-load-id">
+    <!-- Body -->
+    <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;background:#fff">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Problem Description <span style="color:#ef4444">*</span></label>
+        <textarea id="esc-desc" style="width:100%;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:100px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="What happened? What did you try? What do you need from the manager..." onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#fecaca'"></textarea>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Attach Document / Photo <span style="font-weight:400;text-transform:none">(optional)</span></label>
+        <div onclick="document.getElementById('esc-file').click()" style="border:2px dashed #fecaca;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#fef9f9;transition:all .2s" onmouseover="this.style.borderColor='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#fecaca';this.style.background='#fef9f9'">
+          <div style="font-size:26px;margin-bottom:4px">📎</div>
+          <div style="font-size:12px;font-weight:600;color:#dc2626">Click to upload</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">PDF, JPG, PNG</div>
         </div>
         <input type="file" id="esc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewEscFile(this)">
-        <div id="esc-file-preview" style="margin-top:6px;font-size:11px;color:var(--blue)"></div>
+        <div id="esc-file-preview" style="margin-top:6px;font-size:11px;color:#dc2626;font-weight:600"></div>
       </div>
     </div>
-    <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-escalate')">Cancel</button>
-      <button class="btn" style="background:#dc2626;color:#fff" onclick="submitEscalate()">🆘 Send to Manager</button>
+    <!-- Footer -->
+    <div style="padding:16px 28px 22px;background:#fef9f9;border-top:1px solid #fee2e2;display:flex;justify-content:flex-end;gap:10px">
+      <button onclick="cm('m-escalate')" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="submitEscalate()" style="padding:10px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(220,38,38,.35)">🆘 Send to Manager</button>
     </div>
   </div>
 </div>
