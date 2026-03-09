@@ -2302,19 +2302,26 @@ function renderAcc(){
     const wPaid=wLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
     const wUnpaid=wGross-wPaid;
     const isClosedWeek=DRIVERS.some(d=>(d.closedWeeks||[]).includes(w)||d.weekLocked===w);
+    // Week label row (top - minimal, just label)
     rows+=`<tr style="background:${isClosedWeek?'var(--navy)':'var(--surface2)'}">
-      <td colspan="12" style="padding:8px 16px">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;font-weight:800;color:${isClosedWeek?'#fff':'var(--navy)'}">${isClosedWeek?'🔒':'📅'} ${wLbl(w)}</span>
-          <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wGross)}</span>
-          ${wPaid>0?`<span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.6)':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
-          ${wUnpaid>0?`<span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.5)':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
-          <span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.4)':'var(--text3)'};">${wLoads.length} loads</span>
-        </div>
+      <td colspan="13" style="padding:6px 16px">
+        <span style="font-size:11px;font-weight:700;color:${isClosedWeek?'rgba(255,255,255,.7)':'var(--text3)'};letter-spacing:.3px">${isClosedWeek?'🔒':'📅'} ${wLbl(w)}</span>
       </td></tr>`;
+    // Load rows
     wLoads.forEach(l=>{
       rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:true,overdue:false});
     });
+    // Week summary footer row
+    rows+=`<tr style="background:${isClosedWeek?'#0f2040':'#f0fdf4'};border-top:2px solid ${isClosedWeek?'rgba(255,255,255,.1)':'#bbf7d0'}">
+      <td colspan="13" style="padding:8px 16px 10px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">TOTAL $${fmt(wGross)}</span>
+          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#6ee7b7':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#fca5a5':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
+          <span style="font-size:11px;color:${isClosedWeek?'rgba(255,255,255,.4)':'var(--text3)'};">${wLoads.length} load${wLoads.length!==1?'s':''}</span>
+        </div>
+      </td></tr>
+    <tr><td colspan="13" style="padding:0;height:10px;background:var(--surface)"></td></tr>`;
   });
   tb.innerHTML=rows;
 }
