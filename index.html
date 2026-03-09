@@ -1034,7 +1034,8 @@ function buildNav(){
   const items=(maps[ROLE]||maps.dispatcher);
   const pendingMgrTasks=(MANAGER_TASKS||[]).filter(t=>t.status==='pending').length;
   const pendingEsc=(ESCALATIONS||[]).filter(e=>e.status==='pending').length;
-  const problemBadgeCount=pendingMgrTasks+pendingEsc;
+  const activeProblemLoads=(LOADS||[]).filter(l=>l.accFlag==='problem').length;
+  const problemBadgeCount=activeProblemLoads+pendingEsc;
   const myNotifCount=(NOTIFICATIONS||[]).length;
   document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>{
     const isSubItem=i.id.startsWith('acc-');
@@ -1077,13 +1078,14 @@ function subLoads(){
   unsub=onSnapshot(q,snap=>{
     LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
     LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    buildNav();
     renderCur();
   },err=>{
-    // Fallback: if no index, load without orderBy
     const q2=query(collection(db,'loads'),where('dispEmail','==',CU.email));
     onSnapshot(q2,snap=>{
       LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
       LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+      buildNav();
       renderCur();
     });
   });
