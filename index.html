@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- saved from url=(0055)file:///C:/Users/user/Downloads/GDispatch-TMS-v3_3.html -->
+<!-- saved from url=(0052)file:///C:/Users/user/Downloads/G-Dispatch_TMS1.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>G-Dispatch TMS</title>
-<link href="./G-Dispatch TMS1_files/css2" rel="stylesheet">
+<link href="file:///C:/Users/user/Downloads/G-Dispatch%20TMS1_files/css2" rel="stylesheet">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1247,7 +1247,7 @@ function renderDrvTrips(allDrvLoads){
     const unlockedByAdmin=(curDrv?.unlockedWeeks||[]).includes(w);
     const canEdit=ROLE==='admin'?true:(!locked&&ROLE==='dispatcher')||unlockedByAdmin;
 
-    // Week separator row
+    // Week separator row (header — fără sumă)
     const sepBg=locked?(isCurW?'#1e3a5f':'#2d3748'):(isCurW?'#eff6ff':'#f8fafc');
     const sepBorder=locked?(isCurW?'#2563eb':'#4a5568'):(isCurW?'#3b82f6':'#e2e8f0');
     const sepText=locked?'#e2e8f0':(isCurW?'#1e40af':'#374151');
@@ -1257,7 +1257,6 @@ function renderDrvTrips(allDrvLoads){
           <span style="font-size:12px;font-weight:800;color:${sepText}">
             ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
           </span>
-          <span style="font-size:13px;font-weight:800;color:${locked?'#68d391':'var(--green)'};font-family:var(--mono)">$${fmt(wGross)}</span>
           ${ROLE==='admin'&&locked&&!isCurW?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:${unlockedByAdmin?'rgba(239,68,68,.2)':'rgba(255,255,255,.15)'};color:${unlockedByAdmin?'#fca5a5':'rgba(255,255,255,.8)'};border:1px solid ${unlockedByAdmin?'rgba(239,68,68,.4)':'rgba(255,255,255,.2)'}" onclick="event.stopPropagation();toggleWeekUnlock('${curDrv.id}','${w}',${unlockedByAdmin})">${unlockedByAdmin?'🔒 Revoke Edit':'🔓 Grant Edit'}</button>`:''}
         </div>
       </td>
@@ -1339,7 +1338,20 @@ function renderDrvTrips(allDrvLoads){
         })()}</div></td>
       </tr>`;
     });
-  });
+
+    // Total footer — DUPĂ loaduri
+    const wPaid=wk.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    const wUnpaid=wGross-wPaid;
+    html+=`<tr style="background:rgba(139,92,246,.06);border-top:1px solid rgba(196,181,253,.5)">
+      <td colspan="10" style="padding:7px 16px 9px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">TOTAL $${fmt(wGross)}</span>
+          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:var(--teal)">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:var(--red)">✗ $${fmt(wUnpaid)} pending</span>`:''}
+        </div>
+      </td>
+    </tr>
+    <tr><td colspan="10" style="padding:0;height:8px;background:var(--bg)"></td></tr>`;
 
   document.getElementById('drv-load-cnt').textContent=`${totalLoads} load${totalLoads!==1?'s':''}`;
   tb.innerHTML=html;
