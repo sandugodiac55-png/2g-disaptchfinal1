@@ -586,7 +586,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             <!-- SECTION: Bond -->
             <div id="acc-sec-bond" class="tc" style="margin-bottom:16px;border-left:4px solid #7c3aed">
               <div class="tc-top" style="background:#f5f3ff">
-                <div class="tc-title" style="color:#7c3aed">🔒 Bond — Secured Payments</div>
+                <div class="tc-title" style="color:#7c3aed">🔒 Bond — 20+ Days Unpaid</div>
                 <span class="cpill" id="acc-cnt-bond" style="background:#ddd6fe;color:#5b21b6">0</span>
               </div>
               <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
@@ -594,7 +594,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             <!-- SECTION: Problematic -->
             <div id="acc-sec-problem" class="tc" style="margin-bottom:16px;border-left:4px solid #ea580c">
               <div class="tc-top" style="background:#fff7ed">
-                <div class="tc-title" style="color:#ea580c">⚠️ Problematic — Unlikely to Collect</div>
+                <div class="tc-title" style="color:#ea580c">🤝 Manager Involvement Required</div>
                 <span class="cpill" id="acc-cnt-problem" style="background:#fed7aa;color:#9a3412">0</span>
               </div>
               <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-problem"></tbody></table></div>
@@ -614,6 +614,68 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead>
                 <tbody id="acc-tb"></tbody>
               </table></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DAILY TASKS PAGE -->
+        <div class="pg" id="pg-acc-tasks">
+          <div class="ph">
+            <div><div class="ph-t">📋 Daily Tasks</div><div class="ph-s">Tasks assigned to accounting team</div></div>
+            <div class="ph-a" id="tasks-add-btn-area"></div>
+          </div>
+          <!-- Manager Involvement Notifications -->
+          <div id="tasks-manager-reqs" style="margin-bottom:16px"></div>
+          <!-- Daily Tasks -->
+          <div class="tc">
+            <div class="tc-top">
+              <div class="tc-title">Today's Tasks</div>
+              <div id="tasks-date" style="font-size:11px;color:var(--text3)"></div>
+            </div>
+            <div id="tasks-list" style="padding:8px 0"></div>
+          </div>
+          <!-- Completed Tasks -->
+          <div class="tc" style="margin-top:12px">
+            <div class="tc-top"><div class="tc-title" style="color:var(--text3)">✓ Completed</div></div>
+            <div id="tasks-done-list" style="padding:8px 0"></div>
+          </div>
+        </div>
+
+        <!-- ADD DAILY TASK MODAL -->
+        <div class="ov" id="m-add-task">
+          <div class="mw" style="max-width:460px">
+            <div class="mhd"><div class="mhd-t">📋 Add Daily Task</div><div class="mcl" onclick="cm('m-add-task')">×</div></div>
+            <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
+              <div class="fg">
+                <label>Task Description <span style="color:var(--red)">*</span></label>
+                <textarea id="task-desc" style="min-height:70px" placeholder="What needs to be done today..."></textarea>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="fg">
+                  <label>Due Date</label>
+                  <input type="date" id="task-due">
+                </div>
+                <div class="fg">
+                  <label>Priority</label>
+                  <select id="task-priority" class="sel">
+                    <option value="normal">Normal</option>
+                    <option value="high">🔴 High</option>
+                    <option value="urgent">🚨 Urgent</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fg">
+                <label>Attach Photo / File (optional)</label>
+                <div style="border:2px dashed var(--border2);border-radius:8px;padding:10px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById('task-file').click()">
+                  <div style="font-size:11px;color:var(--text3)">📎 Click to attach</div>
+                </div>
+                <input type="file" id="task-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewTaskFile(this)">
+                <div id="task-file-preview" style="font-size:11px;color:var(--blue);margin-top:4px"></div>
+              </div>
+            </div>
+            <div class="mft">
+              <button class="btn btn-ghost" onclick="cm('m-add-task')">Cancel</button>
+              <button class="btn btn-orange" onclick="saveTask()">💾 Save Task</button>
             </div>
           </div>
         </div>
@@ -879,6 +941,8 @@ async function boot(user){
   await loadMeta();
   subLoads();
   subTrips();
+  subManagerTasks();
+  subDailyTasks();
   curW=CW(); // Always start on current real week
   updateWkLbl();
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
@@ -888,15 +952,19 @@ async function boot(user){
 function buildNav(){
   const maps={
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
-    accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'⚠️',l:'Problematic'}],
+    accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
     owner:[{id:'owner',i:'🏠',l:'Dashboard'},{id:'accounting',i:'💰',l:'Accounting'}],
-    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'⚠️',l:'Problematic'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
+    accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
+    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
   const items=(maps[ROLE]||maps.dispatcher);
+  const pendingMgrTasks=(MANAGER_TASKS||[]).filter(t=>t.status==='pending').length;
   document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>{
     const isSubItem=i.id.startsWith('acc-');
-    return`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}</div>`;
+    const badge=(i.id==='acc-problem'&&pendingMgrTasks>0)
+      ?` <span style="background:var(--orange);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${pendingMgrTasks}</span>`:'';
+    return`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}${badge}</div>`;
   }).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
 
@@ -966,6 +1034,22 @@ function renderPg(pg){
   if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
   if(pg==='accounting'){accView='companies';renderAccView();}
+  if(pg==='acc-tasks'){
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
+    document.getElementById('pg-acc-tasks').classList.add('act');
+    document.querySelectorAll('.sni').forEach(n=>n.classList.remove('on'));
+    document.querySelector('.sni[data-pg="acc-tasks"]')?.classList.add('on');
+    renderTasksPage();
+    return;
+  }
+  if(pg==='acc-tasks'){
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
+    document.getElementById('pg-acc-tasks').classList.add('act');
+    document.querySelectorAll('.sni').forEach(n=>n.classList.remove('on'));
+    document.querySelector('.sni[data-pg="acc-tasks"]')?.classList.add('on');
+    renderTasksPage();
+    return;
+  }
   if(pg==='acc-urgent'||pg==='acc-bond'||pg==='acc-problem'){
     // Switch to accounting page and filter by flag/type
     document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
@@ -977,7 +1061,7 @@ function renderPg(pg){
     document.getElementById('acc-view-drivers').style.display='none';
     document.getElementById('acc-view-loads').style.display='';
     const titleEl=document.getElementById('acc-drv-title');
-    if(titleEl)titleEl.textContent=pg==='acc-urgent'?'🚨 All Urgent Overdue (15+ days)':pg==='acc-bond'?'🔒 All Bond Payments':'⚠️ All Problematic Payments';
+    if(titleEl)titleEl.textContent=pg==='acc-urgent'?'🚨 All Urgent Overdue (10+ days)':pg==='acc-bond'?'🔒 All Bond Payments':'🤝 All Manager Involvement';
     renderAccByFlag(pg);
   }
   if(pg==='owner')renderOwner();
@@ -2001,7 +2085,7 @@ function renderAccCompanies(){
   grid.innerHTML=myCos.map(co=>{
     const coLoads=LOADS.filter(l=>l.company===co.name);
     const pending=coLoads.filter(l=>!l.paid);
-    const urgent=pending.filter(l=>{const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((new Date()-due)/86400000)>=15;});
+    const urgent=pending.filter(l=>{const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((new Date()-due)/86400000)>=10;});
     const paid=coLoads.filter(l=>l.paid);
     const total=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
     const pendingAmt=pending.reduce((s,l)=>s+(+l.rate||0),0);
@@ -2037,7 +2121,7 @@ function renderAccDrivers(){
   grid.innerHTML=drvs.map(drv=>{
     const dLoads=LOADS.filter(l=>l.driver===drv.name);
     const pending=dLoads.filter(l=>!l.paid);
-    const urgent=pending.filter(l=>{const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((new Date()-due)/86400000)>=15;});
+    const urgent=pending.filter(l=>{const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((new Date()-due)/86400000)>=10;});
     const pendingAmt=pending.reduce((s,l)=>s+(+l.rate||0),0);
     return`<div onclick="accSelectDrv('${drv.name}')" style="background:var(--surface);border:1.5px solid ${urgent.length?'var(--red)':'var(--border)'};border-radius:var(--r);padding:16px;cursor:pointer;box-shadow:var(--shadow)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
@@ -2082,11 +2166,11 @@ function accLoadRow(l,canEdit,cols){
 }
 function renderAccSections(loads,canEdit){
   const now=new Date();
-  // Urgent: unpaid + overdue >= 15 days
-  const urgent=loads.filter(l=>{if(l.paid||l.accFlag==='bond'||l.accFlag==='problem')return false;const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((now-due)/86400000)>=15;});
-  // Bond: flagged as bond
-  const bond=loads.filter(l=>l.accFlag==='bond');
-  // Problem: flagged as problematic
+  // Urgent: unpaid + overdue >= 10 days (not in bond/problem)
+  const urgent=loads.filter(l=>{if(l.paid||l.accFlag==='bond'||l.accFlag==='problem')return false;const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((now-due)/86400000)>=10;});
+  // Bond: flagged as bond OR auto >= 20 days
+  const bond=loads.filter(l=>l.accFlag==='bond'||(()=>{if(l.paid||l.accFlag==='problem')return false;const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((now-due)/86400000)>=20;})());
+  // Problem (Manager Involvement): flagged as problem
   const problem=loads.filter(l=>l.accFlag==='problem');
   // Regular: everything else not in above
   const urgentIds=new Set([...urgent,...bond,...problem].map(l=>l.id));
@@ -2110,7 +2194,7 @@ function renderAccSections(loads,canEdit){
 }
 
 function renderAccByFlag(pg){
-  const canEdit=ROLE==='accounting'||ROLE==='admin';
+  const canEdit=ROLE==='accounting'||ROLE==='admin'||ROLE==='accounting_manager';
   const now=new Date();
   let loads=[...LOADS];
   // Filter by flag type
@@ -2118,10 +2202,10 @@ function renderAccByFlag(pg){
     loads=loads.filter(l=>{
       if(l.paid||l.accFlag==='bond'||l.accFlag==='problem')return false;
       const due=getDueDate(l.date,l.payMethod);
-      return due&&Math.floor((now-due)/86400000)>=15;
+      return due&&Math.floor((now-due)/86400000)>=10;
     });
   } else if(pg==='acc-bond'){
-    loads=loads.filter(l=>l.accFlag==='bond');
+    loads=loads.filter(l=>l.accFlag==='bond'||(()=>{if(l.paid||l.accFlag==='problem')return false;const due=getDueDate(l.date,l.payMethod);return due&&Math.floor((now-due)/86400000)>=20;})());
   } else {
     loads=loads.filter(l=>l.accFlag==='problem');
   }
@@ -2140,7 +2224,7 @@ function renderAccByFlag(pg){
 
 function renderAcc(){
   if(accView!=='loads'){renderAccView();return;}
-  const canEdit=ROLE==='accounting'||ROLE==='admin';
+  const canEdit=ROLE==='accounting'||ROLE==='admin'||ROLE==='accounting_manager';
   // All loads for selected driver
   let loads=LOADS.filter(l=>accSelDrv?l.driver===accSelDrv:(accSelCo?l.company===accSelCo:true));
   // Update header
@@ -2151,8 +2235,12 @@ function renderAcc(){
   // Regular table with tab filter
   const now=new Date();
   const specialIds=new Set(loads.filter(l=>{
-    if(l.accFlag==='bond'||l.accFlag==='problem')return true;
-    if(!l.paid){const due=getDueDate(l.date,l.payMethod);if(due&&Math.floor((now-due)/86400000)>=15)return true;}
+    if(l.accFlag==='problem')return true;
+    if(!l.paid){
+      const due=getDueDate(l.date,l.payMethod);
+      const daysLate=due?Math.floor((now-due)/86400000):0;
+      if(daysLate>=10)return true; // urgent or bond
+    }
     return false;
   }).map(l=>l.id));
   let fl=loads.filter(l=>!specialIds.has(l.id));
@@ -2253,6 +2341,169 @@ async function confirmPayment(){
   pendingAdvStatNext='';
   pendingPaySource='';
 }
+/* ══ BOND ══ */
+function openBondModal(loadId){
+  const l=LOADS.find(x=>x.id===loadId);if(!l)return;
+  document.getElementById('bond-load-id').value=loadId;
+  document.getElementById('bond-load-info').innerHTML=`<strong>${l.orderId||'?'}</strong> · ${l.driver||'?'} · $${fmt(+l.rate||0)} · ${l.origin||'—'} → ${l.dest||'—'}`;
+  document.getElementById('bond-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('bond-name').value=l.bondName||'';
+  document.getElementById('bond-ref').value=l.bondRef||'';
+  document.getElementById('bond-notes').value=l.bondNotes||'';
+  document.getElementById('bond-file-list').innerHTML='';
+  om('m-bond');
+}
+function previewBondFiles(input){
+  const list=document.getElementById('bond-file-list');
+  list.innerHTML=[...input.files].map(f=>`<span style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:4px;padding:2px 8px;font-size:10px;color:#5b21b6">📄 ${f.name}</span>`).join('');
+}
+async function saveBond(){
+  const id=document.getElementById('bond-load-id').value;
+  const bondDate=document.getElementById('bond-date').value;
+  const bondName=document.getElementById('bond-name').value.trim();
+  const bondRef=document.getElementById('bond-ref').value.trim();
+  const bondNotes=document.getElementById('bond-notes').value.trim();
+  if(!bondName){notify('Bond name required','err');return}
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',id),{
+    accFlag:'bond',bondDate,bondName,bondRef,bondNotes,bondAppliedAt:new Date().toISOString()
+  });
+  cm('m-bond');
+  notify('🔒 Bond applied — '+bondName);
+}
+
+/* ══ MANAGER INVOLVEMENT ══ */
+function openManagerTask(loadId){
+  const l=LOADS.find(x=>x.id===loadId);if(!l)return;
+  document.getElementById('mtask-load-id').value=loadId;
+  document.getElementById('mtask-load-info').innerHTML=`<strong>${l.orderId||'?'}</strong> · ${l.driver||'?'} · $${fmt(+l.rate||0)} · ${l.payMethod||'—'}`;
+  document.getElementById('mtask-desc').value='';
+  document.getElementById('mtask-file-preview').textContent='';
+  om('m-manager-task');
+}
+function previewMTaskFile(input){
+  document.getElementById('mtask-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
+}
+async function submitManagerTask(){
+  const desc=document.getElementById('mtask-desc').value.trim();
+  if(!desc){notify('Please describe the issue','err');return}
+  const loadId=document.getElementById('mtask-load-id').value;
+  const l=LOADS.find(x=>x.id===loadId);
+  const{addDoc,collection,updateDoc,doc,serverTimestamp}=window._fb;
+  // Flag the load as problem (manager involvement)
+  await updateDoc(doc(window._db,'loads',loadId),{accFlag:'problem'});
+  // Create manager task notification
+  await addDoc(collection(window._db,'managerTasks'),{
+    loadId,orderId:l?.orderId||'?',driver:l?.driver||'?',rate:l?.rate||0,
+    description:desc,status:'pending',
+    createdBy:CU.email,createdByName:CP.name||CU.email,
+    createdAt:serverTimestamp()
+  });
+  cm('m-manager-task');
+  notify('📨 Manager notified — task created');
+}
+
+/* ══ DAILY TASKS ══ */
+let MANAGER_TASKS=[], DAILY_TASKS=[];
+function subManagerTasks(){
+  const{onSnapshot,collection,query,orderBy}=window._fb;
+  onSnapshot(query(collection(window._db,'managerTasks'),orderBy('createdAt','desc')),snap=>{
+    MANAGER_TASKS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(document.getElementById('pg-acc-tasks')?.classList.contains('act'))renderTasksPage();
+  });
+}
+function subDailyTasks(){
+  const{onSnapshot,collection,query,orderBy}=window._fb;
+  onSnapshot(query(collection(window._db,'dailyTasks'),orderBy('createdAt','desc')),snap=>{
+    DAILY_TASKS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(document.getElementById('pg-acc-tasks')?.classList.contains('act'))renderTasksPage();
+  });
+}
+function renderTasksPage(){
+  const canCreate=ROLE==='admin'||ROLE==='accounting_manager';
+  // Add task button (only admin/accounting_manager)
+  const btnArea=document.getElementById('tasks-add-btn-area');
+  if(btnArea)btnArea.innerHTML=canCreate?`<button class="btn btn-orange" onclick="om('m-add-task')">＋ Add Task</button>`:'';
+  document.getElementById('tasks-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Manager task notifications
+  const pending=MANAGER_TASKS.filter(t=>t.status==='pending');
+  const mReqs=document.getElementById('tasks-manager-reqs');
+  if(mReqs){
+    if(pending.length&&(ROLE==='accounting_manager'||ROLE==='admin')){
+      mReqs.innerHTML=`<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:var(--r);overflow:hidden">
+        <div style="padding:12px 16px;background:#fff3e0;display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">🤝</span>
+          <div style="font-weight:700;color:#ea580c">Manager Involvement Required — ${pending.length} load${pending.length!==1?'s':''}</div>
+        </div>
+        ${pending.map(t=>`<div style="padding:12px 16px;border-top:1px solid #fed7aa;display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700">Load ${t.orderId} · ${t.driver} · $${fmt(+t.rate||0)}</div>
+            <div style="font-size:11px;color:var(--text2);margin:3px 0">${t.description}</div>
+            <div style="font-size:10px;color:var(--text3)">From: ${t.createdByName}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button onclick="resolveManagerTask('${t.id}')" class="btn btn-sm btn-teal">✓ Resolved</button>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    } else mReqs.innerHTML='';
+  }
+  // Daily tasks
+  const today=new Date().toISOString().split('T')[0];
+  const active=DAILY_TASKS.filter(t=>t.status!=='done');
+  const done=DAILY_TASKS.filter(t=>t.status==='done').slice(0,10);
+  const priBg={urgent:'#fef2f2',high:'#fff7ed',normal:'var(--surface)'};
+  const priColor={urgent:'var(--red)',high:'var(--orange)',normal:'var(--text2)'};
+  document.getElementById('tasks-list').innerHTML=active.length?active.map(t=>`
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);background:${priBg[t.priority||'normal']}">
+      <input type="checkbox" onchange="completeTask('${t.id}')" style="width:16px;height:16px;margin-top:2px;cursor:pointer">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:${priColor[t.priority||'normal']}">${t.priority==='urgent'?'🚨 ':t.priority==='high'?'🔴 ':''}${t.description}</div>
+        ${t.dueDate?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Due: ${t.dueDate}</div>`:''}
+        ${t.createdByName?`<div style="font-size:10px;color:var(--text3)">By: ${t.createdByName}</div>`:''}
+      </div>
+      ${canCreate?`<button onclick="deleteTask('${t.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;opacity:.5" title="Delete">×</button>`:''}
+    </div>`).join(''):`<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">✓ No pending tasks</div>`;
+  document.getElementById('tasks-done-list').innerHTML=done.length?done.map(t=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);opacity:.5">
+      <span style="color:var(--green)">✓</span>
+      <span style="font-size:12px;text-decoration:line-through">${t.description}</span>
+    </div>`).join(''):`<div style="padding:12px 16px;font-size:11px;color:var(--text3)">No completed tasks</div>`;
+}
+async function resolveManagerTask(id){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'managerTasks',id),{status:'resolved',resolvedAt:new Date().toISOString()});
+  notify('✓ Marked as resolved');
+}
+function previewTaskFile(input){
+  document.getElementById('task-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
+}
+async function saveTask(){
+  const desc=document.getElementById('task-desc').value.trim();
+  if(!desc){notify('Task description required','err');return}
+  const{addDoc,collection,serverTimestamp}=window._fb;
+  await addDoc(collection(window._db,'dailyTasks'),{
+    description:desc,
+    dueDate:document.getElementById('task-due').value||'',
+    priority:document.getElementById('task-priority').value,
+    status:'pending',
+    createdBy:CU.email,createdByName:CP.name||CU.email,
+    createdAt:serverTimestamp()
+  });
+  cm('m-add-task');
+  notify('✓ Task added');
+}
+async function completeTask(id){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'dailyTasks',id),{status:'done',doneAt:new Date().toISOString()});
+}
+async function deleteTask(id){
+  if(!confirm('Delete this task?'))return;
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'dailyTasks',id));
+  notify('Task deleted');
+}
+
 async function saveAccC(id,v){const{updateDoc,doc}=window._fb;await updateDoc(doc(window._db,'loads',id),{accComment:v})}
 async function setAccFlag(id,flag){
   const{updateDoc,doc}=window._fb;
@@ -2470,6 +2721,78 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
 </div>
 
+
+<!-- BOND MODAL -->
+<div class="ov" id="m-bond">
+  <div class="mw" style="max-width:560px">
+    <div class="mhd"><div class="mhd-t">🔒 Apply Bond</div><div class="mcl" onclick="cm('m-bond')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="bond-load-id">
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 14px;font-size:12px;color:#5b21b6" id="bond-load-info">Load info</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg">
+          <label>Date Applied</label>
+          <input type="date" id="bond-date">
+        </div>
+        <div class="fg">
+          <label>Bond Company / Name</label>
+          <input id="bond-name" placeholder="e.g. OOIDA Bond, SurePath...">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Bond Number / Reference</label>
+        <input id="bond-ref" placeholder="Bond # or claim reference">
+      </div>
+      <div class="fg">
+        <label>Conversation / Notes</label>
+        <textarea id="bond-notes" style="min-height:80px" placeholder="Notes from conversation with bond company, dates contacted, responses..."></textarea>
+      </div>
+      <div class="fg">
+        <label>Attach Documents / Photos</label>
+        <div style="border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById('bond-files').click()">
+          <div style="font-size:24px">📎</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Click to upload files or photos</div>
+          <div style="font-size:10px;color:var(--text3)">PDF, JPG, PNG supported</div>
+        </div>
+        <input type="file" id="bond-files" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewBondFiles(this)">
+        <div id="bond-file-list" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-bond')">Cancel</button>
+      <button class="btn btn-orange" onclick="saveBond()">🔒 Apply Bond</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGER INVOLVEMENT MODAL -->
+<div class="ov" id="m-manager-task">
+  <div class="mw" style="max-width:480px">
+    <div class="mhd"><div class="mhd-t">🤝 Request Manager Involvement</div><div class="mcl" onclick="cm('m-manager-task')">×</div></div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="mtask-load-id">
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;font-size:12px;color:#9a3412" id="mtask-load-info">Load info</div>
+      <div class="fg">
+        <label>Description / What needs manager attention <span style="color:var(--red)">*</span></label>
+        <textarea id="mtask-desc" style="min-height:90px" placeholder="Describe the issue, what you tried, what you need from the manager..."></textarea>
+      </div>
+      <div class="fg">
+        <label>Attach Photo / Document (optional)</label>
+        <div style="border:2px dashed var(--border2);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById('mtask-file').click()">
+          <div style="font-size:12px;color:var(--text3)">📎 Click to attach file</div>
+        </div>
+        <input type="file" id="mtask-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewMTaskFile(this)">
+        <div id="mtask-file-preview" style="margin-top:6px;font-size:11px;color:var(--blue)"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-manager-task')">Cancel</button>
+      <button class="btn btn-orange" onclick="submitManagerTask()">📨 Send to Manager</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAILY TASKS PAGE (inline in pg-accounting area, separate pg) -->
 
 <!-- EDIT REQUEST MODAL -->
 <div class="ov" id="m-edit-req">
