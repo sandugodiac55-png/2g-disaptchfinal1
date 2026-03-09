@@ -614,6 +614,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div style="display:flex;gap:4px">
                   <button onclick="setAccTab('all',this)" id="acc-tab-all" style="padding:4px 12px;border-radius:6px;border:1.5px solid #6366f1;background:#eef2ff;color:#6366f1;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All</button>
                   <button onclick="setAccTab('paid',this)" id="acc-tab-paid" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">✓ Paid</button>
+                  <button onclick="setAccTab('unpaid',this)" id="acc-tab-unpaid" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">✗ Unpaid</button>
                   <button onclick="setAccTab('overdue',this)" id="acc-tab-overdue" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">⚠️ Overdue</button>
                 </div>
               </div>
@@ -2320,11 +2321,12 @@ function renderAccByFlag(pg){
 
 function setAccTab(tab,el){
   accTab=tab;
-  ['all','paid','overdue'].forEach(t=>{
+  ['all','paid','unpaid','overdue'].forEach(t=>{
     const b=document.getElementById('acc-tab-'+t);
     if(!b)return;
     if(t===tab){
-      b.style.borderColor='#6366f1';b.style.background='#eef2ff';b.style.color='#6366f1';
+      if(t==='unpaid'){b.style.borderColor='#ef4444';b.style.background='#fef2f2';b.style.color='#ef4444';}
+      else{b.style.borderColor='#6366f1';b.style.background='#eef2ff';b.style.color='#6366f1';}
     } else {
       b.style.borderColor='#e2e8f0';b.style.background='#fff';b.style.color='#94a3b8';
     }
@@ -2364,6 +2366,7 @@ function renderAcc(){
 
   // Tab filter
   if(accTab==='paid') fl=fl.filter(l=>l.paid);
+  else if(accTab==='unpaid') fl=fl.filter(l=>!l.paid);
   else if(accTab==='overdue') fl=fl.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);return due&&new Date()>due;});
   if(accSrch){const q=accSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q));}
   document.getElementById('acc-cnt').textContent=fl.length+' loads';
