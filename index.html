@@ -760,6 +760,21 @@ function calcOverMin(loads,driver){
 function tripRPM(trip){return trip.miles>0?(trip.gross/trip.miles):0}
 function tripOverMin(trip,driver){if(!driver||!driver.minRate)return 0;const rpm=tripRPM(trip);return(rpm-(+driver.minRate||0))*(+trip.miles||0);}
 
+/* ══ COPY TO CLIPBOARD ══ */
+function copyText(text,label){
+  if(!text||text==='—'||text==='?')return;
+  navigator.clipboard.writeText(text).then(()=>{
+    notify('✓ Copied: '+text,'inf');
+  }).catch(()=>{
+    // Fallback for older browsers
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);
+    notify('✓ Copied: '+text,'inf');
+  });
+}
+
 /* ══ LOCKED ══ */
 function isLocked(drvName,week){
   const w=week||curW;
@@ -1113,12 +1128,15 @@ function renderDrvTrips(allDrvLoads){
       const rowBg=locked?(inTrip?'#f1f5f9':'#f7fafc'):(inTrip?'#f0f9ff':'#fff');
       html+=`<tr style="background:${rowBg}">
         <td class="bold" style="font-size:12px">
-          <div>${l.orderId||'—'}</div>
+          <div onclick="copyText('${l.orderId||''}','Order ID')" title="Click to copy" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">${l.orderId||'—'}<span style="font-size:9px;color:var(--text3);opacity:.6">⎘</span></div>
           ${tripBadge?`<div style="margin-top:3px">${tripBadge}</div>`:''}
         </td>
         <td style="font-size:12px">${l.origin||'—'} → ${l.dest||'—'}</td>
         <td class="money">$${fmt(+l.rate||0)}</td>
-        <td style="font-size:11px">${l.payMethod||'—'}</td>
+        <td style="font-size:11px">
+          <div>${l.payMethod||'—'}</div>
+          ${l.brokerEmail?`<div onclick="copyText('${l.brokerEmail}','Email')" title="Click to copy email" style="font-size:9px;color:var(--blue);cursor:pointer;margin-top:2px;display:inline-flex;align-items:center;gap:3px">${l.brokerEmail}<span style="opacity:.5">⎘</span></div>`:''}
+        </td>
         <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
         <td>${statusHtml}</td>
         <td>${(ROLE==='accounting'||ROLE==='admin')
@@ -1917,7 +1935,7 @@ function renderAcc(){
     wLoads.forEach(l=>{
       const rpm=(l.miles&&l.rate)?(l.rate/l.miles).toFixed(2):'—';
       rows+=`<tr style="${isClosedWeek?'background:#f8f9fc;opacity:.95':''}">
-        <td class="bold">${l.orderId||'—'}</td>
+        <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" title="Click to copy" style="cursor:pointer">${l.orderId||'—'} <span style="font-size:9px;color:var(--text3);opacity:.5">⎘</span></td>
         <td style="color:var(--blue);font-size:12px">${l.dispName||'—'}</td>
         <td style="font-weight:600">${l.driver||'—'}</td>
         <td style="font-size:11px">${l.company||'—'}</td>
