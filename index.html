@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0055)file:///C:/Users/user/Downloads/GDispatch-TMS-v3_2.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>G-Dispatch TMS</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="./G-Dispatch TMS new one_files/css2" rel="stylesheet">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -375,26 +375,26 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 <body>
 
 <!-- LOADING -->
-<div id="loading">
+<div id="loading" style="display: none;">
   <svg class="logo-pulse" viewBox="0 0 100 100" fill="none">
-    <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
-    <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
-    <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
-    <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
+    <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"></polygon>
+    <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"></path>
+    <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"></path>
+    <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"></path>
   </svg>
   <p>LOADING G-DISPATCH…</p>
 </div>
 
 <!-- LOGIN -->
-<div id="login-page">
+<div id="login-page" style="display: block;">
   <div class="lw">
     <div class="ll">
       <div class="ll-logo">
         <svg viewBox="0 0 100 100" fill="none">
-          <polygon points="50,3 97,26 97,74 50,97 3,74 3,26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1.5"/>
-          <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
-          <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
-          <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
+          <polygon points="50,3 97,26 97,74 50,97 3,74 3,26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1.5"></polygon>
+          <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"></path>
+          <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"></path>
+          <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"></path>
         </svg>
         <div><div class="ll-logo-name">G-Dispatch</div><div class="ll-logo-tag">TRANSPORT MANAGEMENT</div></div>
       </div>
@@ -420,9 +420,9 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
     <aside class="sidebar" id="sidebar">
       <div class="sb-logo">
         <svg viewBox="0 0 100 100" fill="none" style="width:34px;height:34px">
-          <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
-          <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
-          <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"/>
+          <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"></path>
+          <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"></path>
+          <path d="M50 28 L72 50 L62 50 L62 64 L50 64 L50 50 L62 50 L50 28 Z" fill="#cfd8e3"></path>
         </svg>
         <div><div class="sb-logo-name">G-Dispatch</div><div class="sb-logo-tag">TMS v3</div></div>
       </div>
@@ -482,7 +482,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
               <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:10px">🗂 Create Trip — Select loads below</div>
               <div class="g2" style="margin-bottom:12px">
                 <div class="fg"><label>Total Miles (required)</label><input type="number" id="trip-miles" placeholder="e.g. 2500" oninput="updateTripCalc()"></div>
-                <div class="fg"><label>Calc Rate/Mile</label><input id="trip-rpm" readonly></div>
+                <div class="fg"><label>Calc Rate/Mile</label><input id="trip-rpm" readonly=""></div>
               </div>
               <div class="fg" style="margin-bottom:12px">
                 <label>Google Maps Route URL <span style="color:var(--red)">*</span> <span style="font-size:10px;color:var(--text3);font-weight:400">— required, opens in KPI calendar</span></label>
@@ -556,7 +556,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div id="acc-view-drivers" style="display:none">
             <div class="ph">
               <div>
-                <button onclick="accBack('companies')" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ All Companies</button>
+                <button onclick="accBack(&#39;companies&#39;)" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ All Companies</button>
                 <div class="ph-t" id="acc-co-title">Company</div>
                 <div class="ph-s" id="acc-co-sub">Select a driver</div>
               </div>
@@ -567,7 +567,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div id="acc-view-loads" style="display:none">
             <div class="ph">
               <div>
-                <button onclick="accBack('drivers')" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ Back to Drivers</button>
+                <button onclick="accBack(&#39;drivers&#39;)" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ Back to Drivers</button>
                 <div class="ph-t" id="acc-drv-title">Driver</div>
               </div>
               <div class="ph-a" style="gap:10px">
@@ -608,9 +608,9 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                   <div style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0</div>
                 </div>
                 <div style="display:flex;gap:4px">
-                  <button onclick="setAccTab('all',this)" id="acc-tab-all" style="padding:4px 12px;border-radius:6px;border:1.5px solid #6366f1;background:#eef2ff;color:#6366f1;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All</button>
-                  <button onclick="setAccTab('paid',this)" id="acc-tab-paid" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">✓ Paid</button>
-                  <button onclick="setAccTab('overdue',this)" id="acc-tab-overdue" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">⚠️ Overdue</button>
+                  <button onclick="setAccTab(&#39;all&#39;,this)" id="acc-tab-all" style="padding:4px 12px;border-radius:6px;border:1.5px solid #6366f1;background:#eef2ff;color:#6366f1;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All</button>
+                  <button onclick="setAccTab(&#39;paid&#39;,this)" id="acc-tab-paid" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">✓ Paid</button>
+                  <button onclick="setAccTab(&#39;overdue&#39;,this)" id="acc-tab-overdue" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">⚠️ Overdue</button>
                 </div>
               </div>
               <div class="tw"><table>
@@ -656,35 +656,35 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                   <div style="color:rgba(255,255,255,.5);font-size:11px;margin-top:1px">Create a task for the accounting team</div>
                 </div>
               </div>
-              <div onclick="cm('m-add-task')" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">×</div>
+              <div onclick="cm(&#39;m-add-task&#39;)" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300;transition:background .15s" onmouseover="this.style.background=&#39;rgba(255,255,255,.2)&#39;" onmouseout="this.style.background=&#39;rgba(255,255,255,.1)&#39;">×</div>
             </div>
             <!-- Body -->
             <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;background:#fff">
               <!-- Description -->
               <div>
                 <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Task Description <span style="color:#ef4444">*</span></label>
-                <textarea id="task-desc" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:90px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="Describe what needs to be done..." onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+                <textarea id="task-desc" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:90px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="Describe what needs to be done..." onfocus="this.style.borderColor=&#39;#6366f1&#39;" onblur="this.style.borderColor=&#39;#e2e8f0&#39;"></textarea>
               </div>
               <!-- Priority chips + Due Date row -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
                 <div>
                   <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:8px">Priority</label>
                   <div style="display:flex;gap:6px" id="task-pri-chips">
-                    <div onclick="setTaskPri('low',this)" data-val="low" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #dbeafe;background:#eff6ff;color:#3b82f6;transition:all .15s">🔵 Low</div>
-                    <div onclick="setTaskPri('normal',this)" data-val="normal" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #6366f1;background:#eef2ff;color:#6366f1;box-shadow:0 0 0 3px #c7d2fe;transition:all .15s">🟡 Normal</div>
-                    <div onclick="setTaskPri('high',this)" data-val="high" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #fed7aa;background:#fff7ed;color:#ea580c;transition:all .15s">🔴 High</div>
+                    <div onclick="setTaskPri(&#39;low&#39;,this)" data-val="low" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #dbeafe;background:#eff6ff;color:#3b82f6;transition:all .15s">🔵 Low</div>
+                    <div onclick="setTaskPri(&#39;normal&#39;,this)" data-val="normal" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #6366f1;background:#eef2ff;color:#6366f1;box-shadow:0 0 0 3px #c7d2fe;transition:all .15s">🟡 Normal</div>
+                    <div onclick="setTaskPri(&#39;high&#39;,this)" data-val="high" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid #fed7aa;background:#fff7ed;color:#ea580c;transition:all .15s">🔴 High</div>
                   </div>
                   <input type="hidden" id="task-priority" value="normal">
                 </div>
                 <div>
                   <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Due Date</label>
-                  <input type="date" id="task-due" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
+                  <input type="date" id="task-due" style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor=&#39;#6366f1&#39;" onblur="this.style.borderColor=&#39;#e2e8f0&#39;">
                 </div>
               </div>
               <!-- File upload -->
               <div>
                 <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Attach File / Photo <span style="font-weight:400;text-transform:none">(optional)</span></label>
-                <div onclick="document.getElementById('task-file').click()" style="border:2px dashed #cbd5e1;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s" onmouseover="this.style.borderColor='#6366f1';this.style.background='#eef2ff'" onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc'">
+                <div onclick="document.getElementById(&#39;task-file&#39;).click()" style="border:2px dashed #cbd5e1;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s" onmouseover="this.style.borderColor=&#39;#6366f1&#39;;this.style.background=&#39;#eef2ff&#39;" onmouseout="this.style.borderColor=&#39;#cbd5e1&#39;;this.style.background=&#39;#f8fafc&#39;">
                   <div style="font-size:24px;margin-bottom:4px">📎</div>
                   <div style="font-size:12px;font-weight:600;color:#475569">Click to upload</div>
                   <div style="font-size:10px;color:#94a3b8;margin-top:2px">PDF, JPG, PNG</div>
@@ -695,7 +695,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             </div>
             <!-- Footer -->
             <div style="padding:16px 28px 22px;background:#f8fafc;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:10px">
-              <button onclick="cm('m-add-task')" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+              <button onclick="cm(&#39;m-add-task&#39;)" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
               <button onclick="saveTask()" style="padding:10px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(99,102,241,.3)">💾 Save Task</button>
             </div>
           </div>
@@ -726,7 +726,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <!-- SALARY PAGE -->
         <div class="pg" id="pg-salary">
           <div class="ph">
-            <div><div class="ph-t">Salary Calculator</div><div class="ph-s">Admin only — configure & export</div></div>
+            <div><div class="ph-t">Salary Calculator</div><div class="ph-s">Admin only — configure &amp; export</div></div>
             <button class="btn btn-orange" onclick="exportSalary()">⬇ Export CSV</button>
           </div>
           <div class="tc"><div class="tc-top"><div class="tc-title">Driver Salary</div></div><div id="sal-table"></div></div>
@@ -741,7 +741,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div class="ag">
             <div class="ac" id="adm-req-panel" style="display:none"><div class="ach" style="background:#fff7ed;border-color:#fed7aa"><div class="act" style="color:var(--orange)">📨 Edit Requests</div></div><div id="adm-edit-req"></div></div>
             <div class="ac"><div class="ach"><div class="act">👥 Users</div></div><div id="adm-u"></div></div>
-            <div class="ac"><div class="ach"><div class="act">🚛 Dispatchers & Drivers</div><button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button></div><div id="adm-d"></div></div>
+            <div class="ac"><div class="ach"><div class="act">🚛 Dispatchers &amp; Drivers</div><button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button></div><div id="adm-d"></div></div>
             <div class="ac"><div class="ach"><div class="act">🏢 Companies</div><button class="btn btn-ghost btn-sm" onclick="openCompModal()">＋ Add</button></div><div id="adm-c"></div></div>
             <div class="ac"><div class="ach"><div class="act">📊 Stats</div></div><div id="adm-s" style="padding:16px"></div></div>
           </div>
@@ -754,14 +754,14 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 <!-- LOAD MODAL (simplified — no driver selector) -->
 <div class="ov" id="m-load">
   <div class="modal">
-    <div class="mhd"><div class="mhd-t" id="m-load-t">Add Load</div><div class="mcl" onclick="cm('m-load')">×</div></div>
+    <div class="mhd"><div class="mhd-t" id="m-load-t">Add Load</div><div class="mcl" onclick="cm(&#39;m-load&#39;)">×</div></div>
     <div class="mbd"><div class="g2">
       <div class="ftitle">📦 Load Info</div><div></div>
       <div class="fg"><label>Order ID *</label><input id="fl-oid" placeholder="LD-001"></div>
       <div class="fg"><label>Date</label><input type="date" id="fl-date"></div>
       <div class="fg"><label>Pickup Location</label><input id="fl-ori" placeholder="Chicago, IL"></div>
       <div class="fg"><label>Delivery Location</label><input id="fl-dst" placeholder="Dallas, TX"></div>
-      <div class="fsep"></div><div class="ftitle">💰 Rate & Payment</div><div></div>
+      <div class="fsep"></div><div class="ftitle">💰 Rate &amp; Payment</div><div></div>
       <div class="fg"><label>Total Rate ($) *</label><input type="number" id="fl-rt" placeholder="0.00" step="0.01"></div>
       <div class="fg"><label>Payment Method *</label>
         <select id="fl-pay">
@@ -777,17 +777,17 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <div class="fg"><label>Broker Email</label><input type="email" id="fl-be" placeholder="broker@co.com"></div>
       <div class="fg"><label>Broker Phone</label><input id="fl-bp" placeholder="+1 555 000 0000"></div>
       <div class="fg"><label>Broker Fee ($)</label><input type="number" id="fl-bf" placeholder="0.00" step="0.01"></div>
-      <div class="trow full"><span class="trow-l">Broker Fee Paid</span><div class="sw" id="sw-bf" onclick="this.classList.toggle('on')"></div></div>
+      <div class="trow full"><span class="trow-l">Broker Fee Paid</span><div class="sw" id="sw-bf" onclick="this.classList.toggle(&#39;on&#39;)"></div></div>
       <div class="fg full"><label>Notes</label><textarea id="fl-nt" placeholder="Additional notes…"></textarea></div>
     </div></div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-load')">Cancel</button><button class="btn btn-orange" onclick="saveLoad()">💾 Save Load</button></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm(&#39;m-load&#39;)">Cancel</button><button class="btn btn-orange" onclick="saveLoad()">💾 Save Load</button></div>
   </div>
 </div>
 
 <!-- USER MODAL -->
 <div class="ov" id="m-user">
   <div class="modal sm">
-    <div class="mhd"><div class="mhd-t">Add User</div><div class="mcl" onclick="cm('m-user')">×</div></div>
+    <div class="mhd"><div class="mhd-t">Add User</div><div class="mcl" onclick="cm(&#39;m-user&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Full Name</label><input id="u-nm" placeholder="John Smith"></div>
       <div class="fg"><label>Email</label><input type="email" id="u-em"></div>
@@ -795,14 +795,14 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <div class="fg"><label>Role</label><select id="u-rl"><option value="dispatcher">Dispatcher</option><option value="accounting">Accounting</option><option value="manager">Manager</option><option value="owner">Owner</option><option value="admin">Admin</option></select></div>
       <div class="fg"><label>Company</label><select id="u-co"><option value="">— None —</option></select></div>
     </div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-user')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Create</button></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm(&#39;m-user&#39;)">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Create</button></div>
   </div>
 </div>
 
 <!-- COMPANY MODAL -->
 <div class="ov" id="m-co">
   <div class="modal xs">
-    <div class="mhd"><div class="mhd-t">Add Company</div><div class="mcl" onclick="cm('m-co')">×</div></div>
+    <div class="mhd"><div class="mhd-t">Add Company</div><div class="mcl" onclick="cm(&#39;m-co&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Company Name *</label><input id="co-nm" placeholder="ABC Trucking LLC"></div>
       <div class="fg"><label>MC Number</label><input id="co-mc"></div>
@@ -810,14 +810,14 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <div class="fg"><label>Email</label><input type="email" id="co-em"></div>
       <div class="fg"><label>Phone</label><input id="co-ph"></div>
     </div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-co')">Cancel</button><button class="btn btn-primary" onclick="saveComp()">Save</button></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm(&#39;m-co&#39;)">Cancel</button><button class="btn btn-primary" onclick="saveComp()">Save</button></div>
   </div>
 </div>
 
 <!-- DRIVER MODAL -->
 <div class="ov" id="m-drv">
   <div class="modal xs">
-    <div class="mhd"><div class="mhd-t">Add Driver</div><div class="mcl" onclick="cm('m-drv')">×</div></div>
+    <div class="mhd"><div class="mhd-t">Add Driver</div><div class="mcl" onclick="cm(&#39;m-drv&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Driver Name *</label><input id="dr-nm"></div>
       <div class="fg"><label>Phone</label><input id="dr-ph"></div>
@@ -826,14 +826,14 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <div class="fg"><label>Minimum Rate/Mile ($)</label><input type="number" id="dr-min" placeholder="2.50" step="0.01"></div>
       <div class="fg"><label>Salary % (admin only)</label><input type="number" id="dr-sal" placeholder="8" step="0.1"></div>
     </div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-drv')">Cancel</button><button class="btn btn-primary" onclick="saveDrv()">Save</button></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm(&#39;m-drv&#39;)">Cancel</button><button class="btn btn-primary" onclick="saveDrv()">Save</button></div>
   </div>
 </div>
 
 <!-- PASSWORD MODAL -->
 <div class="ov" id="m-pw">
   <div class="modal sm">
-    <div class="mhd"><div class="mhd-t">Add Credentials</div><div class="mcl" onclick="cm('m-pw')">×</div></div>
+    <div class="mhd"><div class="mhd-t">Add Credentials</div><div class="mcl" onclick="cm(&#39;m-pw&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div class="fg"><label>Company</label><select id="pw-co"><option value="">— Select —</option></select></div>
       <div class="fg"><label>Platform</label><input id="pw-pl" placeholder="Central Dispatch"></div>
@@ -841,7 +841,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <div class="fg"><label>Password</label><input id="pw-ps"></div>
       <div class="fg"><label>Notes</label><textarea id="pw-nt" style="min-height:55px"></textarea></div>
     </div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-pw')">Cancel</button><button class="btn btn-primary" onclick="savePw()">Save</button></div>
+    <div class="mft"><button class="btn btn-ghost" onclick="cm(&#39;m-pw&#39;)">Cancel</button><button class="btn btn-primary" onclick="savePw()">Save</button></div>
   </div>
 </div>
 
@@ -1217,8 +1217,8 @@ function renderDrvTrips(allDrvLoads){
     if(!weeks[w])weeks[w]=[];
     weeks[w].push(l);
   });
-  // Sort weeks newest first
-  const sortedWeeks=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+  // Sort weeks oldest first, current week last
+  const sortedWeeks=Object.keys(weeks).sort((a,b)=>a.localeCompare(b));
   const allTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
   const isLockedWeek=(w)=>isLocked(curDrv?.name,w);
   const el=document.getElementById('drv-trips');
@@ -1242,7 +1242,7 @@ function renderDrvTrips(allDrvLoads){
     const locked=isLockedWeek(w);
     const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
-    const wNum=sortedWeeks.length-wi; // Week 1 = oldest
+    const wNum=wi+1; // Week 1 = oldest, current = last
     const isCurW=w===curW;
     const unlockedByAdmin=(curDrv?.unlockedWeeks||[]).includes(w);
     const canEdit=ROLE==='admin'?true:(!locked&&ROLE==='dispatcher')||unlockedByAdmin;
@@ -1258,9 +1258,7 @@ function renderDrvTrips(allDrvLoads){
             ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
           </span>
           <span style="font-size:13px;font-weight:800;color:${locked?'#68d391':'var(--green)'};font-family:var(--mono)">$${fmt(wGross)}</span>
-          <span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':sepText};opacity:.7">${wk.length} loads</span>
           ${ROLE==='admin'&&locked&&!isCurW?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:${unlockedByAdmin?'rgba(239,68,68,.2)':'rgba(255,255,255,.15)'};color:${unlockedByAdmin?'#fca5a5':'rgba(255,255,255,.8)'};border:1px solid ${unlockedByAdmin?'rgba(239,68,68,.4)':'rgba(255,255,255,.2)'}" onclick="event.stopPropagation();toggleWeekUnlock('${curDrv.id}','${w}',${unlockedByAdmin})">${unlockedByAdmin?'🔒 Revoke Edit':'🔓 Grant Edit'}</button>`:''}
-          ${wTrips.length?`<span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':'var(--teal)'};">${wTrips.length} trips</span>`:''}
         </div>
       </td>
     </tr>`;
@@ -2352,25 +2350,24 @@ function renderAcc(){
     const wUnpaid=wGross-wPaid;
     const isClosedWeek=DRIVERS.some(d=>(d.closedWeeks||[]).includes(w)||d.weekLocked===w);
     // Week label row (top - minimal, just label)
-    rows+=`<tr style="background:${isClosedWeek?'var(--navy)':'var(--surface2)'}">
-      <td colspan="13" style="padding:6px 16px">
-        <span style="font-size:11px;font-weight:700;color:${isClosedWeek?'rgba(255,255,255,.7)':'var(--text3)'};letter-spacing:.3px">${isClosedWeek?'🔒':'📅'} ${wLbl(w)}</span>
+    rows+=`<tr style="background:${isClosedWeek?'rgba(139,92,246,.18)':'rgba(139,92,246,.07)'}">
+      <td colspan="13" style="padding:6px 16px;border-left:3px solid ${isClosedWeek?'#7c3aed':'#c4b5fd'}">
+        <span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#6d28d9':'#7c3aed'};letter-spacing:.3px">${isClosedWeek?'🔒':'📅'} ${wLbl(w)}</span>
       </td></tr>`;
     // Load rows
     wLoads.forEach(l=>{
       rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:true,overdue:false});
     });
     // Week summary footer row
-    rows+=`<tr style="background:${isClosedWeek?'#0f2040':'#f0fdf4'};border-top:2px solid ${isClosedWeek?'rgba(255,255,255,.1)':'#bbf7d0'}">
+    rows+=`<tr style="background:${isClosedWeek?'rgba(139,92,246,.12)':'rgba(139,92,246,.05)'};border-top:1px solid ${isClosedWeek?'rgba(139,92,246,.4)':'rgba(196,181,253,.6)'}">
       <td colspan="13" style="padding:8px 16px 10px">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">TOTAL $${fmt(wGross)}</span>
-          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#6ee7b7':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
-          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#fca5a5':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
-
+          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:var(--teal)">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:var(--red)">✗ $${fmt(wUnpaid)} pending</span>`:''}
         </div>
       </td></tr>
-    <tr><td colspan="13" style="padding:0;height:10px;background:var(--surface)"></td></tr>`;
+    <tr><td colspan="13" style="padding:0;height:8px;background:var(--surface)"></td></tr>`;
   });
   tb.innerHTML=rows;
 }
@@ -2851,7 +2848,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 <!-- PAYMENT METHOD MODAL (COD/COP require how driver was paid) -->
 <div class="ov" id="m-pay">
   <div class="modal xs">
-    <div class="mhd"><div class="mhd-t">💵 How was the driver paid?</div><div class="mcl" onclick="cm('m-pay')">×</div></div>
+    <div class="mhd"><div class="mhd-t">💵 How was the driver paid?</div><div class="mcl" onclick="cm(&#39;m-pay&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:12px">
       <div style="background:#fff7ed;border:1px solid var(--orange);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);font-weight:600">
         ⚠️ This load is <span id="pay-method-label">COD/COP</span> — driver payment method is required before marking as paid.
@@ -2873,7 +2870,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       </div>
     </div>
     <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-pay')">Cancel</button>
+      <button class="btn btn-ghost" onclick="cm(&#39;m-pay&#39;)">Cancel</button>
       <button class="btn btn-orange" onclick="confirmPayment()">✓ Mark as Paid</button>
     </div>
   </div>
@@ -2883,11 +2880,11 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 <!-- EDIT TRIP MODAL -->
 <div class="ov" id="m-edit-trip">
   <div class="modal" style="max-width:560px">
-    <div class="mhd"><div class="mhd-t">✏️ Edit Trip</div><div class="mcl" onclick="cm('m-edit-trip')">×</div></div>
+    <div class="mhd"><div class="mhd-t">✏️ Edit Trip</div><div class="mcl" onclick="cm(&#39;m-edit-trip&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
       <div class="g2">
         <div class="fg"><label>Total Miles *</label><input type="number" id="et-miles" placeholder="e.g. 2500" oninput="updateEditTripCalc()"></div>
-        <div class="fg"><label>Calc Rate/Mile</label><input id="et-rpm" readonly></div>
+        <div class="fg"><label>Calc Rate/Mile</label><input id="et-rpm" readonly=""></div>
       </div>
       <div class="fg">
         <label>Google Maps Route URL <span style="color:var(--red)">*</span></label>
@@ -2905,7 +2902,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       </div>
     </div>
     <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-edit-trip')">Cancel</button>
+      <button class="btn btn-ghost" onclick="cm(&#39;m-edit-trip&#39;)">Cancel</button>
       <button class="btn btn-danger btn-sm" onclick="deleteTripFromModal()" style="margin-right:auto">🗑 Delete Trip</button>
       <button class="btn btn-primary" onclick="saveEditTrip()">💾 Save Changes</button>
     </div>
@@ -2916,7 +2913,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 <!-- BOND MODAL -->
 <div class="ov" id="m-bond">
   <div class="mw" style="max-width:560px">
-    <div class="mhd"><div class="mhd-t">🔒 Apply Bond</div><div class="mcl" onclick="cm('m-bond')">×</div></div>
+    <div class="mhd"><div class="mhd-t">🔒 Apply Bond</div><div class="mcl" onclick="cm(&#39;m-bond&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
       <input type="hidden" id="bond-load-id">
       <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 14px;font-size:12px;color:#5b21b6" id="bond-load-info">Load info</div>
@@ -2940,17 +2937,17 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       </div>
       <div class="fg">
         <label>Attach Documents / Photos</label>
-        <div style="border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById('bond-files').click()">
+        <div style="border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById(&#39;bond-files&#39;).click()">
           <div style="font-size:24px">📎</div>
           <div style="font-size:12px;color:var(--text3);margin-top:4px">Click to upload files or photos</div>
           <div style="font-size:10px;color:var(--text3)">PDF, JPG, PNG supported</div>
         </div>
-        <input type="file" id="bond-files" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewBondFiles(this)">
+        <input type="file" id="bond-files" multiple="" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewBondFiles(this)">
         <div id="bond-file-list" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
     </div>
     <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-bond')">Cancel</button>
+      <button class="btn btn-ghost" onclick="cm(&#39;m-bond&#39;)">Cancel</button>
       <button class="btn btn-orange" onclick="saveBond()">🔒 Apply Bond</button>
     </div>
   </div>
@@ -2968,7 +2965,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
           <div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:1px">This load will be flagged for manager review</div>
         </div>
       </div>
-      <div onclick="cm('m-escalate')" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+      <div onclick="cm(&#39;m-escalate&#39;)" style="position:absolute;top:18px;right:18px;width:28px;height:28px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;font-weight:300" onmouseover="this.style.background=&#39;rgba(255,255,255,.25)&#39;" onmouseout="this.style.background=&#39;rgba(255,255,255,.15)&#39;">×</div>
     </div>
     <!-- Load info pill -->
     <div style="background:#fef2f2;padding:12px 28px;border-bottom:1px solid #fecaca">
@@ -2979,11 +2976,11 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;background:#fff">
       <div>
         <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Problem Description <span style="color:#ef4444">*</span></label>
-        <textarea id="esc-desc" style="width:100%;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:100px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="What happened? What did you try? What do you need from the manager..." onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#fecaca'"></textarea>
+        <textarea id="esc-desc" style="width:100%;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:100px;outline:none;transition:border .15s;box-sizing:border-box;color:#1e293b" placeholder="What happened? What did you try? What do you need from the manager..." onfocus="this.style.borderColor=&#39;#dc2626&#39;" onblur="this.style.borderColor=&#39;#fecaca&#39;"></textarea>
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Attach Document / Photo <span style="font-weight:400;text-transform:none">(optional)</span></label>
-        <div onclick="document.getElementById('esc-file').click()" style="border:2px dashed #fecaca;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#fef9f9;transition:all .2s" onmouseover="this.style.borderColor='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#fecaca';this.style.background='#fef9f9'">
+        <div onclick="document.getElementById(&#39;esc-file&#39;).click()" style="border:2px dashed #fecaca;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#fef9f9;transition:all .2s" onmouseover="this.style.borderColor=&#39;#dc2626&#39;;this.style.background=&#39;#fef2f2&#39;" onmouseout="this.style.borderColor=&#39;#fecaca&#39;;this.style.background=&#39;#fef9f9&#39;">
           <div style="font-size:26px;margin-bottom:4px">📎</div>
           <div style="font-size:12px;font-weight:600;color:#dc2626">Click to upload</div>
           <div style="font-size:10px;color:#94a3b8;margin-top:2px">PDF, JPG, PNG</div>
@@ -2994,7 +2991,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     </div>
     <!-- Footer -->
     <div style="padding:16px 28px 22px;background:#fef9f9;border-top:1px solid #fee2e2;display:flex;justify-content:flex-end;gap:10px">
-      <button onclick="cm('m-escalate')" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="cm(&#39;m-escalate&#39;)" style="padding:10px 20px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
       <button onclick="submitEscalate()" style="padding:10px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(220,38,38,.35)">🆘 Send to Manager</button>
     </div>
   </div>
@@ -3003,7 +3000,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 <!-- MANAGER INVOLVEMENT MODAL -->
 <div class="ov" id="m-manager-task">
   <div class="mw" style="max-width:480px">
-    <div class="mhd"><div class="mhd-t">🤝 Request Manager Involvement</div><div class="mcl" onclick="cm('m-manager-task')">×</div></div>
+    <div class="mhd"><div class="mhd-t">🤝 Request Manager Involvement</div><div class="mcl" onclick="cm(&#39;m-manager-task&#39;)">×</div></div>
     <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
       <input type="hidden" id="mtask-load-id">
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;font-size:12px;color:#9a3412" id="mtask-load-info">Load info</div>
@@ -3013,7 +3010,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       </div>
       <div class="fg">
         <label>Attach Photo / Document (optional)</label>
-        <div style="border:2px dashed var(--border2);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById('mtask-file').click()">
+        <div style="border:2px dashed var(--border2);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:var(--surface2)" onclick="document.getElementById(&#39;mtask-file&#39;).click()">
           <div style="font-size:12px;color:var(--text3)">📎 Click to attach file</div>
         </div>
         <input type="file" id="mtask-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewMTaskFile(this)">
@@ -3021,7 +3018,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       </div>
     </div>
     <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-manager-task')">Cancel</button>
+      <button class="btn btn-ghost" onclick="cm(&#39;m-manager-task&#39;)">Cancel</button>
       <button class="btn btn-orange" onclick="submitManagerTask()">📨 Send to Manager</button>
     </div>
   </div>
@@ -3040,14 +3037,14 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
           <div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:1px">Add a payment note (optional)</div>
         </div>
       </div>
-      <div onclick="cm('m-acc-pay')" style="position:absolute;top:16px;right:16px;width:26px;height:26px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:15px" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+      <div onclick="cm(&#39;m-acc-pay&#39;)" style="position:absolute;top:16px;right:16px;width:26px;height:26px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:15px" onmouseover="this.style.background=&#39;rgba(255,255,255,.25)&#39;" onmouseout="this.style.background=&#39;rgba(255,255,255,.15)&#39;">×</div>
     </div>
     <div style="padding:20px 24px;background:#fff">
       <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;text-transform:uppercase;margin-bottom:7px">Payment Note</label>
-      <input id="acc-pay-note" style="width:100%;border:1.5px solid #d1fae5;border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .15s" placeholder="e.g. Paid via Zelle, ACH, Check..." onfocus="this.style.borderColor='#059669'" onblur="this.style.borderColor='#d1fae5'" onkeydown="if(event.key==='Enter')confirmAccPay()">
+      <input id="acc-pay-note" style="width:100%;border:1.5px solid #d1fae5;border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .15s" placeholder="e.g. Paid via Zelle, ACH, Check..." onfocus="this.style.borderColor=&#39;#059669&#39;" onblur="this.style.borderColor=&#39;#d1fae5&#39;" onkeydown="if(event.key===&#39;Enter&#39;)confirmAccPay()">
     </div>
     <div style="padding:12px 24px 18px;background:#f0fdf4;border-top:1px solid #d1fae5;display:flex;justify-content:flex-end;gap:8px">
-      <button onclick="cm('m-acc-pay')" style="padding:9px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="cm(&#39;m-acc-pay&#39;)" style="padding:9px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
       <button onclick="confirmAccPay()" style="padding:9px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(5,150,105,.3)">✓ Confirm Paid</button>
     </div>
   </div>
@@ -3056,7 +3053,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
 <!-- EDIT REQUEST MODAL -->
 <div class="ov" id="m-edit-req">
   <div class="mw" style="max-width:420px">
-    <div class="mhd"><div class="mhd-t">✏️ Request Edit Permission</div><div class="mcl" onclick="cm('m-edit-req')">×</div></div>
+    <div class="mhd"><div class="mhd-t">✏️ Request Edit Permission</div><div class="mcl" onclick="cm(&#39;m-edit-req&#39;)">×</div></div>
     <div class="mbd">
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400e">
         ⚠️ This week is <strong>locked</strong>. You need admin approval to make changes.
@@ -3065,7 +3062,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       <input type="hidden" id="req-week">
       <div class="fg" style="margin-bottom:12px">
         <label>Load</label>
-        <input id="req-load-label" readonly style="background:var(--surface2);color:var(--text3)">
+        <input id="req-load-label" readonly="" style="background:var(--surface2);color:var(--text3)">
       </div>
       <div class="fg" style="margin-bottom:12px">
         <label>Reason for edit request <span style="color:var(--red)">*</span></label>
@@ -3073,7 +3070,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       </div>
     </div>
     <div class="mft">
-      <button class="btn btn-ghost" onclick="cm('m-edit-req')">Cancel</button>
+      <button class="btn btn-ghost" onclick="cm(&#39;m-edit-req&#39;)">Cancel</button>
       <button class="btn btn-orange" onclick="submitEditRequest()">📨 Send Request to Admin</button>
     </div>
   </div>
@@ -3089,11 +3086,12 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
   <div id="tp-body" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a id="tp-maps-btn" href="#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Open Google Maps</a>
+    <a id="tp-maps-btn" href="file:///C:/Users/user/Downloads/GDispatch-TMS-v3_2.html#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Open Google Maps</a>
     <button onclick="closeTripPopover()" style="flex:1;background:var(--bg2);border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2)">Close</button>
   </div>
 </div>
 <div id="trip-popover-overlay" onclick="closeTripPopover()" style="display:none;position:fixed;inset:0;z-index:9998"></div>
 
-</body>
-</html>
+
+
+</body></html>
