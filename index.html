@@ -1234,7 +1234,7 @@ function renderDriverPage(){
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
 
-  // Per-driver week status badge + Close Week button
+  // Per-driver week status badge + Close Week button (dispatcher) / Reopen Week (admin)
   let weekStatusHtml='';
   if(ROLE==='dispatcher'){
     const workWLabel=wLbl(workW);
@@ -1249,6 +1249,20 @@ function renderDriverPage(){
           : `<button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="closeDriverWeek('${drvId}')">🔒 Close Week</button>`
         }
       </div>`;
+  }
+  if(ROLE==='admin'){
+    // Find dispatcher who owns this driver
+    const dispUser=USERS.find(u=>u.email===curDrv.dispatcherEmail);
+    const dw=dispUser?(dispUser.driverWeeks||{})[drvId]||{}:{};
+    const closedWeeks=[...(dw.closedWeeks||[])].sort((a,b)=>b.localeCompare(a));
+    if(closedWeeks.length){
+      weekStatusHtml=`
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="openReopenWeekModal('${drvId}')">
+            ↩ Reopen Week
+          </button>
+        </div>`;
+    }
   }
 
   document.getElementById('drv-hd-info').innerHTML=`
@@ -2900,12 +2914,70 @@ async function adminReopenDriverWeek(userId, drvId, drvName, week){
   await loadMeta();
   renderAdmin();
 }
+
+// Called from driver page (admin only)
+let _reopenDrvId=null;
+function openReopenWeekModal(drvId){
+  if(ROLE!=='admin')return;
+  _reopenDrvId=drvId;
+  const dispUser=USERS.find(u=>u.email===curDrv?.dispatcherEmail);
+  const dw=dispUser?(dispUser.driverWeeks||{})[drvId]||{}:{};
+  const closedWeeks=[...(dw.closedWeeks||[])].sort((a,b)=>b.localeCompare(a));
+  const sel=document.getElementById('reopen-week-sel');
+  sel.innerHTML=`<option value="">— Select week —</option>`+closedWeeks.map(w=>`<option value="${w}">🔒 ${wLbl(w)}</option>`).join('');
+  om('m-reopen-week');
+}
+
+async function confirmReopenWeek(){
+  if(ROLE!=='admin')return;
+  const week=document.getElementById('reopen-week-sel').value;
+  if(!week){notify('Please select a week','err');return;}
+  const drvId=_reopenDrvId;
+  const dispUser=USERS.find(u=>u.email===curDrv?.dispatcherEmail);
+  if(!dispUser){notify('Dispatcher not found','err');return;}
+  const driverWeeks={...(dispUser.driverWeeks||{})};
+  const existing=driverWeeks[drvId]||{activeWeek:null,closedWeeks:[]};
+  const newClosed=(existing.closedWeeks||[]).filter(w=>w!==week);
+  driverWeeks[drvId]={activeWeek:week, closedWeeks:newClosed};
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'users',dispUser.id),{driverWeeks});
+  // Update local CP if we are that dispatcher (won't happen for admin but safe)
+  await loadMeta();
+  cm('m-reopen-week');
+  notify(`✅ Week reopened — ${wLbl(week)}`);
+  renderDriverPage();
+}
 async function saveUser(){const nm=document.getElementById('u-nm').value.trim(),em=document.getElementById('u-em').value.trim(),pw=document.getElementById('u-pw').value;if(!nm||!em){notify('Name & email required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'users'),{name:nm,email:em,role:document.getElementById('u-rl').value,company:document.getElementById('u-co').value,createdAt:new Date().toISOString()});notify(`Profile saved! Also create "${em}" in Firebase Auth.`,'inf');await loadMeta();renderAdmin();cm('m-user')}
 function openCompModal(){['co-nm','co-mc','co-dt','co-em','co-ph'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});om('m-co')}
 async function saveComp(){const nm=document.getElementById('co-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'companies'),{name:nm,mc:document.getElementById('co-mc').value.trim(),dot:document.getElementById('co-dt').value.trim(),email:document.getElementById('co-em').value.trim(),phone:document.getElementById('co-ph').value.trim()});notify('Company added ✓');await loadMeta();renderAdmin();cm('m-co')}
 function openDriverModal(){['dr-nm','dr-ph','dr-min','dr-sal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('dr-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');document.getElementById('dr-dp').innerHTML=`<option value="">—</option>`+USERS.filter(u=>u.role==='dispatcher').map(d=>`<option value="${d.email}">${d.name||d.email}</option>`).join('');om('m-drv')}
 async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'drivers'),{name:nm,phone:document.getElementById('dr-ph').value.trim(),company:document.getElementById('dr-co').value,dispatcherEmail:document.getElementById('dr-dp').value,minRate:parseFloat(document.getElementById('dr-min').value)||0,salaryPct:parseFloat(document.getElementById('dr-sal').value)||0});notify('Driver added ✓');await loadMeta();renderAdmin();cm('m-drv')}
 </script>
+
+<!-- REOPEN WEEK MODAL (admin only) -->
+<div class="ov" id="m-reopen-week">
+  <div class="modal xs">
+    <div class="mhd">
+      <div class="mhd-t">↩ Reopen Closed Week</div>
+      <div class="mcl" onclick="cm('m-reopen-week')">×</div>
+    </div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:#fff7ed;border:1px solid var(--orange);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);font-weight:600">
+        ⚠️ Reopening a week allows the dispatcher to edit and delete loads in it again.
+      </div>
+      <div class="fg">
+        <label>Select week to reopen</label>
+        <select id="reopen-week-sel" style="font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;width:100%">
+          <option value="">— Select week —</option>
+        </select>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-reopen-week')">Cancel</button>
+      <button class="btn btn-orange" onclick="confirmReopenWeek()">↩ Reopen Week</button>
+    </div>
+  </div>
+</div>
 
 <!-- PAYMENT METHOD MODAL (COD/COP require how driver was paid) -->
 <div class="ov" id="m-pay">
