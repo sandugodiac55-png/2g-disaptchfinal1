@@ -362,6 +362,11 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 .pw-icon{width:38px;height:38px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .pw-name{font-size:13px;font-weight:700;color:var(--navy)}
 .pw-val{font-size:12px;color:var(--navy);font-family:var(--mono);background:var(--bg);border-radius:5px;padding:5px 9px}
+.pw-folder{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:20px 18px;cursor:pointer;transition:all .18s;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.pw-folder:hover{border-color:var(--orange);box-shadow:0 4px 18px rgba(242,101,34,.15);transform:translateY(-2px)}
+.pw-folder-icon{font-size:32px;margin-bottom:2px}
+.pw-folder-name{font-size:14px;font-weight:700;color:var(--navy)}
+.pw-folder-count{font-size:11px;color:var(--text3)}
 
 /* SAL */
 .sal-row{display:grid;grid-template-columns:1fr 70px 90px 70px 90px 70px 90px 90px;gap:8px;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px}
@@ -723,10 +728,20 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <!-- PASSWORDS PAGE -->
         <div class="pg" id="pg-passwords">
           <div class="ph">
-            <div><div class="ph-t">Company Passwords</div><div class="ph-s">Central Dispatch credentials</div></div>
-            <button class="btn btn-primary" onclick="openPwModal()">＋ Add Credentials</button>
+            <div><div class="ph-t">Company Passwords</div><div class="ph-s" id="pw-subtitle">Select a company to view credentials</div></div>
+            <div style="display:flex;gap:8px" id="pw-header-actions">
+              <button class="btn btn-ghost btn-sm" id="pw-back-btn" onclick="pwGoBack()" style="display:none">‹ Back</button>
+              <button class="btn btn-primary" id="pw-add-btn" onclick="openPwModal()" style="display:none">＋ Add Credentials</button>
+            </div>
           </div>
-          <div class="pw-grid" id="pw-grid"></div>
+          <!-- Company folder grid -->
+          <div id="pw-companies-view">
+            <div class="pw-grid" id="pw-co-grid"></div>
+          </div>
+          <!-- Passwords list for selected company -->
+          <div id="pw-list-view" style="display:none">
+            <div class="pw-grid" id="pw-grid"></div>
+          </div>
         </div>
 
         <!-- SALARY PAGE -->
@@ -1122,7 +1137,7 @@ function showPg(pg,opts={}){
 function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
 function goHome(){
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
-  curDrv=null;
+  curDrv=null; pwSelCoId=null;
   // Reset accounting to companies view
   accView='companies'; accSelCo=null; accSelDrv=null;
   showPg(def[ROLE]||'dispatch');
@@ -3052,30 +3067,140 @@ function renderOwner(){
 }
 
 /* ══ PASSWORDS ══ */
+let pwSelCoId=null; // currently selected company folder
+
+function getPwAccessibleCompanies(){
+  // Admin sees all companies
+  if(ROLE==='admin') return COMPANIES;
+  // Dispatcher sees only companies they have at least one driver assigned to
+  const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===CU.email);
+  const myCoNames=new Set(myDrivers.map(d=>d.company).filter(Boolean));
+  return COMPANIES.filter(c=>myCoNames.has(c.name)||myCoNames.has(c.id));
+}
+
 function renderPasswords(){
-  const grid=document.getElementById('pw-grid');
-  if(!PASSWORDS.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🔐</div><p>No credentials saved.</p></div>`;return}
-  grid.innerHTML=PASSWORDS.map(p=>{
-    const co=COMPANIES.find(c=>c.id===p.companyId||c.name===p.company);
-    return`<div class="pw-card">
-      <div class="pw-card-hd"><div class="pw-icon">🔐</div><div><div class="pw-name">${co?.name||p.company||'?'}</div><div style="font-size:10px;color:var(--text3)">${p.platform||'Central Dispatch'}</div></div>${ROLE==='admin'?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="delPw('${p.id}')">🗑</button>`:''}</div>
-      <div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Username</div><div class="pw-val">${p.username||'—'}</div></div>
-      <div style="display:flex;align-items:center;gap:8px"><div class="pw-val" id="pw-${p.id}" style="flex:1">••••••••</div><button class="btn btn-ghost btn-sm" onclick="togglePw('${p.id}','${escQ(p.password||'')}')">👁</button></div>
-      ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-top:8px">${p.notes}</div>`:''}
+  if(pwSelCoId) renderPwList(pwSelCoId);
+  else renderPwFolders();
+}
+
+function renderPwFolders(){
+  const accessible=getPwAccessibleCompanies();
+  const grid=document.getElementById('pw-co-grid');
+  const sub=document.getElementById('pw-subtitle');
+  const backBtn=document.getElementById('pw-back-btn');
+  const addBtn=document.getElementById('pw-add-btn');
+  document.getElementById('pw-companies-view').style.display='';
+  document.getElementById('pw-list-view').style.display='none';
+  backBtn.style.display='none';
+  addBtn.style.display='none';
+  if(sub) sub.textContent='Select a company to view credentials';
+
+  if(!accessible.length){
+    grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🏢</div><p>No companies accessible.</p></div>`;
+    return;
+  }
+  grid.innerHTML=accessible.map(co=>{
+    const count=PASSWORDS.filter(p=>p.companyId===co.id||p.company===co.name).length;
+    return`<div class="pw-folder" onclick="pwOpenCompany('${co.id}')">
+      <div class="pw-folder-icon">🗂️</div>
+      <div class="pw-folder-name">${co.name}</div>
+      <div class="pw-folder-count">${count} credential${count!==1?'s':''}</div>
+      ${co.mc?`<div style="font-size:10px;color:var(--text3)">MC: ${co.mc}</div>`:''}
     </div>`;
   }).join('');
 }
+
+function pwOpenCompany(coId){
+  pwSelCoId=coId;
+  renderPwList(coId);
+}
+
+function pwGoBack(){
+  pwSelCoId=null;
+  renderPwFolders();
+}
+
+function renderPwList(coId){
+  const co=COMPANIES.find(c=>c.id===coId);
+  const pwList=PASSWORDS.filter(p=>p.companyId===coId||p.company===co?.name);
+  const sub=document.getElementById('pw-subtitle');
+  const backBtn=document.getElementById('pw-back-btn');
+  const addBtn=document.getElementById('pw-add-btn');
+  document.getElementById('pw-companies-view').style.display='none';
+  document.getElementById('pw-list-view').style.display='';
+  backBtn.style.display='';
+  addBtn.style.display='';
+  if(sub) sub.textContent=co?.name||'—';
+
+  const grid=document.getElementById('pw-grid');
+  if(!pwList.length){
+    grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🔐</div><p>No credentials yet. Add the first one!</p></div>`;
+    return;
+  }
+  grid.innerHTML=pwList.map(p=>`<div class="pw-card">
+    <div class="pw-card-hd">
+      <div class="pw-icon">🔐</div>
+      <div>
+        <div class="pw-name">${p.platform||'Central Dispatch'}</div>
+        ${p.notes?`<div style="font-size:10px;color:var(--text3)">${p.notes}</div>`:''}
+      </div>
+      ${(ROLE==='admin'||ROLE==='dispatcher')?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="delPw('${p.id}')">🗑</button>`:''}
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Username</div>
+      <div class="pw-val" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${p.username||'—'}</span>
+        <button onclick="copyText('${escQ(p.username||'')}','Username')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:0 2px" title="Copy">⎘</button>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Password</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="pw-val" id="pw-${p.id}" style="flex:1">••••••••</div>
+        <button class="btn btn-ghost btn-sm" onclick="togglePw('${p.id}','${escQ(p.password||'')}')" title="Show/Hide">👁</button>
+        <button onclick="copyText('${escQ(p.password||'')}','Password')" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3)" title="Copy">⎘</button>
+      </div>
+    </div>
+  </div>`).join('');
+}
+
 function togglePw(id,val){const el=document.getElementById('pw-'+id);if(el)el.textContent=el.textContent==='••••••••'?val:'••••••••'}
-function openPwModal(){document.getElementById('pw-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');['pw-pl','pw-us','pw-ps','pw-nt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});om('m-pw')}
+
+function openPwModal(){
+  // Only show companies accessible to this dispatcher
+  const accessible=getPwAccessibleCompanies();
+  document.getElementById('pw-co').innerHTML=`<option value="">— Select —</option>`+accessible.map(c=>`<option value="${c.id}" ${c.id===pwSelCoId?'selected':''}>${c.name}</option>`).join('');
+  ['pw-pl','pw-us','pw-ps','pw-nt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  om('m-pw');
+}
+
 async function savePw(){
   const co=document.getElementById('pw-co').value,us=document.getElementById('pw-us').value.trim();
   if(!co||!us){notify('Company & username required','err');return}
   const{addDoc,collection}=window._fb;
   const coObj=COMPANIES.find(c=>c.id===co);
-  await addDoc(collection(window._db,'passwords'),{companyId:co,company:coObj?.name||'',platform:document.getElementById('pw-pl').value.trim(),username:us,password:document.getElementById('pw-ps').value.trim(),notes:document.getElementById('pw-nt').value.trim()});
-  notify('Saved ✓');await loadMeta();renderPasswords();cm('m-pw');
+  await addDoc(collection(window._db,'passwords'),{
+    companyId:co,company:coObj?.name||'',
+    platform:document.getElementById('pw-pl').value.trim()||'Central Dispatch',
+    username:us,
+    password:document.getElementById('pw-ps').value.trim(),
+    notes:document.getElementById('pw-nt').value.trim(),
+    createdBy:CU.email,createdAt:new Date().toISOString()
+  });
+  notify('Saved ✓');await loadMeta();
+  // Stay on current company view
+  if(co) pwSelCoId=co;
+  renderPasswords();cm('m-pw');
 }
-async function delPw(id){if(!confirm('Delete?'))return;const{deleteDoc,doc}=window._fb;await deleteDoc(doc(window._db,'passwords',id));notify('Deleted','inf');await loadMeta();renderPasswords()}
+
+async function delPw(id){
+  if(!confirm('Delete these credentials?'))return;
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'passwords',id));
+  notify('Deleted','inf');
+  await loadMeta();
+  renderPasswords();
+}
 
 /* ══ SALARY ══ */
 function renderSalary(){
