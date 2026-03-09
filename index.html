@@ -213,9 +213,9 @@ thead th{padding:6px 12px;text-align:left;font-size:9px;font-weight:700;color:va
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:hover{background:var(--bg)}
 tbody tr:last-child{border-bottom:none}
-td{padding:7px 12px;color:var(--text2);font-size:13px;white-space:nowrap}
+td{padding:7px 12px;color:var(--text2);font-size:11px;white-space:nowrap}
 td.bold{color:var(--navy);font-weight:700;font-family:var(--mono)}
-td.money{color:#c4622a;font-weight:700;font-family:var(--mono)}
+td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
 /* STATUS FLOW */
 .sf-btn{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all .15s;white-space:nowrap}
@@ -1257,6 +1257,7 @@ function renderDrvTrips(allDrvLoads){
           <span style="font-size:12px;font-weight:800;color:${sepText}">
             ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
           </span>
+          <span style="font-size:13px;font-weight:800;color:${locked?'#68d391':'var(--green)'};font-family:var(--mono)">$${fmt(wGross)}</span>
           <span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':sepText};opacity:.7">${wk.length} loads</span>
           ${ROLE==='admin'&&locked&&!isCurW?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:${unlockedByAdmin?'rgba(239,68,68,.2)':'rgba(255,255,255,.15)'};color:${unlockedByAdmin?'#fca5a5':'rgba(255,255,255,.8)'};border:1px solid ${unlockedByAdmin?'rgba(239,68,68,.4)':'rgba(255,255,255,.2)'}" onclick="event.stopPropagation();toggleWeekUnlock('${curDrv.id}','${w}',${unlockedByAdmin})">${unlockedByAdmin?'🔒 Revoke Edit':'🔓 Grant Edit'}</button>`:''}
           ${wTrips.length?`<span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':'var(--teal)'};">${wTrips.length} trips</span>`:''}
@@ -1340,26 +1341,7 @@ function renderDrvTrips(allDrvLoads){
         })()}</div></td>
       </tr>`;
     });
-
-    // TOTAL footer row — aligned with RATE column
-    const wPaid=wk.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
-    const wUnpaid=wGross-wPaid;
-    html+=`<tr style="background:rgba(242,101,34,.07);border-top:1.5px solid rgba(242,101,34,.25)">
-      <td colspan="2" style="padding:7px 16px 9px;border-top:none"></td>
-      <td style="padding:7px 12px 9px;border-top:none">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:#d4581a">$${fmt(wGross)}</span>
-          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:var(--teal)">✓ $${fmt(wPaid)} paid</span>`:''}
-          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:var(--red)">✗ $${fmt(wUnpaid)} pending</span>`:''}
-        </div>
-      </td>
-      <td colspan="7" style="padding:7px 12px 9px;border-top:none">
-        <span style="font-size:11px;font-weight:700;font-family:var(--mono);color:rgba(242,101,34,.45);letter-spacing:.5px">TOTAL</span>
-      </td>
-    </tr>
-    <tr><td colspan="10" style="padding:0;height:8px;background:var(--bg)"></td></tr>`;
-
-  }); // end sortedWeeks.forEach
+  });
 
   document.getElementById('drv-load-cnt').textContent=`${totalLoads} load${totalLoads!==1?'s':''}`;
   tb.innerHTML=html;
@@ -2379,17 +2361,14 @@ function renderAcc(){
       rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:true,overdue:false});
     });
     // Week summary footer row
-    rows+=`<tr style="background:${isClosedWeek?'rgba(242,101,34,.12)':'rgba(242,101,34,.07)'};border-top:1.5px solid ${isClosedWeek?'rgba(242,101,34,.4)':'rgba(242,101,34,.25)'}">
-      <td colspan="4" style="padding:8px 16px 10px;border-top:none"></td>
-      <td style="padding:8px 12px 10px;border-top:none">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:#d4581a">$${fmt(wGross)}</span>
-          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:var(--teal)">✓ $${fmt(wPaid)} paid</span>`:''}
-          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:var(--red)">✗ $${fmt(wUnpaid)} pending</span>`:''}
+    rows+=`<tr style="background:${isClosedWeek?'#0f2040':'#f0fdf4'};border-top:2px solid ${isClosedWeek?'rgba(255,255,255,.1)':'#bbf7d0'}">
+      <td colspan="13" style="padding:8px 16px 10px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">TOTAL $${fmt(wGross)}</span>
+          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#6ee7b7':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#fca5a5':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
+
         </div>
-      </td>
-      <td colspan="8" style="padding:8px 12px 10px;border-top:none">
-        <span style="font-size:11px;font-weight:700;font-family:var(--mono);color:rgba(242,101,34,.45);letter-spacing:.5px">TOTAL</span>
       </td></tr>
     <tr><td colspan="13" style="padding:0;height:10px;background:var(--surface)"></td></tr>`;
   });
