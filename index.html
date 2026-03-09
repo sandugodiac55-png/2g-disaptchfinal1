@@ -2210,6 +2210,8 @@ function accLoadRow(l,canEdit,cols){
         ${(()=>{const d=l.status==='Invoiced'?l.invoicedDate:l.status==='Delivered'?l.deliveredDate:l.status==='Picked Up'?l.pickedDate:null;return d?`<span style="font-size:9px;color:var(--text3);font-family:var(--mono)">${d.split('T')[0]||d}</span>`:''})()}
       </div>
     </td>
+    <td style="font-size:11px;color:var(--text3);font-family:var(--mono);white-space:nowrap">${l.date||'—'}</td>
+    <td style="white-space:nowrap">${days}</td>
     <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
     <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
     <td style="white-space:nowrap">${canEdit?(
@@ -2294,7 +2296,7 @@ function renderAccByFlag(pg){
   // Update thead to match exact cols: ORDER ID | DRIVER | COMPANY | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE/OVERDUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb').closest('table').querySelector('thead tr');
   if(thead){
-    thead.innerHTML=`<th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>${pg==='acc-urgent'?'OVERDUE':'DUE'}</th><th>COMMENT</th><th></th>`;
+    thead.innerHTML=`<th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>${pg==='acc-urgent'?'OVERDUE':'DUE'}</th><th>PAID</th><th>COMMENT</th><th></th>`;
   }
   if(!loads.length){
     tb.innerHTML=`<tr><td colspan="13"><div class="em" style="padding:20px;text-align:center;color:var(--text3)"><p>No items in this category.</p></div></td></tr>`;
@@ -2323,7 +2325,7 @@ function renderAcc(){
   // Restore thead for driver view: ORDER ID | DISPATCHER | DRIVER | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb')?.closest('table')?.querySelector('thead tr');
   if(thead){
-    thead.innerHTML=`<th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>COMMENT</th><th></th>`;
+    thead.innerHTML=`<th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th></th>`;
   }
   // All loads for selected driver
   let loads=LOADS.filter(l=>accSelDrv?l.driver===accSelDrv:(accSelCo?l.company===accSelCo:true));
