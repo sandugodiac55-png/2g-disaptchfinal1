@@ -2294,10 +2294,10 @@ function renderAcc(){
   // Group by week
   const byWeek={};
   fl.forEach(l=>{const w=l.week||CWfrom(new Date((l.date||'2000-01-01')+'T00:00:00'));if(!byWeek[w])byWeek[w]=[];byWeek[w].push(l);});
-  const sortedWks=Object.keys(byWeek).sort((a,b)=>b.localeCompare(a));
+  const sortedWks=Object.keys(byWeek).sort((a,b)=>a.localeCompare(b));
   let rows='';
   sortedWks.forEach(w=>{
-    const wLoads=byWeek[w].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const wLoads=byWeek[w].sort((a,b)=>new Date(a.date)-new Date(b.date));
     const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
     const wPaid=wLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
     const wUnpaid=wGross-wPaid;
