@@ -981,17 +981,19 @@ function renderDriverPage(){
   if(!curDrv)return;
   const d=DRIVERS.find(x=>x.id===curDrv.id);
   if(d)curDrv=d;
-  const locked=curDrv.weekLocked===curW;
-  const canEdit=(ROLE==='dispatcher'||ROLE==='admin')&&!locked;
+  // hasActiveLock = any week is currently locked (weekLocked is non-empty)
+  // This controls Close Week vs Open New Week button
+  const hasActiveLock=!!(curDrv.weekLocked);
+  const curWeekLocked=curDrv.weekLocked===curW;
+  const canEdit=(ROLE==='dispatcher'||ROLE==='admin')&&!curWeekLocked&&!hasActiveLock;
   document.getElementById('btn-add-load').style.display=canEdit?'':'none';
   document.getElementById('btn-create-trip').style.display=canEdit?'':'none';
-  // Use ALL loads for this driver (all weeks combined in one view)
   const allDrvLoads=LOADS.filter(l=>l.driver===curDrv.name);
-  const wLoads=allDrvLoads.filter(l=>inW(l.date,curW)); // current week for header stats
+  const wLoads=allDrvLoads.filter(l=>inW(l.date,curW));
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
   const dId=curDrv.id;
-  const lockBtn = locked
+  const lockBtn = hasActiveLock
     ? (ROLE==='admin'?`<button class="btn btn-sm btn-danger" onclick="toggleLock('${dId}')">🔒 Unlock</button>`:'')
       + `<button class="btn btn-sm btn-teal" onclick="openNewWeek('${dId}')">▶ Open New Week</button>`
     : `<button class="btn btn-sm btn-ghost" onclick="closeWeek('${dId}')">📅 Close Week</button>`;
@@ -1004,7 +1006,7 @@ function renderDriverPage(){
         <div class="drv-badge">Min: $${curDrv.minRate||'—'}/mi</div>
         <div class="drv-badge" style="color:var(--green)">Gross: ${fK(gross)}</div>
         <div class="drv-badge" style="color:${overMin>=0?'var(--orange)':'var(--red)'}">Over min: ${overMin<0?'-':''}${fK(Math.abs(overMin))}</div>
-        ${locked?'<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Week Locked</div>':''}
+        ${hasActiveLock?`<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Locked: ${wLbl(curDrv.weekLocked)}</div>`:''}
       </div>
     </div>
     <div style="display:flex;gap:6px">
@@ -1601,7 +1603,7 @@ async function toggleLock(drvId){
   const updUnlock={weekLocked:''};
   if(dUnlock?.weekLocked)updUnlock.closedWeeks=aRem(dUnlock.weekLocked);
   await updateDoc(doc(window._db,'drivers',drvId),updUnlock);
-  await loadMeta();notify('Week unlocked');
+  await loadMeta();renderDriverPage();notify('Week unlocked');
 }
 async function closeWeek(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
@@ -1624,22 +1626,12 @@ async function closeWeek(drvId){
     return;
   }
 
-  // Validation 3: can only close up to Thursday of the FOLLOWING week
-  // Week: Mon-Sun. Next Thursday = Sunday + 4 days
-  const{end}=wRange(curW);
-  const thursday=new Date(end);thursday.setDate(end.getDate()+4);thursday.setHours(23,59,59,999);
-  const now=new Date();
-  if(now>thursday){
-    const tStr=thursday.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-    notify('⚠ Deadline passed! Week can only be closed until '+tStr,'err');
-    return;
-  }
-
   if(!confirm('Close week for '+d.name+'?\nGross: $'+fmt(gross)+'\n\n'+wLoads.length+' loads in '+wTrips.length+' trips.'))return;
   const{updateDoc,doc}=window._fb;
   const{arrayUnion:aU2}=window._fb;
   await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:curW,weekClosedGross:gross,weekClosedAt:new Date().toISOString(),closedWeeks:aU2(curW)});
   await loadMeta();
+  renderDriverPage();
   notify('Week closed! Gross: $'+fmt(gross)+' 🔒');
 }
 async function openNewWeek(drvId){
@@ -1654,7 +1646,7 @@ async function openNewWeek(drvId){
   await loadMeta();
   curW=CW();
   updateWkLbl();
-  renderCur();
+  renderDriverPage();
   notify('New week started for '+d.name+' ▶');
 }
 
