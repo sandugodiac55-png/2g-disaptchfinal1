@@ -81,7 +81,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 
 /* SIDEBAR */
 .sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
-.sb-logo{display:flex;align-items:center;gap:12px;padding:20px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-logo{display:flex;align-items:center;gap:12px;padding:20px;border-bottom:1px solid rgba(255,255,255,.07);transition:background .15s}
+.sb-logo:hover{background:rgba(255,255,255,.05)}
 .sb-logo svg{width:34px;height:34px;flex-shrink:0}
 .sb-logo-name{font-size:17px;font-weight:800;color:#fff}
 .sb-logo-tag{font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1.5px;font-family:var(--mono)}
@@ -418,7 +419,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 <div id="app">
   <div class="layout">
     <aside class="sidebar" id="sidebar">
-      <div class="sb-logo">
+      <div class="sb-logo" onclick="goHome()" style="cursor:pointer" title="Go to home">
         <svg viewBox="0 0 100 100" fill="none" style="width:34px;height:34px">
           <path d="M72 50 L50 28 L28 50 L40 50 L40 64 L62 64 L62 50 Z" fill="#b0bec5"/>
           <path d="M40 50 L28 50 L50 28 Z" fill="#f26522"/>
@@ -1104,6 +1105,11 @@ function showPg(pg,opts={}){
   renderPg(pg);
 }
 function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
+function goHome(){
+  const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
+  curDrv=null;
+  showPg(def[ROLE]||'dispatch');
+}
 function renderCur(){
   const v=document.querySelector('.pg.show');
   if(!v)return;
