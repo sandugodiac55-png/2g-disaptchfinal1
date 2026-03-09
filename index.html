@@ -570,9 +570,10 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <button onclick="accBack('drivers')" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:4px">‹ Back to Drivers</button>
                 <div class="ph-t" id="acc-drv-title">Driver</div>
               </div>
-              <div class="ph-a">
-                <input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:160px">
+              <div class="ph-a" style="gap:10px">
                 <div style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="acc-cnt">0</div>
+                <input class="inp" placeholder="Search…" oninput="accSrch=this.value;renderAcc()" style="width:150px">
+                <button id="acc-create-task-btn" onclick="openAccTaskModal()" style="display:none;background:#ea580c;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">📋 Create Task</button>
               </div>
             </div>
             <!-- SECTION: Urgent Overdue (>15 days) -->
@@ -653,9 +654,9 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="fg">
                   <label>Priority</label>
                   <select id="task-priority" class="sel">
-                    <option value="normal">Normal</option>
+                    <option value="low">🔵 Low</option>
+                    <option value="normal" selected>🟡 Normal</option>
                     <option value="high">🔴 High</option>
-                    <option value="urgent">🚨 Urgent</option>
                   </select>
                 </div>
               </div>
@@ -1041,6 +1042,8 @@ function renderPg(pg){
     document.getElementById('acc-view-loads').style.display='';
     const titleEl=document.getElementById('acc-drv-title');
     if(titleEl)titleEl.textContent=pg==='acc-urgent'?'🚨 All Urgent Overdue (10+ days)':pg==='acc-bond'?'🔒 All Bond Payments':'🤝 All Manager Involvement';
+    const taskBtn=document.getElementById('acc-create-task-btn');
+    if(taskBtn)taskBtn.style.display=pg==='acc-problem'?'':'none';
     renderAccByFlag(pg);
   }
   if(pg==='owner')renderOwner();
@@ -2247,6 +2250,8 @@ function renderAcc(){
   // Update header
   const title=document.getElementById('acc-drv-title');
   if(title)title.textContent=(accSelDrv||accSelCo||'All')+'  — Loads';
+  const taskBtnEl=document.getElementById('acc-create-task-btn');
+  if(taskBtnEl)taskBtnEl.style.display='none';
   // Sections
   renderAccSections(loads,canEdit);
   // Regular table with tab filter
@@ -2509,13 +2514,13 @@ function renderTasksPage(){
   const today=new Date().toISOString().split('T')[0];
   const active=DAILY_TASKS.filter(t=>t.status!=='done');
   const done=DAILY_TASKS.filter(t=>t.status==='done').slice(0,10);
-  const priBg={urgent:'#fef2f2',high:'#fff7ed',normal:'var(--surface)'};
-  const priColor={urgent:'var(--red)',high:'var(--orange)',normal:'var(--text2)'};
+  const priBg={low:'#eff6ff',normal:'var(--surface)',high:'#fff7ed'};
+  const priColor={low:'#3b82f6',normal:'var(--text2)',high:'var(--orange)'};
   document.getElementById('tasks-list').innerHTML=active.length?active.map(t=>`
     <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);background:${priBg[t.priority||'normal']}">
       <input type="checkbox" onchange="completeTask('${t.id}')" style="width:16px;height:16px;margin-top:2px;cursor:pointer">
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:${priColor[t.priority||'normal']}">${t.priority==='urgent'?'🚨 ':t.priority==='high'?'🔴 ':''}${t.description}</div>
+        <div style="font-size:13px;font-weight:600;color:${priColor[t.priority||'normal']}">${t.priority==='high'?'🔴 ':t.priority==='low'?'🔵 ':t.priority==='normal'?'🟡 ':''}${t.description}</div>
         ${t.dueDate?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Due: ${t.dueDate}</div>`:''}
         ${t.createdByName?`<div style="font-size:10px;color:var(--text3)">By: ${t.createdByName}</div>`:''}
       </div>
@@ -2533,6 +2538,15 @@ async function resolveManagerTask(id,loadId){
   // Also clear the problem flag on the load
   if(loadId){await updateDoc(doc(window._db,'loads',loadId),{accFlag:''});}
   notify('✓ Resolved — load removed from Manager Inv.');
+}
+function openAccTaskModal(){
+  // Create task specifically for manager from Manager Inv. page
+  document.getElementById('task-desc').value='';
+  document.getElementById('task-priority').value='normal';
+  document.getElementById('task-due').value=new Date().toISOString().split('T')[0];
+  document.getElementById('task-file-preview').textContent='';
+  if(document.getElementById('task-file'))document.getElementById('task-file').value='';
+  om('m-add-task');
 }
 function openTaskForEscalation(mTaskId,orderId,driver){
   // Pre-fill daily task modal with escalation context
