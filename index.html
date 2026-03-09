@@ -606,6 +606,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tabs" style="margin:0;border:none;padding:0;gap:4px">
                   <div class="tab on" onclick="setAccTab('pending',this)" style="padding:4px 10px;font-size:11px">Pending <span class="cpill" id="acc-np">0</span></div>
                   <div class="tab" onclick="setAccTab('paid',this)" style="padding:4px 10px;font-size:11px">Paid ✓ <span class="cpill g" id="acc-pp">0</span></div>
+                  <div class="tab" onclick="setAccTab('overdue',this)" style="padding:4px 10px;font-size:11px">⚠️ Overdue</div>
                   <div class="tab" onclick="setAccTab('all',this)" style="padding:4px 10px;font-size:11px">All</div>
                 </div>
               </div>
@@ -887,13 +888,16 @@ async function boot(user){
 function buildNav(){
   const maps={
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
-    accounting:[{id:'accounting',i:'💰',l:'Accounting'}],
+    accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'⚠️',l:'Problematic'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
     owner:[{id:'owner',i:'🏠',l:'Dashboard'},{id:'accounting',i:'💰',l:'Accounting'}],
-    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
+    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'⚠️',l:'Problematic'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
   const items=(maps[ROLE]||maps.dispatcher);
-  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')">${i.i} ${i.l}</div>`).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
+  document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>{
+    const isSubItem=i.id.startsWith('acc-');
+    return`<div class="sni" data-pg="${i.id}" onclick="showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}</div>`;
+  }).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
 
 /* ══ META ══ */
@@ -962,6 +966,20 @@ function renderPg(pg){
   if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
   if(pg==='accounting'){accView='companies';renderAccView();}
+  if(pg==='acc-urgent'||pg==='acc-bond'||pg==='acc-problem'){
+    // Switch to accounting page and filter by flag/type
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
+    document.getElementById('pg-accounting').classList.add('act');
+    document.querySelectorAll('.sni').forEach(n=>n.classList.remove('on'));
+    document.querySelector('.sni[data-pg="'+pg+'"]')?.classList.add('on');
+    accView='loads'; accSelCo=null; accSelDrv=null;
+    document.getElementById('acc-view-companies').style.display='none';
+    document.getElementById('acc-view-drivers').style.display='none';
+    document.getElementById('acc-view-loads').style.display='';
+    const titleEl=document.getElementById('acc-drv-title');
+    if(titleEl)titleEl.textContent=pg==='acc-urgent'?'🚨 All Urgent Overdue (15+ days)':pg==='acc-bond'?'🔒 All Bond Payments':'⚠️ All Problematic Payments';
+    renderAccByFlag(pg);
+  }
   if(pg==='owner')renderOwner();
   if(pg==='passwords')renderPasswords();
   if(pg==='salary')renderSalary();
@@ -2091,6 +2109,35 @@ function renderAccSections(loads,canEdit){
   return{regular};
 }
 
+function renderAccByFlag(pg){
+  const canEdit=ROLE==='accounting'||ROLE==='admin';
+  const now=new Date();
+  let loads=[...LOADS];
+  // Filter by flag type
+  if(pg==='acc-urgent'){
+    loads=loads.filter(l=>{
+      if(l.paid||l.accFlag==='bond'||l.accFlag==='problem')return false;
+      const due=getDueDate(l.date,l.payMethod);
+      return due&&Math.floor((now-due)/86400000)>=15;
+    });
+  } else if(pg==='acc-bond'){
+    loads=loads.filter(l=>l.accFlag==='bond');
+  } else {
+    loads=loads.filter(l=>l.accFlag==='problem');
+  }
+  // Hide special sections, show only All Loads table
+  document.getElementById('acc-sec-urgent').style.display='none';
+  document.getElementById('acc-sec-bond').style.display='none';
+  document.getElementById('acc-sec-problem').style.display='none';
+  const tb=document.getElementById('acc-tb');
+  if(!loads.length){
+    tb.innerHTML=`<tr><td colspan="12"><div class="em" style="padding:20px"><p>No items in this category.</p></div></td></tr>`;
+    return;
+  }
+  const cols={route:true,disp:true,driver:true,overdue:pg==='acc-urgent'};
+  tb.innerHTML=loads.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(l=>accLoadRow(l,canEdit,cols)).join('');
+}
+
 function renderAcc(){
   if(accView!=='loads'){renderAccView();return;}
   const canEdit=ROLE==='accounting'||ROLE==='admin';
@@ -2113,7 +2160,7 @@ function renderAcc(){
   const pp=fl.filter(l=>l.paid).length;
   document.getElementById('acc-np').textContent=np;
   document.getElementById('acc-pp').textContent=pp;
-  fl=accTab==='pending'?fl.filter(l=>!l.paid):accTab==='paid'?fl.filter(l=>l.paid):fl;
+  fl=accTab==='pending'?fl.filter(l=>!l.paid):accTab==='paid'?fl.filter(l=>l.paid):accTab==='overdue'?fl.filter(l=>{if(l.paid)return false;const due=getDueDate(l.date,l.payMethod);return due&&new Date()>due;}):fl;
   if(accSrch){const q=accSrch.toLowerCase();fl=fl.filter(l=>(l.orderId||'').toLowerCase().includes(q)||(l.driver||'').toLowerCase().includes(q));}
   document.getElementById('acc-cnt').textContent=fl.length;
   const tb=document.getElementById('acc-tb');
