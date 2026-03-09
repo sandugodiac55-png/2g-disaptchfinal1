@@ -3763,6 +3763,16 @@ async function confirmSetStartWeek(){
   await loadMeta();
   renderAdmin();
 }
+function openAssignDriverToModal(drvId, drvName){
+  // Reuse the reassign modal but without "from" dispatcher restriction
+  _reassignDrvId=drvId; _reassignFromDispId=null;
+  document.getElementById('reassign-drv-name').textContent=drvName;
+  const sel=document.getElementById('reassign-disp-sel');
+  const allDisps=USERS.filter(u=>u.role==='dispatcher'||u.role==='admin');
+  sel.innerHTML=`<option value="">— Select Dispatcher —</option>`+allDisps.map(u=>`<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+  om('m-reassign-drv');
+}
+
 function openAssignDriverModal(dispId, dispName){
   _assignDispId=dispId;
   document.getElementById('assign-drv-title').textContent='Assign Driver to '+dispName;
@@ -3938,6 +3948,26 @@ function renderAdmin(){
         </div>
       </div>`;
     }).join('');
+  }
+
+  // Unassigned drivers section
+  const assignedDrvIds=new Set(DRIVERS.filter(d=>d.dispatcherEmail&&USERS.find(u=>u.email===d.dispatcherEmail)).map(d=>d.id));
+  const unassignedDrvs=DRIVERS.filter(d=>!assignedDrvIds.has(d.id));
+  if(unassignedDrvs.length){
+    admDHtml+=`<div style="font-size:10px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:.6px;padding:14px 16px 6px">⚠️ Neasignați</div>`;
+    admDHtml+=unassignedDrvs.map(dr=>`
+      <div class="ur" style="border-left:3px solid #f59e0b;background:#fffbeb">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap">
+          <div class="ua" style="background:#92400e">${avL(dr.name)}</div>
+          <div style="flex:1">
+            <div class="un">${dr.name}</div>
+            <div class="ue">${dr.company||'—'} · $${dr.minRate||'?'}/mi</div>
+          </div>
+          <span style="font-size:10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 8px;color:#92400e;font-weight:700">Fără dispatcher</span>
+          <button onclick="openAssignDriverToModal('${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1.5px solid var(--orange);background:#fff7ed;color:var(--orange);cursor:pointer;font-weight:700">＋ Asignează</button>
+          <button onclick="deleteDriver('${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700">🗑</button>
+        </div>
+      </div>`).join('');
   }
 
   document.getElementById('adm-d').innerHTML=admDHtml||`<div class="em" style="padding:20px"><p>No dispatchers or accounting users.</p></div>`;
