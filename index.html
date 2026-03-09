@@ -1065,21 +1065,21 @@ async function boot(user){
   document.getElementById('sb-urole').textContent=ROLE.toUpperCase();
   buildNav();
   await loadMeta();
-  await loadSalaryConfig();
   subLoads();
   subTrips();
   subManagerTasks();
   subDailyTasks();
   subEscalations();
   subNotifications();
-  curW=CW(); // Always start on current real week
+  curW=CW();
   updateWkLbl();
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
   const lastPg=sessionStorage.getItem('lastPg');
-  // Validate that the saved page is accessible for this role
   const navItems=(buildNavItems()||[]).map(i=>i.id);
   const restoredPg=(lastPg&&(navItems.includes(lastPg)||lastPg.startsWith('acc-')))?lastPg:null;
   showPg(restoredPg||def[ROLE]||'dispatch');
+  // Load salary config in background — non-blocking
+  loadSalaryConfig();
 }
 
 function buildNavItems(){
@@ -3547,9 +3547,14 @@ function renderSalExpenses(){
 // ── Salary Config Helpers ──
 let SALARY_CONFIG={};
 async function loadSalaryConfig(){
-  const{getDocs,collection,query,where}=window._fb;
-  const snap=await getDocs(collection(window._db,'salaryConfig'));
-  SALARY_CONFIG=snap.empty?{}:{id:snap.docs[0].id,...snap.docs[0].data()};
+  try{
+    const{getDocs,collection}=window._fb;
+    const snap=await getDocs(collection(window._db,'salaryConfig'));
+    SALARY_CONFIG=snap.empty?{}:{id:snap.docs[0].id,...snap.docs[0].data()};
+  }catch(e){
+    console.warn('loadSalaryConfig error:',e);
+    SALARY_CONFIG={};
+  }
 }
 async function saveSalaryConfig(){
   const{setDoc,doc,addDoc,collection}=window._fb;
