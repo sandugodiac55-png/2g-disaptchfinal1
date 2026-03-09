@@ -914,18 +914,7 @@ function copyText(text,label){
 
 /* ══ LOCKED ══ */
 function isLocked(drvName,week){
-  const w=week||curW;
-  const d=DRIVERS.find(x=>x.name===drvName);
-  if(!d)return false;
-  if(ROLE==='admin')return false;
-  // Admin granted explicit edit access for this week
-  if((d.unlockedWeeks||[]).includes(w))return false;
-  // Week is in closedWeeks array = permanently locked
-  if((d.closedWeeks||[]).includes(w))return true;
-  // Week is currently locked (not yet opened new week)
-  if(d.weekLocked===w)return true;
-  // Week is older than current lock (belt-and-suspenders)
-  if(d.weekLocked&&w<d.weekLocked)return true;
+  // No more close week logic — weeks are never locked
   return false;
 }
 
@@ -1116,7 +1105,7 @@ function renderDispatch(){
     const dg=dl.reduce((s,l)=>s+(+l.rate||0),0),dm=dl.reduce((s,l)=>s+(+l.miles||0),0);
     const totalGross=allDL.reduce((s,l)=>s+(+l.rate||0),0);
     const overMin=calcOverMin(dl,d);
-    const locked=d.weekLocked===curW;
+    const locked=false;
     const rpm=dm>0?dg/dm:0;
     const rpmOk=d.minRate&&rpm>0?rpm>=(+d.minRate):true;
 
@@ -1132,11 +1121,11 @@ function renderDispatch(){
       const wk=weekMap[w];
       const wg=wk.reduce((s,l)=>s+(+l.rate||0),0);
       const isCur=w===curW;
-      const isLk=d.weekLocked===w;
+      const isLk=false;
       const wNum=sortedWks.length-wi;
-      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:${isCur?'#fff7ed':isLk?'#f8f9fc':'var(--bg)'};border:1px solid ${isCur?'var(--orange)':isLk?'var(--border)':'transparent'};margin-bottom:3px">
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:${isCur?'#fff7ed':'var(--bg)'};border:1px solid ${isCur?'var(--orange)':'transparent'};margin-bottom:3px">
         <span style="font-size:11px;font-weight:600;color:${isCur?'var(--orange)':'var(--text2)'}">
-          ${isLk?'🔒 ':''}Week ${wNum}${isCur?' ●':''}
+          Week ${wNum}${isCur?' ●':''}
           <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">${wLbl(w).split('–')[0].trim()}</span>
         </span>
         <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wg)}</span>
@@ -1173,11 +1162,7 @@ function renderDriverPage(){
   if(!curDrv)return;
   const d=DRIVERS.find(x=>x.id===curDrv.id);
   if(d)curDrv=d;
-  // hasActiveLock = any week is currently locked (weekLocked is non-empty)
-  // This controls Close Week vs Open New Week button
-  const hasActiveLock=!!(curDrv.weekLocked);
-  const curWeekLocked=curDrv.weekLocked===curW;
-  const canEdit=(ROLE==='dispatcher'||ROLE==='admin')&&!curWeekLocked&&!hasActiveLock;
+  const canEdit=(ROLE==='dispatcher'||ROLE==='admin');
   document.getElementById('btn-add-load').style.display=canEdit?'':'none';
   document.getElementById('btn-create-trip').style.display=canEdit?'':'none';
   const allDrvLoads=LOADS.filter(l=>l.driver===curDrv.name);
@@ -1185,10 +1170,6 @@ function renderDriverPage(){
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
   const dId=curDrv.id;
-  const lockBtn = hasActiveLock
-    ? (ROLE==='admin'?`<button class="btn btn-sm btn-danger" onclick="toggleLock('${dId}')">🔒 Unlock</button>`:'')
-      + `<button class="btn btn-sm btn-teal" onclick="openNewWeek('${dId}')">▶ Open New Week</button>`
-    : `<button class="btn btn-sm btn-ghost" onclick="closeWeek('${dId}')">📅 Close Week</button>`;
   document.getElementById('drv-hd-info').innerHTML=`
     <div class="drv-av-big">${avL(curDrv.name)}</div>
     <div style="flex:1">
@@ -1198,11 +1179,7 @@ function renderDriverPage(){
         <div class="drv-badge">Min: $${curDrv.minRate||'—'}/mi</div>
         <div class="drv-badge" style="color:var(--green)">Gross: ${fK(gross)}</div>
         <div class="drv-badge" style="color:${overMin>=0?'var(--orange)':'var(--red)'}">Over min: ${overMin<0?'-':''}${fK(Math.abs(overMin))}</div>
-        ${hasActiveLock?`<div class="drv-badge" style="color:var(--red);border-color:#fecaca">🔒 Locked: ${wLbl(curDrv.weekLocked)}</div>`:''}
       </div>
-    </div>
-    <div style="display:flex;gap:6px">
-      ${(ROLE==='admin'||ROLE==='dispatcher')?lockBtn:''}
     </div>`;
   document.getElementById('drv-pg-title').textContent=`${curDrv.name} — All Loads`;
   // render all loads grouped by week
@@ -1220,7 +1197,7 @@ function renderDrvTrips(allDrvLoads){
   // Sort weeks newest first
   const sortedWeeks=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
   const allTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
-  const isLockedWeek=(w)=>isLocked(curDrv?.name,w);
+  // isLocked always returns false now
   const el=document.getElementById('drv-trips');
   el.innerHTML=''; // trips section unused now — all in one list below
 
@@ -1239,28 +1216,25 @@ function renderDrvTrips(allDrvLoads){
     const wk=weeks[w];
     totalLoads+=wk.length;
     const wGross=wk.reduce((s,l)=>s+(+l.rate||0),0);
-    const locked=isLockedWeek(w);
+    const locked=false;
     const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
     const wNum=sortedWeeks.length-wi; // Week 1 = oldest
     const isCurW=w===curW;
-    const unlockedByAdmin=(curDrv?.unlockedWeeks||[]).includes(w);
-    const canEdit=ROLE==='admin'?true:(!locked&&ROLE==='dispatcher')||unlockedByAdmin;
+    const canEdit=ROLE==='admin'||ROLE==='dispatcher';
 
     // Week separator row
-    const sepBg=locked?(isCurW?'#1e3a5f':'#2d3748'):(isCurW?'#eff6ff':'#f8fafc');
-    const sepBorder=locked?(isCurW?'#2563eb':'#4a5568'):(isCurW?'#3b82f6':'#e2e8f0');
-    const sepText=locked?'#e2e8f0':(isCurW?'#1e40af':'#374151');
+    const sepBg=isCurW?'#eff6ff':'#f8fafc';
+    const sepBorder=isCurW?'#3b82f6':'#e2e8f0';
+    const sepText=isCurW?'#1e40af':'#374151';
     html+=`<tr style="background:${sepBg}">
       <td colspan="10" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <span style="font-size:12px;font-weight:800;color:${sepText}">
-            ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
+            📅 Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
           </span>
-          <span style="font-size:13px;font-weight:800;color:${locked?'#68d391':'var(--green)'};font-family:var(--mono)">$${fmt(wGross)}</span>
-          <span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':sepText};opacity:.7">${wk.length} loads</span>
-          ${ROLE==='admin'&&locked&&!isCurW?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:${unlockedByAdmin?'rgba(239,68,68,.2)':'rgba(255,255,255,.15)'};color:${unlockedByAdmin?'#fca5a5':'rgba(255,255,255,.8)'};border:1px solid ${unlockedByAdmin?'rgba(239,68,68,.4)':'rgba(255,255,255,.2)'}" onclick="event.stopPropagation();toggleWeekUnlock('${curDrv.id}','${w}',${unlockedByAdmin})">${unlockedByAdmin?'🔒 Revoke Edit':'🔓 Grant Edit'}</button>`:''}
-          ${wTrips.length?`<span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':'var(--teal)'};">${wTrips.length} trips</span>`:''}
+          <span style="font-size:10px;color:${sepText};opacity:.7">${wk.length} loads</span>
+          ${wTrips.length?`<span style="font-size:10px;color:var(--teal);">${wTrips.length} trips</span>`:''}
         </div>
       </td>
     </tr>`;
@@ -1297,12 +1271,12 @@ function renderDrvTrips(allDrvLoads){
       // Find this load's trip info
       const loadTrip=inTrip?wTrips.find(t=>t.loadIds?.includes(l.id)):null;
       const tripRpmOk=loadTrip?((+(curDrv?.minRate||0))>0?(loadTrip.miles>0?((loadTrip.gross||0)/loadTrip.miles)>=(+(curDrv?.minRate||0)):true):true):true;
-      const canEditTrip=canEdit&&loadTrip&&!locked;
+      const canEditTrip=canEdit&&loadTrip;
       const tripBadge=loadTrip
         ?`<span style="display:inline-flex;align-items:center;gap:3px;background:${tripRpmOk?'#e0fdf4':'#fef2f2'};border:1px solid ${tripRpmOk?'var(--teal)':'var(--red)'};color:${tripRpmOk?'var(--teal)':'var(--red)'};border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;cursor:${canEditTrip?'pointer':'default'};white-space:nowrap" ${canEditTrip?`onclick="event.stopPropagation();openEditTrip('${loadTrip.id}')" title="Edit Trip #${loadTrip.tripNum||'?'}"`:''}
           >🗂 T#${loadTrip.tripNum||'?'}&nbsp;<span style="font-family:var(--mono);font-size:9px;color:${tripRpmOk?'var(--blue)':'var(--red)'}">$${(loadTrip.miles>0?(loadTrip.gross||0)/loadTrip.miles:0).toFixed(2)}/mi</span>${canEditTrip?'&nbsp;✏️':''}</span>`
         :'';
-      const rowBg=locked?(inTrip?'#f1f5f9':'#f7fafc'):(inTrip?'#f0f9ff':'#fff');
+      const rowBg=inTrip?'#f0f9ff':'#fff';
       html+=`<tr style="background:${rowBg}">
         <td class="bold" style="font-size:12px">
           <div onclick="copyText('${l.orderId||''}','Order ID')" title="Click to copy" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">${l.orderId||'—'}<span style="font-size:9px;color:var(--text3);opacity:.6">⎘</span></div>
@@ -1317,25 +1291,24 @@ function renderDrvTrips(allDrvLoads){
         <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
         <td>${statusHtml}</td>
         <td>${(ROLE==='accounting'||ROLE==='admin')
-          ?`<button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
+          ?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="tgPaid('${l.id}',${!l.paid},false)">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
           :`<span class="pb ${l.paid?'paid':'unpaid'}" style="cursor:default;pointer-events:none">${l.paid?'✓ PAID':'✗ UNPAID'}</span>`
         }</td>
         <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
         <td style="font-size:11px;color:var(--text3);max-width:120px;white-space:normal">${l.notes||''}</td>
         <td><div style="display:flex;gap:4px">${(()=>{
-          const wLk=isLocked(l.driver,l.week);
           if(ROLE==='admin'){
             return !inTrip
               ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
               :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
           }
           if(ROLE==='dispatcher'){
-            if(wLk){
-              return `<button class="btn btn-ghost btn-sm" style="opacity:.6;font-size:10px" onclick="requestEdit('${l.id}','${l.orderId||'?'}','${l.week||curW}')">✏️ Request</button>`;
+            if(isCurW){
+              return !inTrip
+                ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
+                :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
             }
-            return !inTrip
-              ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
-              :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
+            return `<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
           }
           return '';
         })()}</div></td>
@@ -1449,12 +1422,8 @@ function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create
 let editTripSelLoads=[];
 function openEditTrip(tripId){
   const trip=TRIPS.find(t=>t.id===tripId);if(!trip)return;
-  // Block editing if week is locked
   const tripWeek=trip.week||trip.weekDate||curW;
   const drv=DRIVERS.find(d=>d.name===trip.driverName);
-  if(drv&&drv.weekLocked&&(drv.weekLocked===tripWeek||drv.weekLocked===curW)){
-    notify('🔒 Week is closed — trip cannot be edited','err');return;
-  }
   editTripId=tripId;
   editTripSelLoads=[...(trip.loadIds||[])];
   document.getElementById('et-miles').value=trip.miles||'';
@@ -1512,9 +1481,6 @@ async function saveEditTrip(){
   if(trip){
     const drv=DRIVERS.find(d=>d.name===trip.driverName);
     const tripWeek=trip.week||trip.weekDate||curW;
-    if(drv&&drv.weekLocked&&(drv.weekLocked===tripWeek||drv.weekLocked===curW)){
-      notify('🔒 Week is closed — cannot save changes','err');cm('m-edit-trip');return;
-    }
   }
   if(!editTripSelLoads.length){notify('Select at least 1 load','err');return}
   const miles=parseFloat(document.getElementById('et-miles').value)||0;
@@ -1543,9 +1509,6 @@ async function deleteTripFromModal(){
   if(trip){
     const drv=DRIVERS.find(d=>d.name===trip.driverName);
     const tripWeek=trip.week||trip.weekDate||curW;
-    if(drv&&drv.weekLocked&&(drv.weekLocked===tripWeek||drv.weekLocked===curW)){
-      notify('🔒 Week is closed — cannot delete trip','err');cm('m-edit-trip');return;
-    }
   }
   if(!confirm('Delete this trip? Loads will become individual again.'))return;
   const{deleteDoc,doc}=window._fb;
@@ -1683,24 +1646,6 @@ async function delLoad(id){
   await deleteDoc(doc(window._db,'loads',id));
   notify('Deleted','inf');
 }
-async function toggleWeekUnlock(drvId,week,isUnlocked){
-  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
-  if(isUnlocked){
-    if(!confirm('Revoke edit access for '+d.name+' on week '+wLbl(week)+'?'))return;
-  } else {
-    if(!confirm('Grant edit access to '+d.name+' for past week '+wLbl(week)+'? Dispatcher will be able to modify loads and trips for this week.'))return;
-  }
-  const{updateDoc,doc,arrayUnion,arrayRemove}=window._fb;
-  if(isUnlocked){
-    await updateDoc(doc(window._db,'drivers',drvId),{unlockedWeeks:arrayRemove(week)});
-    notify('Edit access revoked for '+wLbl(week));
-  } else {
-    await updateDoc(doc(window._db,'drivers',drvId),{unlockedWeeks:arrayUnion(week)});
-    notify('✓ Edit access granted for '+wLbl(week));
-  }
-  await loadMeta();
-  renderDriverPage();
-}
 /* ══ EDIT REQUESTS ══ */
 let EDIT_REQUESTS=[];
 
@@ -1771,13 +1716,10 @@ function renderEditRequests(){
 }
 
 async function approveEditReq(reqId,loadId,week,driverName){
-  if(!confirm('Approve edit request? The dispatcher will be able to edit this load.'))return;
-  const{updateDoc,doc,arrayUnion}=window._fb;
-  // Grant unlock for this specific week on this driver
-  const drv=DRIVERS.find(d=>d.name===driverName);
-  if(drv){await updateDoc(doc(window._db,'drivers',drv.id),{unlockedWeeks:arrayUnion(week)})}
+  if(!confirm('Approve edit request?'))return;
+  const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'editRequests',reqId),{status:'approved',resolvedAt:new Date().toISOString()});
-  notify('✓ Approved — dispatcher can now edit');
+  notify('✓ Approved');
   await loadMeta();
   await loadEditRequests();
 }
@@ -1788,61 +1730,6 @@ async function rejectEditReq(reqId){
   await updateDoc(doc(window._db,'editRequests',reqId),{status:'rejected',rejectionReason:reason||'',resolvedAt:new Date().toISOString()});
   notify('Request rejected');
   await loadEditRequests();
-}
-
-async function toggleLock(drvId){
-  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
-  if(ROLE!=='admin'){notify('Only admin can unlock','err');return}
-  const dUnlock=DRIVERS.find(x=>x.id===drvId);
-  const{updateDoc,doc,arrayRemove:aRem}=window._fb;
-  const updUnlock={weekLocked:''};
-  if(dUnlock?.weekLocked)updUnlock.closedWeeks=aRem(dUnlock.weekLocked);
-  await updateDoc(doc(window._db,'drivers',drvId),updUnlock);
-  await loadMeta();renderDriverPage();notify('Week unlocked');
-}
-async function closeWeek(drvId){
-  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
-  const wLoads=LOADS.filter(l=>l.driver===d.name&&inW(l.date,curW));
-  const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
-
-  // Validation 1: COD/COP must be Delivered before closing
-  const undeliveredCOD=wLoads.filter(l=>(l.payMethod==='COD'||l.payMethod==='COP')&&l.status!=='Delivered');
-  if(undeliveredCOD.length){
-    notify('⚠ Cannot close: '+undeliveredCOD.length+' COD/COP load(s) not marked Delivered yet!','err');
-    return;
-  }
-
-  // Validation 2: all loads must be in a trip
-  const wTrips=TRIPS.filter(t=>t.driverName===d.name&&inW(t.weekDate||t.createdDate,curW));
-  const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
-  const untripped=wLoads.filter(l=>!trippedIds.has(l.id));
-  if(untripped.length){
-    notify('⚠ Cannot close: '+untripped.length+' load(s) not assigned to a trip yet!','err');
-    return;
-  }
-
-  if(!confirm('Close week for '+d.name+'?\nGross: $'+fmt(gross)+'\n\n'+wLoads.length+' loads in '+wTrips.length+' trips.'))return;
-  const{updateDoc,doc}=window._fb;
-  const{arrayUnion:aU2}=window._fb;
-  await updateDoc(doc(window._db,'drivers',drvId),{weekLocked:curW,weekClosedGross:gross,weekClosedAt:new Date().toISOString(),closedWeeks:aU2(curW)});
-  await loadMeta();
-  renderDriverPage();
-  notify('Week closed! Gross: $'+fmt(gross)+' 🔒');
-}
-async function openNewWeek(drvId){
-  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
-  if(!confirm('Open new week for '+d.name+'?'))return;
-  const{updateDoc,doc,arrayUnion}=window._fb;
-  // Save the closed week to closedWeeks[] before clearing weekLocked
-  const closedWk=d.weekLocked;
-  const updateData={weekLocked:''};
-  if(closedWk)updateData.closedWeeks=arrayUnion(closedWk);
-  await updateDoc(doc(window._db,'drivers',drvId),updateData);
-  await loadMeta();
-  curW=CW();
-  updateWkLbl();
-  renderDriverPage();
-  notify('New week started for '+d.name+' ▶');
 }
 
 /* ══ KPI CALENDAR ══ */
@@ -1910,10 +1797,10 @@ function renderKPI(){
       const dMiles=dTrips.reduce((s,t)=>s+(+t.miles||0),0);
       const dRpm=dMiles>0?dGross/dMiles:0;
       const dOverMin=dTrips.reduce((s,t)=>s+tripOverMin(t,drv),0);
-      const locked=drv.weekLocked===curW;
+      const locked=false;
       html+=`<tr style="background:${dispBg}08;height:70px">
         <td class="sticky-col" style="padding-left:28px;background:${dispBg}!important;border-left:3px solid ${dispBorder}40;vertical-align:middle;height:70px">
-          <div style="font-size:14px;font-weight:700;color:var(--navy)">${drv.name}${locked?' 🔒':''}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--navy)">${drv.name}</div>
           <div style="font-size:10px;color:var(--text3)">${drv.company||'—'} · Min: $${drv.minRate||'—'}/mi</div>
         </td>
         ${(()=>{
@@ -2350,7 +2237,7 @@ function renderAcc(){
     const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
     const wPaid=wLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
     const wUnpaid=wGross-wPaid;
-    const isClosedWeek=DRIVERS.some(d=>(d.closedWeeks||[]).includes(w)||d.weekLocked===w);
+    const isClosedWeek=false;
     // Week label row (top - minimal, just label)
     rows+=`<tr style="background:${isClosedWeek?'var(--navy)':'var(--surface2)'}">
       <td colspan="13" style="padding:6px 16px">
