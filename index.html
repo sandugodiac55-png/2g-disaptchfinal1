@@ -209,11 +209,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .mla{margin-left:auto}
 .tw{overflow-x:auto}
 table{width:100%;border-collapse:collapse;min-width:700px}
-thead th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+thead th{padding:6px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:hover{background:var(--bg)}
 tbody tr:last-child{border-bottom:none}
-td{padding:10px 14px;color:var(--text2);font-size:13px;white-space:nowrap}
+td{padding:7px 12px;color:var(--text2);font-size:11px;white-space:nowrap}
 td.bold{color:var(--navy);font-weight:700;font-family:var(--mono)}
 td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
@@ -760,7 +760,20 @@ function tripRPM(trip){return trip.miles>0?(trip.gross/trip.miles):0}
 function tripOverMin(trip,driver){if(!driver||!driver.minRate)return 0;const rpm=tripRPM(trip);return(rpm-(+driver.minRate||0))*(+trip.miles||0);}
 
 /* ══ LOCKED ══ */
-function isLocked(drvName){const d=DRIVERS.find(x=>x.name===drvName);return d&&d.weekLocked===curW}
+function isLocked(drvName,week){
+  const w=week||curW;
+  const d=DRIVERS.find(x=>x.name===drvName);
+  if(!d)return false;
+  // Admin is never locked
+  if(ROLE==='admin')return false;
+  // Check if admin granted edit permission for this week
+  if((d.unlockedWeeks||[]).includes(w))return false;
+  // Locked if this specific week is locked
+  if(d.weekLocked===w)return true;
+  // Locked if this week is older than the currently locked week
+  if(d.weekLocked&&w<d.weekLocked)return true;
+  return false;
+}
 
 /* ══ AUTH ══ */
 async function doLogin(){
@@ -1011,7 +1024,7 @@ function renderDrvTrips(allDrvLoads){
   // Sort weeks newest first
   const sortedWeeks=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
   const allTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
-  const isLockedWeek=(w)=>curDrv?.weekLocked===w;
+  const isLockedWeek=(w)=>isLocked(curDrv?.name,w);
   const el=document.getElementById('drv-trips');
   el.innerHTML=''; // trips section unused now — all in one list below
 
@@ -1035,18 +1048,23 @@ function renderDrvTrips(allDrvLoads){
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
     const wNum=sortedWeeks.length-wi; // Week 1 = oldest
     const isCurW=w===curW;
-    const canEdit=!locked&&(ROLE==='dispatcher'||ROLE==='admin');
+    const unlockedByAdmin=(curDrv?.unlockedWeeks||[]).includes(w);
+    const canEdit=ROLE==='admin'?true:(!locked&&ROLE==='dispatcher')||unlockedByAdmin;
 
     // Week separator row
-    html+=`<tr style="background:${locked?'var(--navy)':'var(--surface2)'}">
-      <td colspan="10" style="padding:10px 16px;border-top:2px solid ${locked?'var(--navy)':'var(--border2)'}"'>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:800;color:${locked?'#fff':'var(--navy)'}">
+    const sepBg=locked?(isCurW?'#1e3a5f':'#2d3748'):(isCurW?'#eff6ff':'#f8fafc');
+    const sepBorder=locked?(isCurW?'#2563eb':'#4a5568'):(isCurW?'#3b82f6':'#e2e8f0');
+    const sepText=locked?'#e2e8f0':(isCurW?'#1e40af':'#374151');
+    html+=`<tr style="background:${sepBg}">
+      <td colspan="10" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;color:${sepText}">
             ${locked?'🔒':'📅'} Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
           </span>
-          <span style="font-size:14px;font-weight:800;color:var(--green);font-family:var(--mono)">$${fmt(wGross)}</span>
-          <span style="font-size:11px;color:${locked?'rgba(255,255,255,.5)':'var(--text3)'};">${wk.length} loads</span>
-          ${wTrips.length?`<span style="font-size:11px;color:${locked?'rgba(255,255,255,.5)':'var(--teal)'};">${wTrips.length} trips</span>`:''}
+          <span style="font-size:13px;font-weight:800;color:${locked?'#68d391':'var(--green)'};font-family:var(--mono)">$${fmt(wGross)}</span>
+          <span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':sepText};opacity:.7">${wk.length} loads</span>
+          ${ROLE==='admin'&&locked&&!isCurW?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:${unlockedByAdmin?'rgba(239,68,68,.2)':'rgba(255,255,255,.15)'};color:${unlockedByAdmin?'#fca5a5':'rgba(255,255,255,.8)'};border:1px solid ${unlockedByAdmin?'rgba(239,68,68,.4)':'rgba(255,255,255,.2)'}" onclick="event.stopPropagation();toggleWeekUnlock('${curDrv.id}','${w}',${unlockedByAdmin})">${unlockedByAdmin?'🔒 Revoke Edit':'🔓 Grant Edit'}</button>`:''}
+          ${wTrips.length?`<span style="font-size:10px;color:${locked?'rgba(255,255,255,.5)':'var(--teal)'};">${wTrips.length} trips</span>`:''}
         </div>
       </td>
     </tr>`;
@@ -1088,7 +1106,8 @@ function renderDrvTrips(allDrvLoads){
         ?`<span style="display:inline-flex;align-items:center;gap:3px;background:${tripRpmOk?'#e0fdf4':'#fef2f2'};border:1px solid ${tripRpmOk?'var(--teal)':'var(--red)'};color:${tripRpmOk?'var(--teal)':'var(--red)'};border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;cursor:${canEditTrip?'pointer':'default'};white-space:nowrap" ${canEditTrip?`onclick="event.stopPropagation();openEditTrip('${loadTrip.id}')" title="Edit Trip #${loadTrip.tripNum||'?'}"`:''}
           >🗂 T#${loadTrip.tripNum||'?'}&nbsp;<span style="font-family:var(--mono);font-size:9px;color:${tripRpmOk?'var(--blue)':'var(--red)'}">$${(loadTrip.miles>0?(loadTrip.gross||0)/loadTrip.miles:0).toFixed(2)}/mi</span>${canEditTrip?'&nbsp;✏️':''}</span>`
         :'';
-      html+=`<tr style="${inTrip?'background:#f8f9fc':''}${locked?'opacity:.9':''}">
+      const rowBg=locked?(inTrip?'#f1f5f9':'#f7fafc'):(inTrip?'#f0f9ff':'#fff');
+      html+=`<tr style="background:${rowBg}">
         <td class="bold" style="font-size:12px">
           <div>${l.orderId||'—'}</div>
           ${tripBadge?`<div style="margin-top:3px">${tripBadge}</div>`:''}
@@ -1098,7 +1117,10 @@ function renderDrvTrips(allDrvLoads){
         <td style="font-size:11px">${l.payMethod||'—'}</td>
         <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
         <td>${statusHtml}</td>
-        <td><button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button></td>
+        <td>${(ROLE==='accounting'||ROLE==='admin')
+          ?`<button class="pb ${l.paid?'paid':'unpaid'} ${locked?'locked':''}" onclick="tgPaid('${l.id}',${!l.paid},${locked})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
+          :`<span class="pb ${l.paid?'paid':'unpaid'}" style="cursor:default;pointer-events:none">${l.paid?'✓ PAID':'✗ UNPAID'}</span>`
+        }</td>
         <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
         <td style="font-size:11px;color:var(--text3);max-width:120px;white-space:normal">${l.notes||''}</td>
         <td><div style="display:flex;gap:4px">${canEdit&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:canEdit&&inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`:''}</div></td>
@@ -1432,6 +1454,24 @@ async function delLoad(id){
   const{deleteDoc,doc}=window._fb;
   await deleteDoc(doc(window._db,'loads',id));
   notify('Deleted','inf');
+}
+async function toggleWeekUnlock(drvId,week,isUnlocked){
+  const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
+  if(isUnlocked){
+    if(!confirm('Revoke edit access for '+d.name+' on week '+wLbl(week)+'?'))return;
+  } else {
+    if(!confirm('Grant edit access to '+d.name+' for past week '+wLbl(week)+'? Dispatcher will be able to modify loads and trips for this week.'))return;
+  }
+  const{updateDoc,doc,arrayUnion,arrayRemove}=window._fb;
+  if(isUnlocked){
+    await updateDoc(doc(window._db,'drivers',drvId),{unlockedWeeks:arrayRemove(week)});
+    notify('Edit access revoked for '+wLbl(week));
+  } else {
+    await updateDoc(doc(window._db,'drivers',drvId),{unlockedWeeks:arrayUnion(week)});
+    notify('✓ Edit access granted for '+wLbl(week));
+  }
+  await loadMeta();
+  renderDriverPage();
 }
 async function toggleLock(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
