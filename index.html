@@ -4039,6 +4039,34 @@ function exportSalary(){
 }
 
 /* ══ ADMIN ══ */
+let _editUserId=null;
+function openEditUserModal(userId){
+  const u=USERS.find(x=>x.id===userId);
+  if(!u)return;
+  _editUserId=userId;
+  document.getElementById('eu-nm').value=u.name||'';
+  document.getElementById('eu-rl').value=u.role||'dispatcher';
+  // Populate company dropdown
+  const coSel=document.getElementById('eu-co');
+  coSel.innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}" ${u.company===c.name?'selected':''}>${c.name}</option>`).join('');
+  om('m-edit-user');
+}
+
+async function saveEditUser(){
+  if(!_editUserId)return;
+  const nm=document.getElementById('eu-nm').value.trim();
+  const rl=document.getElementById('eu-rl').value;
+  const co=document.getElementById('eu-co').value;
+  if(!nm){notify('Name required','err');return;}
+  if(rl==='owner'&&!co){notify('Owner trebuie să aibă o companie selectată!','err');return;}
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'users',_editUserId),{name:nm,role:rl,company:co||null});
+  notify('✓ User actualizat');
+  await loadMeta();
+  renderAdmin();
+  cm('m-edit-user');
+}
+
 async function deleteUser(id, name){
   if(!confirm(`Ștergi userul "${name}"?\n\nAceastă acțiune este ireversibilă.`))return;
   const{deleteDoc,doc}=window._fb;
@@ -4244,13 +4272,15 @@ function renderAdmin(){
 
   // ── USERS ──
   document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`
-    <div class="ur" style="flex-direction:column;align-items:flex-start;gap:6px">
-      <div style="display:flex;align-items:center;gap:10px;width:100%">
-        <div class="ua">${avL(u.name)}</div>
-        <div style="flex:1"><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div>
-        <span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span>
-        ${u.email!==CU.email?`<button onclick="deleteUser('${u.id}','${escQ(u.name)}')" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700" title="Delete user">🗑</button>`:`<span style="font-size:10px;color:var(--text3);padding:3px 8px">(you)</span>`}
+    <div class="ur">
+      <div class="ua">${avL(u.name)}</div>
+      <div style="flex:1">
+        <div class="un">${u.name||'—'}</div>
+        <div class="ue">${u.email||'—'}${u.company?` · <span style="color:var(--orange);font-weight:600">${u.company}</span>`:''}</div>
       </div>
+      <span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span>
+      <button onclick="openEditUserModal('${u.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;font-weight:700">✏ Edit</button>
+      ${u.email!==CU.email?`<button onclick="deleteUser('${u.id}','${escQ(u.name)}')" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700">🗑</button>`:`<span style="font-size:10px;color:var(--text3);padding:3px 8px">(you)</span>`}
     </div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
 
   // ── DISPATCHERS & DRIVERS ──
@@ -4945,6 +4975,37 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
 </div>
 <div id="trip-popover-overlay" onclick="closeTripPopover()" style="display:none;position:fixed;inset:0;z-index:9998"></div>
+
+<!-- EDIT USER MODAL -->
+<div class="ov" id="m-edit-user">
+  <div class="md" style="max-width:420px;width:95%">
+    <div class="mh"><span>✏ Edit User</span><button class="mc" onclick="cm('m-edit-user')">×</button></div>
+    <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:12px">
+      <div class="fg"><label>Full Name</label><input id="eu-nm" placeholder="John Smith"></div>
+      <div class="fg"><label>Role</label>
+        <select id="eu-rl">
+          <option value="dispatcher">Dispatcher</option>
+          <option value="accounting">Accounting</option>
+          <option value="accounting_manager">Accounting Manager</option>
+          <option value="manager">Manager</option>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Company <span style="font-size:10px;color:var(--orange);font-weight:600">(obligatoriu pentru Owner)</span></label>
+        <select id="eu-co"><option value="">— None —</option></select>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;font-size:12px;color:#1e40af">
+        💡 Emailul nu se poate modifica. Pentru a schimba emailul, șterge și recreează userul.
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-edit-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditUser()">Save Changes</button>
+    </div>
+  </div>
+</div>
 
 <!-- LOAD SEARCH MODAL -->
 <div class="ov" id="m-load-search">
