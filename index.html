@@ -1194,8 +1194,8 @@ function renderDrvTrips(allDrvLoads){
     if(!weeks[w])weeks[w]=[];
     weeks[w].push(l);
   });
-  // Sort weeks newest first
-  const sortedWeeks=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+  // Sort weeks oldest first — current week at the bottom
+  const sortedWeeks=Object.keys(weeks).sort((a,b)=>a.localeCompare(b));
   const allTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
   // isLocked always returns false now
   const el=document.getElementById('drv-trips');
@@ -1219,23 +1219,19 @@ function renderDrvTrips(allDrvLoads){
     const locked=false;
     const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
-    const wNum=sortedWeeks.length-wi; // Week 1 = oldest
+    const wNum=wi+1; // Week 1 = oldest, current = last
     const isCurW=w===curW;
     const canEdit=ROLE==='admin'||ROLE==='dispatcher';
 
-    // Week separator row
+    // Week separator row — no loads/trips count
     const sepBg=isCurW?'#eff6ff':'#f8fafc';
     const sepBorder=isCurW?'#3b82f6':'#e2e8f0';
     const sepText=isCurW?'#1e40af':'#374151';
     html+=`<tr style="background:${sepBg}">
       <td colspan="10" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;font-weight:800;color:${sepText}">
-            📅 Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
-          </span>
-          <span style="font-size:10px;color:${sepText};opacity:.7">${wk.length} loads</span>
-          ${wTrips.length?`<span style="font-size:10px;color:var(--teal);">${wTrips.length} trips</span>`:''}
-        </div>
+        <span style="font-size:12px;font-weight:800;color:${sepText}">
+          📅 Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
+        </span>
       </td>
     </tr>`;
 
@@ -1312,6 +1308,25 @@ function renderDrvTrips(allDrvLoads){
         })()}</div></td>
       </tr>`;
     });
+
+    // ── TOTAL row — suma săptămânii, aliniată cu coloana RATE ──
+    const wPaid=wk.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    const wUnpaid=wGross-wPaid;
+    html+=`<tr style="background:rgba(242,101,34,.07);border-top:1.5px solid rgba(242,101,34,.25)">
+      <td colspan="2" style="padding:7px 16px 9px"></td>
+      <td style="padding:7px 12px 9px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:#d4581a">$${fmt(wGross)}</span>
+          ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:var(--teal)">✓ $${fmt(wPaid)} paid</span>`:''}
+          ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:var(--red)">✗ $${fmt(wUnpaid)} pending</span>`:''}
+        </div>
+      </td>
+      <td colspan="7" style="padding:7px 12px 9px">
+        <span style="font-size:11px;font-weight:700;font-family:var(--mono);color:rgba(242,101,34,.45);letter-spacing:.5px">TOTAL</span>
+      </td>
+    </tr>
+    <tr><td colspan="10" style="padding:0;height:10px;background:var(--bg)"></td></tr>`;
+
   });
 
   document.getElementById('drv-load-cnt').textContent=`${totalLoads} load${totalLoads!==1?'s':''}`;
