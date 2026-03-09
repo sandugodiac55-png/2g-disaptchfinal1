@@ -2829,19 +2829,29 @@ function renderAdmin(){
   document.getElementById('adm-d').innerHTML=disps.map(d=>{
     const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
     const driverWeeks=d.driverWeeks||{};
-    // Per-driver week rows
     const driverWeekRows=drs.map(dr=>{
       const dw=driverWeeks[dr.id]||{};
       const aw=dw.activeWeek||null;
-      const closed=dw.closedWeeks||[];
-      const statusBadge=aw
-        ?`<span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 7px;color:#1e40af;font-weight:700">Active: ${wLbl(aw)}</span>
-           <button onclick="adminResetDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:1px 7px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:600">🔓 Unlock</button>`
-        :`<span style="font-size:10px;color:var(--text3)">Current week</span>${closed.length?`<span style="font-size:10px;color:var(--text3);margin-left:4px">· ${closed.length} closed</span>`:''}`;
-      return`<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text2)">🚛 ${dr.name}</span>
-        <span style="font-size:10px;color:var(--text3)">$${dr.minRate||'?'}/mi</span>
-        ${statusBadge}
+      const closed=[...(dw.closedWeeks||[])].sort((a,b)=>b.localeCompare(a)); // newest first
+      return`<div style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-top:6px;background:var(--surface2)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${closed.length?'8px':'0'}">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">🚛 ${dr.name}</span>
+          <span style="font-size:10px;color:var(--text3)">$${dr.minRate||'?'}/mi</span>
+          ${aw
+            ?`<span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 7px;color:#1e40af;font-weight:700">📅 Active: ${wLbl(aw)}</span>
+               <button onclick="adminResetDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:2px 9px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700">🔓 Reset to current week</button>`
+            :`<span style="font-size:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 7px;color:var(--green);font-weight:600">✓ Current week</span>`
+          }
+        </div>
+        ${closed.length?`
+          <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Closed weeks:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${closed.map(w=>`
+              <div style="display:flex;align-items:center;gap:4px;background:#1e293b;border-radius:5px;padding:2px 8px">
+                <span style="font-size:10px;color:#94a3b8;font-weight:600">🔒 ${wLbl(w)}</span>
+                <button onclick="adminReopenDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}','${w}')" title="Reopen this week" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #f59e0b;background:#451a03;color:#f59e0b;cursor:pointer;font-weight:700;margin-left:2px">↩ Reopen</button>
+              </div>`).join('')}
+          </div>`:''}
       </div>`;
     }).join('');
     return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px">
@@ -2849,7 +2859,7 @@ function renderAdmin(){
         <div class="ua">${avL(d.name)}</div>
         <div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div>
       </div>
-      <div style="padding-left:46px">${drs.length?driverWeekRows:'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div>
+      <div style="width:100%;padding-left:46px">${drs.length?driverWeekRows:'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:4px">No drivers assigned</div>'}</div>
     </div>`;
   }).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
   document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
@@ -2872,6 +2882,21 @@ async function adminResetDriverWeek(userId, drvId, drvName){
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'users',userId),{driverWeeks});
   notify(`✅ Week unlocked for ${drvName}`);
+  await loadMeta();
+  renderAdmin();
+}
+
+async function adminReopenDriverWeek(userId, drvId, drvName, week){
+  const u=USERS.find(x=>x.id===userId);if(!u)return;
+  if(!confirm(`Reopen week for ${drvName}?\n${wLbl(week)}\n\nThis will remove it from the closed list — the dispatcher will be able to edit loads in this week again.`))return;
+  const driverWeeks={...(u.driverWeeks||{})};
+  const existing=driverWeeks[drvId]||{activeWeek:null,closedWeeks:[]};
+  const newClosed=(existing.closedWeeks||[]).filter(w=>w!==week);
+  // Also reset activeWeek back to this week so dispatcher lands on it
+  driverWeeks[drvId]={activeWeek:week, closedWeeks:newClosed};
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'users',userId),{driverWeeks});
+  notify(`✅ Week reopened for ${drvName} — ${wLbl(week)}`);
   await loadMeta();
   renderAdmin();
 }
