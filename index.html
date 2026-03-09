@@ -3691,6 +3691,8 @@ async function deleteDriver(id, name){
   await loadMeta();
   renderAdmin();
 }
+
+async function toggleAccCoAssign(userId,coId,isAssigned){
   const{updateDoc,doc,arrayUnion,arrayRemove}=window._fb;
   if(isAssigned){
     await updateDoc(doc(window._db,'users',userId),{companies:arrayRemove(coId)});
