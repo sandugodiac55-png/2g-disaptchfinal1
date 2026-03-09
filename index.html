@@ -10,6 +10,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDLnywW0Gxpf7XAFs6CojJ0kiewTjqTI5s",
@@ -21,11 +22,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-window._auth = getAuth(app);
-window._db   = getFirestore(app);
+window._auth    = getAuth(app);
+window._db      = getFirestore(app);
+window._storage = getStorage(app);
 window._fb   = { signInWithEmailAndPassword, signOut, onAuthStateChanged,
                  collection, addDoc, getDocs, updateDoc, deleteDoc, doc,
-                 query, where, orderBy, onSnapshot, serverTimestamp };
+                 query, where, orderBy, onSnapshot, serverTimestamp,
+                 ref, uploadBytes, getDownloadURL };
 </script>
 
 <style>
@@ -1010,6 +1013,7 @@ async function boot(user){
   subManagerTasks();
   subDailyTasks();
   subEscalations();
+  subNotifications();
   curW=CW(); // Always start on current real week
   updateWkLbl();
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
@@ -1029,10 +1033,14 @@ function buildNav(){
   const pendingMgrTasks=(MANAGER_TASKS||[]).filter(t=>t.status==='pending').length;
   const pendingEsc=(ESCALATIONS||[]).filter(e=>e.status==='pending').length;
   const problemBadgeCount=pendingMgrTasks+pendingEsc;
+  const myNotifCount=(NOTIFICATIONS||[]).length;
   document.getElementById('sb-nav').innerHTML=`<div class="sb-sec">NAVIGATION</div>`+items.map(i=>{
     const isSubItem=i.id.startsWith('acc-');
     const badge=(i.id==='acc-problem'&&problemBadgeCount>0)
-      ?` <span style="background:var(--orange);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${problemBadgeCount}</span>`:'';
+      ?` <span style="background:var(--orange);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${problemBadgeCount}</span>`
+      :(i.id==='acc-tasks'&&myNotifCount>0)
+      ?` <span style="background:#dc2626;color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700">${myNotifCount}</span>`
+      :'';
     return`<div class="sni" data-pg="${i.id}" onclick="${i.id==='accounting'?'accView=\'companies\';accSelCo=null;accSelDrv=null;':''} showPg('${i.id}')" style="${isSubItem?'padding-left:32px;font-size:11px;opacity:.8;':''}">${i.i} ${i.l}${badge}</div>`;
   }).join('')+`<div class="sni" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;color:rgba(255,255,255,.4);font-size:12px" onclick="doLogout()">← Sign Out</div>`;
 }
@@ -2529,36 +2537,39 @@ async function submitEscalate(){
   if(!desc){notify('Please describe the issue','err');return;}
   const btn=document.getElementById('esc-submit-btn');
   btn.disabled=true;btn.textContent='Sending…';
-  const{addDoc,collection,serverTimestamp}=window._fb;
-  // Deadline = 2 days from now
-  const deadline=new Date();deadline.setDate(deadline.getDate()+2);
-  const deadlineStr=deadline.toISOString().split('T')[0];
-  // Convert attached files to base64 for Firestore storage
-  const fileInput=document.getElementById('esc-files');
-  const attachments=[];
-  if(fileInput?.files?.length){
-    for(const f of fileInput.files){
-      const b64=await new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(f);});
-      attachments.push({name:f.name,type:f.type,data:b64});
+  try{
+    const{addDoc,collection,serverTimestamp,ref,uploadBytes,getDownloadURL}=window._fb;
+    // Deadline = 2 days from now
+    const deadline=new Date();deadline.setDate(deadline.getDate()+2);
+    const deadlineStr=deadline.toISOString().split('T')[0];
+    // Upload files to Firebase Storage
+    const fileInput=document.getElementById('esc-files');
+    const attachments=[];
+    if(fileInput?.files?.length){
+      for(const f of fileInput.files){
+        const path=`escalations/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+        const storageRef=ref(window._storage,path);
+        await uploadBytes(storageRef,f);
+        const url=await getDownloadURL(storageRef);
+        attachments.push({name:f.name,type:f.type,url,path});
+      }
     }
+    await addDoc(collection(window._db,'escalations'),{
+      title,description:desc,attachments,
+      status:'pending',deadline:deadlineStr,
+      createdBy:CU.email,createdByName:CP.name||CU.email,
+      createdAt:serverTimestamp(),
+      resolutionComment:'',resolvedBy:'',resolvedAt:null
+    });
+    cm('m-escalate');
+    notify('🆘 Escalation sent — 2-day deadline set');
+    buildNav();
+  }catch(err){
+    console.error(err);
+    notify('Error sending escalation: '+err.message,'err');
+  }finally{
+    btn.disabled=false;btn.innerHTML='🆘 Send to Manager';
   }
-  await addDoc(collection(window._db,'escalations'),{
-    title,
-    description:desc,
-    attachments,
-    status:'pending',
-    deadline:deadlineStr,
-    createdBy:CU.email,
-    createdByName:CP.name||CU.email,
-    createdAt:serverTimestamp(),
-    resolutionComment:'',
-    resolvedBy:'',
-    resolvedAt:null
-  });
-  btn.disabled=false;btn.textContent='🆘 Send to Manager';
-  cm('m-escalate');
-  notify('🆘 Escalation sent — 2-day deadline set');
-  buildNav();
 }
 function previewMTaskFile(input){
   document.getElementById('mtask-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
@@ -2607,6 +2618,17 @@ function subEscalations(){
     if(pg?.classList.contains('show'))renderTasksPage();
   });
 }
+let NOTIFICATIONS=[];
+function subNotifications(){
+  if(!CU?.email)return;
+  const{onSnapshot,collection,query,where,orderBy}=window._fb;
+  onSnapshot(query(collection(window._db,'notifications'),where('toEmail','==',CU.email),where('read','==',false),orderBy('createdAt','desc')),snap=>{
+    NOTIFICATIONS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    buildNav();
+    const pg=document.getElementById('pg-acc-tasks');
+    if(pg?.classList.contains('show'))renderTasksPage();
+  });
+}
 function renderTasksPage(){
   const canCreate=ROLE==='admin'||ROLE==='accounting_manager';
   const canSeeEsc=ROLE==='admin'||ROLE==='accounting_manager'||ROLE==='accounting';
@@ -2616,13 +2638,33 @@ function renderTasksPage(){
   if(btnArea){
     let btns='';
     if(canCreate) btns+=`<button class="btn btn-orange" onclick="om('m-add-task')">＋ Add Task</button>`;
-    if(canSeeEsc) btns+=`<button class="btn btn-sm" style="background:#fef2f2;border:1.5px solid #fecaca;color:#dc2626;font-weight:700" onclick="openEscalateModal()">🆘 Escalate Issue</button>`;
+    if(canSeeEsc) btns+=`<button class="btn btn-sm" style="background:#fef2f2;border:1.5px solid #fecaca;color:#dc2626;font-weight:700;margin-left:8px" onclick="openEscalateModal()">🆘 Escalate Issue</button>`;
     btnArea.innerHTML=btns;
   }
   document.getElementById('tasks-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  // ── ESCALATIONS SECTION ──
+  // ── MY NOTIFICATIONS (resolutions sent back to creator) ──
   const mReqs=document.getElementById('tasks-manager-reqs');
+  let notifHtml='';
+  if(NOTIFICATIONS?.length){
+    notifHtml+=`<div style="background:#fff;border:1.5px solid #bbf7d0;border-radius:var(--r);overflow:hidden;margin-bottom:12px">
+      <div style="padding:12px 16px;background:#f0fdf4;display:flex;align-items:center;gap:8px;border-bottom:1px solid #bbf7d0">
+        <span style="font-size:16px">✅</span>
+        <div style="font-weight:700;color:#166534;font-size:13px;flex:1">Your escalations were resolved — ${NOTIFICATIONS.length} update${NOTIFICATIONS.length>1?'s':''}</div>
+        <button onclick="dismissAllNotifications()" style="font-size:10px;background:none;border:1px solid #86efac;border-radius:5px;color:#166534;padding:2px 8px;cursor:pointer;font-weight:600">Dismiss all</button>
+      </div>
+      ${NOTIFICATIONS.map(n=>`<div style="padding:12px 16px;border-bottom:1px solid #dcfce7">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:3px">${n.title||'Task resolved'}</div>
+            <div style="font-size:12px;color:#1e293b;background:#f0fdf4;border-radius:6px;padding:8px 10px;line-height:1.5">${n.message}</div>
+            <div style="font-size:10px;color:#86efac;margin-top:4px">Resolved by: <strong style="color:#166534">${n.resolvedBy||'—'}</strong></div>
+          </div>
+          <button onclick="dismissNotification('${n.id}','${n.escId}')" style="background:none;border:none;color:#86efac;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0" title="Dismiss">×</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
   if(mReqs&&canSeeEsc){
     const pendingEsc=ESCALATIONS.filter(e=>e.status==='pending');
     const resolvedEsc=ESCALATIONS.filter(e=>e.status==='resolved').slice(0,5);
@@ -2674,8 +2716,8 @@ function renderTasksPage(){
       </div>`;
     }
     if(!pendingEsc.length&&!resolvedEsc.length) html='';
-    mReqs.innerHTML=html;
-  }
+    mReqs.innerHTML=notifHtml+html;
+  } else if(mReqs){ mReqs.innerHTML=notifHtml; }
 
   // Daily tasks
   const active=DAILY_TASKS.filter(t=>t.status!=='done');
@@ -2733,10 +2775,11 @@ function openEscDetailModal(escId){
   if(e.attachments?.length){
     attWrap.style.display='';
     attDiv.innerHTML=e.attachments.map(a=>{
+      const src=a.url||a.data||'';
       const isImg=a.type?.startsWith('image/');
       return isImg
-        ?`<a href="${a.data}" download="${a.name}" target="_blank"><img src="${a.data}" alt="${a.name}" style="max-width:120px;max-height:90px;border-radius:8px;border:1px solid var(--border);cursor:pointer;object-fit:cover" title="${a.name}"></a>`
-        :`<a href="${a.data}" download="${a.name}" style="display:flex;align-items:center;gap:5px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--blue);text-decoration:none;font-weight:600">📄 ${a.name}</a>`;
+        ?`<a href="${src}" target="_blank" style="display:block"><img src="${src}" alt="${a.name}" style="max-width:140px;max-height:110px;border-radius:8px;border:1px solid var(--border);cursor:pointer;object-fit:cover" title="Click to open · ${a.name}"></a>`
+        :`<a href="${src}" target="_blank" style="display:flex;align-items:center;gap:5px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:11px;color:var(--blue);text-decoration:none;font-weight:600">📄 ${a.name}</a>`;
     }).join('');
   } else { attWrap.style.display='none'; }
 
@@ -2784,15 +2827,41 @@ async function resolveEscalationTask(){
   if(ROLE!=='admin'&&ROLE!=='accounting_manager'){notify('No permission','err');return;}
   const comment=document.getElementById('esc-detail-comment').value.trim();
   if(!comment){notify('Please add a resolution comment','err');return;}
-  const{updateDoc,doc}=window._fb;
+  const e=ESCALATIONS.find(x=>x.id===_escDetailId);
+  const{updateDoc,doc,addDoc,collection,serverTimestamp}=window._fb;
+  // Save resolution + store notification for creator
   await updateDoc(doc(window._db,'escalations',_escDetailId),{
     status:'resolved',
     resolutionComment:comment,
     resolvedBy:CP.name||CU.email,
     resolvedAt:new Date().toISOString()
   });
+  // Create a notification so the creator can see the resolution
+  await addDoc(collection(window._db,'notifications'),{
+    toEmail:e?.createdBy||'',
+    type:'escalation_resolved',
+    title:`Task resolved: "${e?.title||''}"`,
+    message:comment,
+    resolvedBy:CP.name||CU.email,
+    escId:_escDetailId,
+    read:false,
+    createdAt:serverTimestamp()
+  });
   cm('m-esc-detail');
-  notify('✅ Escalation resolved');
+  notify('✅ Escalation resolved — creator notified');
+}
+async function dismissNotification(nId, escId){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'notifications',nId),{read:true});
+  // Also open the escalation detail so creator can read the resolution
+  if(escId){openEscDetailModal(escId);}
+}
+async function dismissAllNotifications(){
+  const{updateDoc,doc}=window._fb;
+  for(const n of NOTIFICATIONS){
+    await updateDoc(doc(window._db,'notifications',n.id),{read:true});
+  }
+  notify('All notifications dismissed');
 }
 function openAccTaskModal(){
   // Create task specifically for manager from Manager Inv. page
