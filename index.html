@@ -605,6 +605,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             <button class="btn btn-primary" onclick="openUserModal()">＋ Add User</button>
           </div>
           <div class="ag">
+            <div class="ac" id="adm-req-panel" style="display:none"><div class="ach" style="background:#fff7ed;border-color:#fed7aa"><div class="act" style="color:var(--orange)">📨 Edit Requests</div></div><div id="adm-edit-req"></div></div>
             <div class="ac"><div class="ach"><div class="act">👥 Users</div></div><div id="adm-u"></div></div>
             <div class="ac"><div class="ach"><div class="act">🚛 Dispatchers & Drivers</div><button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button></div><div id="adm-d"></div></div>
             <div class="ac"><div class="ach"><div class="act">🏢 Companies</div><button class="btn btn-ghost btn-sm" onclick="openCompModal()">＋ Add</button></div><div id="adm-c"></div></div>
@@ -1123,7 +1124,23 @@ function renderDrvTrips(allDrvLoads){
         }</td>
         <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
         <td style="font-size:11px;color:var(--text3);max-width:120px;white-space:normal">${l.notes||''}</td>
-        <td><div style="display:flex;gap:4px">${canEdit&&!inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`:canEdit&&inTrip?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`:''}</div></td>
+        <td><div style="display:flex;gap:4px">${(()=>{
+          const wLk=isLocked(l.driver,l.week);
+          if(ROLE==='admin'){
+            return !inTrip
+              ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
+              :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
+          }
+          if(ROLE==='dispatcher'){
+            if(wLk){
+              return `<button class="btn btn-ghost btn-sm" style="opacity:.6;font-size:10px" onclick="requestEdit('${l.id}','${l.orderId||'?'}','${l.week||curW}')">✏️ Request</button>`;
+            }
+            return !inTrip
+              ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
+              :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
+          }
+          return '';
+        })()}</div></td>
       </tr>`;
     });
   });
@@ -1374,6 +1391,14 @@ function editLoad(id){
   om('m-load');
 }
 async function saveLoad(){
+  // Block dispatcher from saving edits on locked past weeks
+  if(editLoadId&&ROLE==='dispatcher'){
+    const origLoad=LOADS.find(l=>l.id===editLoadId);
+    if(origLoad&&isLocked(origLoad.driver,origLoad.week)){
+      notify('⛔ Week is locked — use Request Edit button','err');
+      cm('m-load');return;
+    }
+  }
   const oid=document.getElementById('fl-oid').value.trim(),pay=document.getElementById('fl-pay').value;
   if(!oid){notify('Order ID required','err');return}
   if(!pay){notify('Payment Method required','err');return}
@@ -1390,13 +1415,18 @@ async function saveLoad(){
     bfPaid:swV('sw-bf'),payMethod:pay,
     driver:curDrv?.name||'',driverName:curDrv?.name||'',
     dispEmail:CU.email,dispName:CP.name||CU.email,
-    company:curDrv?.company||CP.company||'',week:curW,
+    company:curDrv?.company||CP.company||'',
     notes:document.getElementById('fl-nt').value.trim(),
   };
   const{addDoc,updateDoc,doc,collection,serverTimestamp}=window._fb,db=window._db;
   try{
-    if(editLoadId){await updateDoc(doc(db,'loads',editLoadId),{...data,updatedAt:serverTimestamp()})}
-    else{await addDoc(collection(db,'loads'),{...data,status:'Assigned',paid:false,createdAt:serverTimestamp()})}
+    if(editLoadId){
+      // CRITICAL: preserve original week — never overwrite it on edit
+      const origLoad=LOADS.find(l=>l.id===editLoadId);
+      const origWeek=origLoad?.week||curW;
+      await updateDoc(doc(db,'loads',editLoadId),{...data,week:origWeek,updatedAt:serverTimestamp()});
+    }
+    else{await addDoc(collection(db,'loads'),{...data,week:curW,status:'Assigned',paid:false,createdAt:serverTimestamp()})}
     notify(editLoadId?'Load updated':'Load added ✓');cm('m-load');
   }catch(e){notify('Error: '+e.message,'err')}
 }
@@ -1473,6 +1503,95 @@ async function toggleWeekUnlock(drvId,week,isUnlocked){
   await loadMeta();
   renderDriverPage();
 }
+/* ══ EDIT REQUESTS ══ */
+let EDIT_REQUESTS=[];
+
+function requestEdit(loadId,orderId,week){
+  document.getElementById('req-load-id').value=loadId;
+  document.getElementById('req-week').value=week;
+  document.getElementById('req-load-label').value='Load '+orderId+' ('+wLbl(week)+')';
+  document.getElementById('req-reason').value='';
+  om('m-edit-req');
+}
+
+async function submitEditRequest(){
+  const reason=document.getElementById('req-reason').value.trim();
+  if(!reason){notify('Please explain the reason for edit','err');return}
+  const loadId=document.getElementById('req-load-id').value;
+  const week=document.getElementById('req-week').value;
+  const load=LOADS.find(l=>l.id===loadId);
+  const{addDoc,collection,serverTimestamp}=window._fb;
+  await addDoc(collection(window._db,'editRequests'),{
+    loadId,week,
+    orderId:load?.orderId||'?',
+    driverName:load?.driver||'?',
+    dispEmail:CU.email,
+    dispName:CP.name||CU.email,
+    reason,
+    status:'pending',
+    createdAt:serverTimestamp()
+  });
+  cm('m-edit-req');
+  notify('✓ Request sent to admin');
+}
+
+async function loadEditRequests(){
+  if(ROLE!=='admin')return;
+  const{getDocs,collection,query,where}=window._fb;
+  const snap=await getDocs(query(collection(window._db,'editRequests'),where('status','==','pending')));
+  EDIT_REQUESTS=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderEditRequests();
+}
+
+function renderEditRequests(){
+  const el=document.getElementById('adm-edit-req');if(!el)return;
+  if(!EDIT_REQUESTS.length){
+    el.innerHTML=`<div style="padding:16px;font-size:12px;color:var(--text3)">No pending requests.</div>`;
+    return;
+  }
+  el.innerHTML=EDIT_REQUESTS.map(r=>`
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">Load ${r.orderId} · ${r.driverName}</div>
+        <div style="font-size:11px;color:var(--text3);margin:2px 0">${r.dispName} · ${wLbl(r.week)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px;background:var(--bg);border-radius:6px;padding:6px 8px">"${r.reason}"</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <button class="btn btn-sm btn-teal" onclick="approveEditReq('${r.id}','${r.loadId}','${r.week}','${r.driverName}')">✓ Approve</button>
+        <button class="btn btn-sm btn-danger" onclick="rejectEditReq('${r.id}')">✗ Reject</button>
+      </div>
+    </div>
+  `).join('');
+  // Show badge on admin nav item
+  const badge=EDIT_REQUESTS.length;
+  document.querySelectorAll('.sni').forEach(n=>{
+    if(n.textContent.includes('Admin')){
+      n.innerHTML=n.innerHTML.replace(/ <span class="req-badge".*?<\/span>/,'');
+      if(badge>0)n.innerHTML+=` <span class="req-badge" style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700">${badge}</span>`;
+    }
+  });
+}
+
+async function approveEditReq(reqId,loadId,week,driverName){
+  if(!confirm('Approve edit request? The dispatcher will be able to edit this load.'))return;
+  const{updateDoc,doc,arrayUnion}=window._fb;
+  // Grant unlock for this specific week on this driver
+  const drv=DRIVERS.find(d=>d.name===driverName);
+  if(drv){await updateDoc(doc(window._db,'drivers',drv.id),{unlockedWeeks:arrayUnion(week)})}
+  await updateDoc(doc(window._db,'editRequests',reqId),{status:'approved',resolvedAt:new Date().toISOString()});
+  notify('✓ Approved — dispatcher can now edit');
+  await loadMeta();
+  await loadEditRequests();
+}
+
+async function rejectEditReq(reqId){
+  const reason=prompt('Rejection reason (optional):');
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'editRequests',reqId),{status:'rejected',rejectionReason:reason||'',resolvedAt:new Date().toISOString()});
+  notify('Request rejected');
+  await loadEditRequests();
+}
+
 async function toggleLock(drvId){
   const d=DRIVERS.find(x=>x.id===drvId);if(!d)return;
   if(ROLE!=='admin'){notify('Only admin can unlock','err');return}
@@ -1972,6 +2091,10 @@ function exportSalary(){
 
 /* ══ ADMIN ══ */
 function renderAdmin(){
+  loadEditRequests().then(()=>{
+    const panel=document.getElementById('adm-req-panel');
+    if(panel)panel.style.display=EDIT_REQUESTS.length?'':'none';
+  });
   document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`<div class="ur"><div class="ua">${avL(u.name)}</div><div><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div><span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span></div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
   const disps=USERS.filter(u=>u.role==='dispatcher');
   document.getElementById('adm-d').innerHTML=disps.map(d=>{const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px"><div style="display:flex;align-items:center;gap:10px;width:100%"><div class="ua">${avL(d.name)}</div><div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div></div><div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0">🚛 ${dr.name} · $${dr.minRate||'?'}/mi · ${dr.salaryPct||'?'}%</div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div></div>`}).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
@@ -2055,6 +2178,34 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
 </div>
 
+
+<!-- EDIT REQUEST MODAL -->
+<div class="ov" id="m-edit-req">
+  <div class="mw" style="max-width:420px">
+    <div class="mhd"><div class="mhd-t">✏️ Request Edit Permission</div><div class="mcl" onclick="cm('m-edit-req')">×</div></div>
+    <div class="mbd">
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400e">
+        ⚠️ This week is <strong>locked</strong>. You need admin approval to make changes.
+      </div>
+      <input type="hidden" id="req-load-id">
+      <input type="hidden" id="req-week">
+      <div class="fg" style="margin-bottom:12px">
+        <label>Load</label>
+        <input id="req-load-label" readonly style="background:var(--surface2);color:var(--text3)">
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Reason for edit request <span style="color:var(--red)">*</span></label>
+        <textarea id="req-reason" placeholder="Explain what needs to be changed and why…" style="min-height:80px"></textarea>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-edit-req')">Cancel</button>
+      <button class="btn btn-orange" onclick="submitEditRequest()">📨 Send Request to Admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN REQUESTS PANEL (injected into admin page) -->
 
 <!-- TRIP POPOVER -->
 <div id="trip-popover" style="display:none;position:fixed;z-index:9999;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:16px;min-width:260px;max-width:320px">
