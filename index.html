@@ -581,7 +581,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tc-title" style="color:var(--red)">🚨 Urgent Overdue — Past 15+ Days</div>
                 <span class="cpill" id="acc-cnt-urgent" style="background:#fecaca;color:#991b1b">0</span>
               </div>
-              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
+              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th><th></th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
             </div>
             <!-- SECTION: Bond -->
             <div id="acc-sec-bond" class="tc" style="margin-bottom:16px;border-left:4px solid #7c3aed">
@@ -597,7 +597,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tc-title" style="color:#ea580c">🤝 Manager Involvement Required</div>
                 <span class="cpill" id="acc-cnt-problem" style="background:#fed7aa;color:#9a3412">0</span>
               </div>
-              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-problem"></tbody></table></div>
+              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th></th></tr></thead><tbody id="acc-tb-problem"></tbody></table></div>
             </div>
             <!-- SECTION: All Loads (pending/paid) -->
             <div class="tc" style="margin-bottom:16px">
@@ -1017,11 +1017,15 @@ function subTrips(){
 /* ══ ROUTING ══ */
 const pgTitles={dispatch:'My Drivers',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary',admin:'Admin Panel',driver:'Driver Loads'};
 function showPg(pg,opts={}){
+  // acc-urgent/bond/problem/tasks are virtual pages — map to pg-accounting or pg-acc-tasks
+  const realPg=pg.startsWith('acc-')&&pg!=='accounting'
+    ?(pg==='acc-tasks'?'acc-tasks':'accounting')
+    :pg;
   document.querySelectorAll('.pg').forEach(e=>e.classList.remove('show'));
   document.querySelectorAll('.sni').forEach(e=>e.classList.remove('on'));
-  document.getElementById(`pg-${pg}`)?.classList.add('show');
+  document.getElementById(`pg-${realPg}`)?.classList.add('show');
   document.querySelector(`[data-pg="${pg}"]`)?.classList.add('on');
-  document.getElementById('tb-title').textContent=opts.title||pgTitles[pg]||pg;
+  document.getElementById('tb-title').textContent=opts.title||pgTitles[pg]||pgTitles[realPg]||pg;
   document.getElementById('tb-sub').textContent=wLbl(curW);
   const back=document.getElementById('tb-back');
   back.classList.toggle('show',pg==='driver');
@@ -1034,28 +1038,8 @@ function renderPg(pg){
   if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
   if(pg==='accounting'){accView='companies';renderAccView();}
-  if(pg==='acc-tasks'){
-    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
-    document.getElementById('pg-acc-tasks').classList.add('act');
-    document.querySelectorAll('.sni').forEach(n=>n.classList.remove('on'));
-    document.querySelector('.sni[data-pg="acc-tasks"]')?.classList.add('on');
-    renderTasksPage();
-    return;
-  }
-  if(pg==='acc-tasks'){
-    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
-    document.getElementById('pg-acc-tasks').classList.add('act');
-    document.querySelectorAll('.sni').forEach(n=>n.classList.remove('on'));
-    document.querySelector('.sni[data-pg="acc-tasks"]')?.classList.add('on');
-    renderTasksPage();
-    return;
-  }
+  if(pg==='acc-tasks'){renderTasksPage();return;}
   if(pg==='acc-urgent'||pg==='acc-bond'||pg==='acc-problem'){
-    // Switch to accounting page and filter by flag/type
-    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
-    document.getElementById('pg-accounting').classList.add('act');
-    document.querySelectorAll('.sni').forEach(n=>n.classList.remove('on'));
-    document.querySelector('.sni[data-pg="'+pg+'"]')?.classList.add('on');
     accView='loads'; accSelCo=null; accSelDrv=null;
     document.getElementById('acc-view-companies').style.display='none';
     document.getElementById('acc-view-drivers').style.display='none';
@@ -2151,10 +2135,10 @@ function accLoadRow(l,canEdit,cols){
   const days=l.paid?'':(()=>{const due=getDueDate(l.date,l.payMethod);if(!due)return '';const d=Math.floor((new Date()-due)/86400000);return d>0?`<span style="color:var(--red);font-weight:800;font-size:11px">${d}d overdue</span>`:`<span style="color:var(--text3);font-size:10px">Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`})();
   return`<tr>
     <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" style="cursor:pointer">${l.orderId||'—'} <span style="font-size:9px;opacity:.4">⎘</span></td>
+    ${cols.disp?`<td style="color:var(--blue);font-size:11px">${l.dispName||'—'}</td>`:''}
     ${cols.driver?`<td style="font-weight:600;font-size:12px">${l.driver||'—'}</td>`:''}
     ${cols.company?`<td style="font-size:11px;color:var(--text3)">${l.company||'—'}</td>`:''}
     ${cols.route?`<td style="font-size:11px">${l.origin||'—'} → ${l.dest||'—'}</td>`:''}
-    ${cols.disp?`<td style="color:var(--blue);font-size:11px">${l.dispName||'—'}</td>`:''}
     <td class="money">$${fmt(+l.rate||0)}</td>
     <td style="font-size:11px">${l.payMethod||'—'}</td>
     <td style="font-size:11px;max-width:140px">${l.brokerEmail?`<span onclick="copyText('${l.brokerEmail}','Email')" style="cursor:pointer;color:var(--blue);font-size:10px">${l.brokerEmail} <span style="opacity:.4">⎘</span></span>`:'—'}</td>
@@ -2163,6 +2147,11 @@ function accLoadRow(l,canEdit,cols){
     <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
     <td>${cols.overdue?days:dueTag}</td>
     <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+    <td style="white-space:nowrap">${canEdit?(
+      l.accFlag==='problem'
+        ?`<span style="font-size:9px;background:#fff7ed;border:1px solid #fed7aa;color:#ea580c;border-radius:4px;padding:2px 6px;font-weight:700">🤝 Escalated</span>`
+        :`<button onclick="openEscalateModal('${l.id}')" title="Escalate to Accounting Manager" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🆘 Escalate</button>`
+    ):''}</td>
   </tr>`;
 }
 function renderAccSections(loads,canEdit){
@@ -2406,6 +2395,46 @@ function openManagerTask(loadId){
   document.getElementById('mtask-file-preview').textContent='';
   om('m-manager-task');
 }
+function openEscalateModal(loadId){
+  const l=LOADS.find(x=>x.id===loadId);if(!l)return;
+  document.getElementById('esc-load-id').value=loadId;
+  document.getElementById('esc-load-info').innerHTML=
+    `<strong>${l.orderId||'?'}</strong> · Driver: ${l.driver||'?'} · $${fmt(+l.rate||0)} · ${l.payMethod||'—'} · ${l.origin||'—'} → ${l.dest||'—'}`;
+  document.getElementById('esc-desc').value='';
+  document.getElementById('esc-file-preview').textContent='';
+  om('m-escalate');
+}
+function previewEscFile(input){
+  document.getElementById('esc-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
+}
+async function submitEscalate(){
+  const desc=document.getElementById('esc-desc').value.trim();
+  if(!desc){notify('Please describe the issue','err');return}
+  const loadId=document.getElementById('esc-load-id').value;
+  const l=LOADS.find(x=>x.id===loadId);
+  const{addDoc,collection,updateDoc,doc,serverTimestamp}=window._fb;
+  // 1. Flag load as problem → appears in Manager Inv. section
+  await updateDoc(doc(window._db,'loads',loadId),{accFlag:'problem'});
+  // 2. Create manager task notification with full load info
+  await addDoc(collection(window._db,'managerTasks'),{
+    loadId,
+    orderId:l?.orderId||'?',
+    driver:l?.driver||'?',
+    company:l?.company||'?',
+    rate:l?.rate||0,
+    payMethod:l?.payMethod||'—',
+    route:(l?.origin||'—')+' → '+(l?.dest||'—'),
+    description:desc,
+    status:'pending',
+    createdBy:CU.email,
+    createdByName:CP.name||CU.email,
+    createdAt:serverTimestamp()
+  });
+  cm('m-escalate');
+  notify('🆘 Escalated to Accounting Manager');
+  // Rebuild nav badge
+  buildNav();
+}
 function previewMTaskFile(input){
   document.getElementById('mtask-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
 }
@@ -2462,12 +2491,14 @@ function renderTasksPage(){
         </div>
         ${pending.map(t=>`<div style="padding:12px 16px;border-top:1px solid #fed7aa;display:flex;align-items:flex-start;gap:12px">
           <div style="flex:1">
-            <div style="font-size:12px;font-weight:700">Load ${t.orderId} · ${t.driver} · $${fmt(+t.rate||0)}</div>
-            <div style="font-size:11px;color:var(--text2);margin:3px 0">${t.description}</div>
-            <div style="font-size:10px;color:var(--text3)">From: ${t.createdByName}</div>
+            <div style="font-size:12px;font-weight:700;color:var(--navy)">Load ${t.orderId} · ${t.driver} · <span style="color:var(--green)">$${fmt(+t.rate||0)}</span></div>
+            <div style="font-size:11px;color:var(--text3)">${t.company||''} · ${t.payMethod||''} · ${t.route||''}</div>
+            <div style="font-size:11px;color:var(--text2);margin:4px 0;background:#fff;border-radius:5px;padding:5px 8px">${t.description}</div>
+            <div style="font-size:10px;color:var(--text3)">Escalated by: <strong>${t.createdByName}</strong></div>
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            <button onclick="resolveManagerTask('${t.id}')" class="btn btn-sm btn-teal">✓ Resolved</button>
+          <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+            <button onclick="openTaskForEscalation('${t.id}','${t.orderId}','${t.driver}')" style="background:#fff3e0;border:1px solid #fed7aa;color:#ea580c;border-radius:5px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer">📋 Create Task</button>
+            <button onclick="resolveManagerTask('${t.id}','${t.loadId}')" class="btn btn-sm btn-teal">✓ Resolved</button>
           </div>
         </div>`).join('')}
       </div>`;
@@ -2495,10 +2526,22 @@ function renderTasksPage(){
       <span style="font-size:12px;text-decoration:line-through">${t.description}</span>
     </div>`).join(''):`<div style="padding:12px 16px;font-size:11px;color:var(--text3)">No completed tasks</div>`;
 }
-async function resolveManagerTask(id){
+async function resolveManagerTask(id,loadId){
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'managerTasks',id),{status:'resolved',resolvedAt:new Date().toISOString()});
-  notify('✓ Marked as resolved');
+  // Also clear the problem flag on the load
+  if(loadId){await updateDoc(doc(window._db,'loads',loadId),{accFlag:''});}
+  notify('✓ Resolved — load removed from Manager Inv.');
+}
+function openTaskForEscalation(mTaskId,orderId,driver){
+  // Pre-fill daily task modal with escalation context
+  document.getElementById('task-desc').value='[Escalation] Load '+orderId+' ('+driver+') — review and resolve issue';
+  document.getElementById('task-priority').value='high';
+  document.getElementById('task-due').value=new Date().toISOString().split('T')[0];
+  document.getElementById('task-file-preview').textContent='';
+  // Store reference
+  document.getElementById('m-add-task').dataset.mTaskId=mTaskId;
+  om('m-add-task');
 }
 function previewTaskFile(input){
   document.getElementById('task-file-preview').textContent=input.files[0]?'📄 '+input.files[0].name:'';
@@ -2515,6 +2558,11 @@ async function saveTask(){
     createdBy:CU.email,createdByName:CP.name||CU.email,
     createdAt:serverTimestamp()
   });
+  // If created from escalation, link to manager task
+  const mTaskId=document.getElementById('m-add-task').dataset.mTaskId;
+  if(mTaskId){
+    delete document.getElementById('m-add-task').dataset.mTaskId;
+  }
   cm('m-add-task');
   notify('✓ Task added');
 }
@@ -2786,6 +2834,37 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     <div class="mft">
       <button class="btn btn-ghost" onclick="cm('m-bond')">Cancel</button>
       <button class="btn btn-orange" onclick="saveBond()">🔒 Apply Bond</button>
+    </div>
+  </div>
+</div>
+
+<!-- ESCALATE MODAL -->
+<div class="ov" id="m-escalate">
+  <div class="mw" style="max-width:480px">
+    <div class="mhd">
+      <div class="mhd-t" style="color:#dc2626">🆘 Escalate to Accounting Manager</div>
+      <div class="mcl" onclick="cm('m-escalate')">×</div>
+    </div>
+    <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="esc-load-id">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;color:#991b1b" id="esc-load-info"></div>
+      <div class="fg">
+        <label>Problem description <span style="color:var(--red)">*</span></label>
+        <textarea id="esc-desc" style="min-height:90px" placeholder="Describe the issue in detail — what happened, what you tried, what you need from the manager..."></textarea>
+      </div>
+      <div class="fg">
+        <label>Attach document / photo (optional)</label>
+        <div style="border:2px dashed #fecaca;border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:#fef9f9" onclick="document.getElementById('esc-file').click()">
+          <div style="font-size:20px">📎</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">Click to attach file or photo</div>
+        </div>
+        <input type="file" id="esc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewEscFile(this)">
+        <div id="esc-file-preview" style="margin-top:6px;font-size:11px;color:var(--blue)"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="cm('m-escalate')">Cancel</button>
+      <button class="btn" style="background:#dc2626;color:#fff" onclick="submitEscalate()">🆘 Send to Manager</button>
     </div>
   </div>
 </div>
