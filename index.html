@@ -1053,22 +1053,32 @@ function showPg(pg,opts={}){
   renderPg(pg);
 }
 function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
-function renderCur(){const v=document.querySelector('.pg.show');if(v)renderPg(v.id.replace('pg-',''))}
+function renderCur(){
+  const v=document.querySelector('.pg.show');
+  if(!v)return;
+  const pg=v.id.replace('pg-','');
+  if(pg==='accounting'&&accView==='flag'&&_accFlagPg){renderAccByFlag(_accFlagPg);return;}
+  if(pg==='accounting'&&accView==='loads'){renderAcc();return;}
+  renderPg(pg);
+}
 function renderPg(pg){
   if(pg==='dispatch')renderDispatch();
   if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
-  if(pg==='accounting'){accView='companies';renderAccView();}
+  if(pg==='accounting'){if(accView==='companies')renderAccView();else renderAcc();}
   if(pg==='acc-tasks'){renderTasksPage();return;}
   if(pg==='acc-urgent'||pg==='acc-bond'||pg==='acc-problem'){
-    accView='loads'; accSelCo=null; accSelDrv=null;
-    document.getElementById('acc-view-companies').style.display='none';
-    document.getElementById('acc-view-drivers').style.display='none';
-    document.getElementById('acc-view-loads').style.display='';
-    const titleEl=document.getElementById('acc-drv-title');
-    if(titleEl)titleEl.textContent=pg==='acc-urgent'?'🚨 All Urgent Overdue (10+ days)':pg==='acc-bond'?'🔒 All Bond Payments':'🤝 All Manager Involvement';
-    const taskBtn=document.getElementById('acc-create-task-btn');
-    if(taskBtn)taskBtn.style.display=pg==='acc-problem'?'':'none';
+    // Only set view if not already there (avoid reset on Firestore re-render)
+    if(accView!=='flag'||_accFlagPg!==pg){
+      accView='flag'; _accFlagPg=pg;
+      document.getElementById('acc-view-companies').style.display='none';
+      document.getElementById('acc-view-drivers').style.display='none';
+      document.getElementById('acc-view-loads').style.display='';
+      const titleEl=document.getElementById('acc-drv-title');
+      if(titleEl)titleEl.textContent=pg==='acc-urgent'?'🚨 All Urgent Overdue (10+ days)':pg==='acc-bond'?'🔒 All Bond Payments':'🤝 All Manager Involvement';
+      const taskBtn=document.getElementById('acc-create-task-btn');
+      if(taskBtn)taskBtn.style.display=pg==='acc-problem'?'':'none';
+    }
     renderAccByFlag(pg);
   }
   if(pg==='owner')renderOwner();
