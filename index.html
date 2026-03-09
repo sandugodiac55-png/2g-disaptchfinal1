@@ -3257,11 +3257,104 @@ async function toggleAccCoAssign(userId,coId,isAssigned){
   await loadMeta();
   renderAdmin();
 }
+
+let _assignDispId=null;
+function openAssignDriverModal(dispId, dispName){
+  _assignDispId=dispId;
+  document.getElementById('assign-drv-title').textContent='Assign Driver to '+dispName;
+  const disp=USERS.find(u=>u.id===dispId);
+  const assignedIds=new Set(DRIVERS.filter(d=>d.dispatcherEmail===disp?.email).map(d=>d.id));
+  const unassigned=DRIVERS.filter(d=>!d.dispatcherEmail||!assignedIds.has(d.id)===false||true).filter(d=>!assignedIds.has(d.id));
+  const sel=document.getElementById('assign-drv-sel');
+  sel.innerHTML=`<option value="">— Select Driver —</option>`+unassigned.map(d=>`<option value="${d.id}">${d.name}${d.dispatcherEmail?' (currently: '+( USERS.find(u=>u.email===d.dispatcherEmail)?.name||d.dispatcherEmail)+')':' (unassigned)'}</option>`).join('');
+  om('m-assign-drv');
+}
+
+async function confirmAssignDriver(){
+  const drvId=document.getElementById('assign-drv-sel').value;
+  if(!drvId){notify('Select a driver','err');return;}
+  const disp=USERS.find(u=>u.id===_assignDispId);
+  if(!disp){return;}
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{dispatcherEmail:disp.email,dispatcherName:disp.name||''});
+  notify(`✓ Driver assigned to ${disp.name}`);
+  cm('m-assign-drv');
+  await loadMeta();
+  renderAdmin();
+}
+
+let _reassignDrvId=null, _reassignFromDispId=null;
+function openReassignDriverModal(drvId, drvName, fromDispId){
+  _reassignDrvId=drvId; _reassignFromDispId=fromDispId;
+  document.getElementById('reassign-drv-name').textContent=drvName;
+  const sel=document.getElementById('reassign-disp-sel');
+  const otherDisps=USERS.filter(u=>(u.role==='dispatcher'||u.role==='admin')&&u.id!==fromDispId);
+  sel.innerHTML=`<option value="">— Select Dispatcher —</option>`+otherDisps.map(u=>`<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+  om('m-reassign-drv');
+}
+
+async function confirmReassignDriver(){
+  const toDispId=document.getElementById('reassign-disp-sel').value;
+  if(!toDispId){notify('Select a dispatcher','err');return;}
+  const toDisp=USERS.find(u=>u.id===toDispId);
+  if(!toDisp){return;}
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',_reassignDrvId),{dispatcherEmail:toDisp.email,dispatcherName:toDisp.name||''});
+  notify(`✓ Driver moved to ${toDisp.name}`);
+  cm('m-reassign-drv');
+  await loadMeta();
+  renderAdmin();
+}
+
+let _assignCoUserId=null;
+function openAssignCoModal(userId, userName){
+  _assignCoUserId=userId;
+  document.getElementById('assign-co-title').textContent='Companies for '+userName;
+  renderAssignCoList();
+  om('m-assign-co');
+}
+
+function renderAssignCoList(){
+  const u=USERS.find(x=>x.id===_assignCoUserId);
+  const assigned=u?.companies||[];
+  const list=document.getElementById('assign-co-list');
+  list.innerHTML=COMPANIES.map(co=>{
+    const isAss=assigned.includes(co.id)||assigned.includes(co.name);
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;border:1.5px solid ${isAss?'#6ee7b7':'var(--border)'};background:${isAss?'#f0fdf4':'var(--surface2)'};cursor:pointer;transition:all .15s" onclick="toggleAssignCo('${co.id}')">
+      <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${isAss?'#10b981':'#cbd5e1'};background:${isAss?'#10b981':'#fff'};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${isAss?'✓':''}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--navy)">${co.name}</div>
+        ${co.email?`<div style="font-size:10px;color:var(--text3)">${co.email}</div>`:''}
+      </div>
+      ${isAss?`<span style="font-size:10px;color:#059669;font-weight:700">Assigned</span>`:``}
+    </div>`;
+  }).join('');
+}
+
+async function toggleAssignCo(coId){
+  const u=USERS.find(x=>x.id===_assignCoUserId);
+  if(!u) return;
+  const{updateDoc,doc,arrayUnion,arrayRemove}=window._fb;
+  const assigned=u.companies||[];
+  const isAss=assigned.includes(coId)||assigned.includes(COMPANIES.find(c=>c.id===coId)?.name);
+  if(isAss){
+    await updateDoc(doc(window._db,'users',u.id),{companies:arrayRemove(coId)});
+  } else {
+    await updateDoc(doc(window._db,'users',u.id),{companies:arrayUnion(coId)});
+  }
+  await loadMeta();
+  // re-render list inside modal
+  _assignCoUserId=u.id; // keep reference
+  renderAssignCoList();
+  renderAdmin();
+}
 function renderAdmin(){
   loadEditRequests().then(()=>{
     const panel=document.getElementById('adm-req-panel');
     if(panel)panel.style.display=EDIT_REQUESTS.length?'':'none';
   });
+
+  // ── USERS ──
   document.getElementById('adm-u').innerHTML=USERS.length?USERS.map(u=>`
     <div class="ur" style="flex-direction:column;align-items:flex-start;gap:6px">
       <div style="display:flex;align-items:center;gap:10px;width:100%">
@@ -3269,54 +3362,79 @@ function renderAdmin(){
         <div style="flex:1"><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div></div>
         <span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span>
       </div>
-      ${u.role==='accounting'?`
-        <div style="padding-left:46px;width:100%">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600">ASSIGNED COMPANIES:</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
-            ${COMPANIES.map(co=>{
-              const assigned=(u.companies||[]).includes(co.id)||(u.companies||[]).includes(co.name);
-              return`<button onclick="toggleAccCoAssign('${u.id}','${co.id}',${assigned})" style="font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;border:1px solid ${assigned?'var(--teal)':'var(--border)'};background:${assigned?'#f0fdf4':'var(--surface2)'};color:${assigned?'var(--teal)':'var(--text3)'};font-weight:${assigned?'700':'400'}">${assigned?'✓ ':''}${co.name}</button>`;
-            }).join('')}
-          </div>
-        </div>`:''}
     </div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
+
+  // ── DISPATCHERS & DRIVERS ──
   const disps=USERS.filter(u=>u.role==='dispatcher');
-  document.getElementById('adm-d').innerHTML=disps.map(d=>{
-    const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
-    const driverWeeks=d.driverWeeks||{};
-    const driverWeekRows=drs.map(dr=>{
-      const dw=driverWeeks[dr.id]||{};
-      const aw=dw.activeWeek||null;
-      const closed=[...(dw.closedWeeks||[])].sort((a,b)=>b.localeCompare(a)); // newest first
-      return`<div style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-top:6px;background:var(--surface2)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${closed.length?'8px':'0'}">
-          <span style="font-size:12px;font-weight:700;color:var(--text)">🚛 ${dr.name}</span>
-          <span style="font-size:10px;color:var(--text3)">$${dr.minRate||'?'}/mi</span>
-          ${aw
-            ?`<span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 7px;color:#1e40af;font-weight:700">📅 Active: ${wLbl(aw)}</span>
-               <button onclick="adminResetDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:2px 9px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700">🔓 Reset to current week</button>`
-            :`<span style="font-size:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 7px;color:var(--green);font-weight:600">✓ Current week</span>`
-          }
-        </div>
-        ${closed.length?`
-          <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Closed weeks:</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px">
-            ${closed.map(w=>`
-              <div style="display:flex;align-items:center;gap:4px;background:#1e293b;border-radius:5px;padding:2px 8px">
-                <span style="font-size:10px;color:#94a3b8;font-weight:600">🔒 ${wLbl(w)}</span>
-                <button onclick="adminReopenDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}','${w}')" title="Reopen this week" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #f59e0b;background:#451a03;color:#f59e0b;cursor:pointer;font-weight:700;margin-left:2px">↩ Reopen</button>
-              </div>`).join('')}
+  const accUsers=USERS.filter(u=>u.role==='accounting'||u.role==='accounting_manager');
+
+  let admDHtml='';
+
+  // Dispatchers section
+  if(disps.length){
+    admDHtml+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:10px 16px 6px">🚛 Dispatchers</div>`;
+    admDHtml+=disps.map(d=>{
+      const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
+      const driverWeeks=d.driverWeeks||{};
+      const driverRows=drs.map(dr=>{
+        const dw=driverWeeks[dr.id]||{};
+        const aw=dw.activeWeek||null;
+        const closed=[...(dw.closedWeeks||[])].sort((a,b)=>b.localeCompare(a));
+        return`<div style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-top:5px;background:var(--surface2)">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">🚛 ${dr.name}</span>
+            <span style="font-size:10px;color:var(--text3)">$${dr.minRate||'?'}/mi</span>
+            ${aw
+              ?`<span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 7px;color:#1e40af;font-weight:700">📅 ${wLbl(aw)}</span>
+                 <button onclick="adminResetDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700">🔓 Reset</button>`
+              :`<span style="font-size:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 7px;color:var(--green);font-weight:600">✓ Current week</span>`
+            }
+            <button onclick="openReassignDriverModal('${dr.id}','${escQ(dr.name)}','${d.id}')" style="margin-left:auto;font-size:10px;padding:2px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-weight:600;white-space:nowrap">⇄ Reassign</button>
+          </div>
+          ${closed.length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+            ${closed.map(w=>`<div style="display:inline-flex;align-items:center;gap:3px;background:#1e293b;border-radius:5px;padding:2px 7px">
+              <span style="font-size:10px;color:#94a3b8">🔒 ${wLbl(w)}</span>
+              <button onclick="adminReopenDriverWeek('${d.id}','${dr.id}','${escQ(dr.name)}','${w}')" style="font-size:9px;padding:1px 5px;border-radius:4px;border:1px solid #f59e0b;background:#451a03;color:#f59e0b;cursor:pointer;font-weight:700">↩</button>
+            </div>`).join('')}
           </div>`:''}
+        </div>`;
+      }).join('');
+      return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:4px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px;width:100%">
+          <div class="ua">${avL(d.name)}</div>
+          <div style="flex:1"><div class="un">${d.name}</div><div class="ue">${d.email}</div></div>
+          <button onclick="openAssignDriverModal('${d.id}','${escQ(d.name)}')" style="font-size:10px;padding:4px 12px;border-radius:6px;border:1.5px solid var(--orange);background:#fff7ed;color:var(--orange);cursor:pointer;font-weight:700;white-space:nowrap">＋ Assign Driver</button>
+        </div>
+        <div style="width:100%;padding-left:46px;padding-bottom:4px">
+          ${drs.length?driverRows:`<div style="font-size:11px;color:var(--text3);font-style:italic;padding:4px 0">No drivers assigned</div>`}
+        </div>
       </div>`;
     }).join('');
-    return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px">
-      <div style="display:flex;align-items:center;gap:10px;width:100%">
-        <div class="ua">${avL(d.name)}</div>
-        <div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div>
-      </div>
-      <div style="width:100%;padding-left:46px">${drs.length?driverWeekRows:'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:4px">No drivers assigned</div>'}</div>
-    </div>`;
-  }).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
+  }
+
+  // Accounting users section
+  if(accUsers.length){
+    admDHtml+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:14px 16px 6px">💰 Accounting</div>`;
+    admDHtml+=accUsers.map(u=>{
+      const assigned=(u.companies||[]);
+      const assignedNames=COMPANIES.filter(c=>assigned.includes(c.id)||assigned.includes(c.name)).map(c=>c.name);
+      return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px;width:100%">
+          <div class="ua">${avL(u.name)}</div>
+          <div style="flex:1"><div class="un">${u.name||'—'}</div><div class="ue">${u.email||'—'}</div><span class="rt ${u.role}" style="font-size:9px">${u.role}</span></div>
+          <button onclick="openAssignCoModal('${u.id}','${escQ(u.name)}')" style="font-size:10px;padding:4px 12px;border-radius:6px;border:1.5px solid #6366f1;background:#eef2ff;color:#6366f1;cursor:pointer;font-weight:700;white-space:nowrap">⚙ Manage Companies</button>
+        </div>
+        <div style="padding-left:46px;padding-bottom:6px;width:100%">
+          ${assignedNames.length
+            ?`<div style="display:flex;flex-wrap:wrap;gap:4px">${assignedNames.map(n=>`<span style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:600;color:#065f46">✓ ${n}</span>`).join('')}</div>`
+            :`<span style="font-size:11px;color:var(--text3);font-style:italic">No companies assigned — sees all</span>`}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('adm-d').innerHTML=admDHtml||`<div class="em" style="padding:20px"><p>No dispatchers or accounting users.</p></div>`;
+
   document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
   document.getElementById('adm-s').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Users</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${USERS.length}</div></div>
@@ -3423,6 +3541,79 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     <div style="padding:14px 26px 20px;background:#f0fdf4;border-top:1px solid #a7f3d0;display:flex;justify-content:flex-end;gap:10px">
       <button onclick="cm('m-bf-paid')" style="padding:9px 18px;border-radius:8px;border:1.5px solid #d1fae5;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
       <button onclick="confirmBfPaid()" id="bf-confirm-btn" style="padding:9px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#065f46,#10b981);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(16,185,129,.3)">✓ Confirm Paid</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN DRIVER MODAL -->
+<div class="ov" id="m-assign-drv">
+  <div class="mw" style="max-width:400px;border-radius:14px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,var(--navy),#1e40af);padding:18px 24px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px">🚛</div>
+        <div style="color:#fff;font-size:14px;font-weight:700" id="assign-drv-title">Assign Driver</div>
+      </div>
+      <div onclick="cm('m-assign-drv')" style="position:absolute;top:14px;right:14px;width:24px;height:24px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:14px">×</div>
+    </div>
+    <div style="padding:20px 24px;background:#fff;display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Select Driver</label>
+        <select id="assign-drv-sel" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none">
+          <option value="">— Select —</option>
+        </select>
+      </div>
+    </div>
+    <div style="padding:12px 24px 18px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="cm('m-assign-drv')" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="confirmAssignDriver()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--orange);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✓ Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- REASSIGN DRIVER MODAL -->
+<div class="ov" id="m-reassign-drv">
+  <div class="mw" style="max-width:400px;border-radius:14px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,#7c3aed,#6366f1);padding:18px 24px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px">⇄</div>
+        <div>
+          <div style="color:#fff;font-size:14px;font-weight:700">Reassign Driver</div>
+          <div style="color:rgba(255,255,255,.7);font-size:11px" id="reassign-drv-name"></div>
+        </div>
+      </div>
+      <div onclick="cm('m-reassign-drv')" style="position:absolute;top:14px;right:14px;width:24px;height:24px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:14px">×</div>
+    </div>
+    <div style="padding:20px 24px;background:#fff;display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Move to Dispatcher</label>
+        <select id="reassign-disp-sel" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none">
+          <option value="">— Select —</option>
+        </select>
+      </div>
+    </div>
+    <div style="padding:12px 24px 18px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="cm('m-reassign-drv')" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="confirmReassignDriver()" style="padding:8px 18px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⇄ Move Driver</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN COMPANY TO ACCOUNTING MODAL -->
+<div class="ov" id="m-assign-co">
+  <div class="mw" style="max-width:420px;border-radius:14px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,#1e293b,#334155);padding:18px 24px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px">🏢</div>
+        <div>
+          <div style="color:#fff;font-size:14px;font-weight:700" id="assign-co-title">Assign Companies</div>
+          <div style="color:rgba(255,255,255,.6);font-size:10px;margin-top:1px">Click to toggle — saved instantly</div>
+        </div>
+      </div>
+      <div onclick="cm('m-assign-co')" style="position:absolute;top:14px;right:14px;width:24px;height:24px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:14px">×</div>
+    </div>
+    <div style="padding:16px 20px;background:#fff;display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto" id="assign-co-list"></div>
+    <div style="padding:12px 24px 18px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end">
+      <button onclick="cm('m-assign-co')" style="padding:8px 20px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Done</button>
     </div>
   </div>
 </div>
