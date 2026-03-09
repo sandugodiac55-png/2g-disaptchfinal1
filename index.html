@@ -459,6 +459,20 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div class="tb-sub" id="tb-sub">—</div>
         </div>
         <div class="tb-right">
+          <!-- Global Load Search -->
+          <div style="position:relative">
+            <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:4px 10px;transition:border .15s" id="tb-search-wrap">
+              <span style="color:var(--text3);font-size:14px">🔍</span>
+              <input id="tb-search-inp" type="text" placeholder="Search Order ID..." 
+                style="border:none;background:transparent;font-family:var(--font);font-size:12px;color:var(--navy);width:140px;outline:none;"
+                oninput="tbSearchLive(this.value)"
+                onkeydown="if(event.key==='Enter')tbSearchGo()"
+                onfocus="document.getElementById('tb-search-wrap').style.borderColor='var(--orange)'"
+                onblur="setTimeout(()=>{document.getElementById('tb-search-wrap').style.borderColor='var(--border)';document.getElementById('tb-search-drop').style.display='none'},200)">
+              <button onclick="tbSearchGo()" style="background:var(--orange);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">Go</button>
+            </div>
+            <div id="tb-search-drop" style="display:none;position:absolute;top:38px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:9999;min-width:340px;max-height:360px;overflow-y:auto"></div>
+          </div>
           <div class="wk-nav">
             <button class="wk-btn" onclick="prevWeek()">‹</button>
             <div class="wk-lbl" id="wk-lbl">—</div>
@@ -1197,6 +1211,95 @@ function showPg(pg,opts={}){
   if(pg!=='driver') sessionStorage.setItem('lastPg', pg);
   renderPg(pg);
 }
+
+/* ══ GLOBAL LOAD SEARCH ══ */
+function tbSearchLive(val){
+  const drop=document.getElementById('tb-search-drop');
+  if(!val||val.length<2){drop.style.display='none';return;}
+  const q=val.trim().toLowerCase();
+  const results=LOADS.filter(l=>
+    (l.orderId||'').toLowerCase().includes(q)||
+    (l.driver||'').toLowerCase().includes(q)||
+    (l.broker||'').toLowerCase().includes(q)
+  ).slice(0,8);
+  if(!results.length){
+    drop.innerHTML=`<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">No loads found</div>`;
+  } else {
+    drop.innerHTML=results.map(l=>`
+      <div onclick="tbSearchShowLoad('${l.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s" 
+        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700;color:var(--navy);font-size:13px">#${l.orderId||'—'}</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:${l.status==='Delivered'?'#d1fae5':l.status==='In Transit'?'#dbeafe':'#fef3c7'};color:${l.status==='Delivered'?'#065f46':l.status==='In Transit'?'#1d4ed8':'#92400e'};font-weight:700">${l.status||'—'}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${l.driver||'—'} · ${l.broker||'—'} · ${l.date||'—'}</div>
+      </div>`).join('');
+  }
+  drop.style.display='block';
+}
+
+function tbSearchGo(){
+  const val=document.getElementById('tb-search-inp').value.trim();
+  if(!val)return;
+  const q=val.toLowerCase();
+  const load=LOADS.find(l=>(l.orderId||'').toLowerCase()===q)||
+             LOADS.find(l=>(l.orderId||'').toLowerCase().includes(q));
+  document.getElementById('tb-search-drop').style.display='none';
+  if(!load){notify('Load not found: '+val,'err');return;}
+  tbSearchShowLoad(load.id);
+}
+
+function tbSearchShowLoad(id){
+  const l=LOADS.find(x=>x.id===id);
+  if(!l)return;
+  document.getElementById('tb-search-inp').value='';
+  document.getElementById('tb-search-drop').style.display='none';
+  document.getElementById('lsm-title').textContent='Load #'+(l.orderId||id);
+
+  const statusColor=l.status==='Delivered'?'#10b981':l.status==='In Transit'?'#3b82f6':l.status==='Assigned'?'#f59e0b':'#6b7280';
+  const paidBadge=l.paid?'<span style="background:#d1fae5;color:#065f46;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">✓ PAID</span>':'<span style="background:#fef3c7;color:#92400e;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">UNPAID</span>';
+
+  const row=(label,val,highlight=false)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${label}</span>
+      <span style="font-size:13px;font-weight:${highlight?'800':'600'};color:${highlight?'var(--navy)':'var(--text2)'}">${val||'—'}</span>
+    </div>`;
+
+  document.getElementById('lsm-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:16px 0 12px;border-bottom:2px solid var(--border);margin-bottom:4px">
+      <span style="font-size:22px;font-weight:800;color:var(--navy)">#${l.orderId||'—'}</span>
+      <span style="background:${statusColor};color:#fff;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700">${l.status||'—'}</span>
+      ${paidBadge}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+      <div>
+        ${row('Driver', l.driver, true)}
+        ${row('Broker', l.broker)}
+        ${row('Date', l.date)}
+        ${row('Week', l.week)}
+        ${row('Miles', l.miles?l.miles+' mi':'—')}
+      </div>
+      <div>
+        ${row('Rate', l.rate?'$'+Number(l.rate).toLocaleString('en',{minimumFractionDigits:2}):'—', true)}
+        ${row('RPM', l.miles&&l.rate?'$'+(l.rate/l.miles).toFixed(2)+'/mi':'—')}
+        ${row('Pay Method', l.driverPayMethod||'—')}
+        ${row('Dispatcher', l.dispEmail||'—')}
+        ${row('Company', l.company||'—')}
+      </div>
+    </div>
+    ${l.pu||l.del?`
+    <div style="margin-top:12px;background:var(--bg);border-radius:8px;padding:12px">
+      ${l.pu?`<div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:4px">📍 Pickup</div><div style="font-size:13px;color:var(--navy);font-weight:600;margin-bottom:10px">${l.pu}</div>`:''}
+      ${l.del?`<div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:4px">🏁 Delivery</div><div style="font-size:13px;color:var(--navy);font-weight:600">${l.del}</div>`:''}
+    </div>`:''}
+    ${l.accNote?`<div style="margin-top:10px;background:#fef3c7;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e"><b>📝 Note:</b> ${l.accNote}</div>`:''}
+    ${l.mgrComment?`<div style="margin-top:8px;background:#fce7f3;border-radius:8px;padding:10px 12px;font-size:12px;color:#9d174d"><b>🤝 MGR:</b> ${l.mgrComment}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="cm('m-load-search')" style="flex:1;padding:10px;background:var(--bg2);border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)">Close</button>
+    </div>`;
+  om('m-load-search');
+}
+
 function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
 function goHome(){
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
@@ -4576,6 +4679,17 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
 </div>
 <div id="trip-popover-overlay" onclick="closeTripPopover()" style="display:none;position:fixed;inset:0;z-index:9998"></div>
+
+<!-- LOAD SEARCH MODAL -->
+<div class="ov" id="m-load-search">
+  <div class="md" style="max-width:640px;width:95%">
+    <div class="mh">
+      <span id="lsm-title">🔍 Load Details</span>
+      <button class="mc" onclick="cm('m-load-search')">×</button>
+    </div>
+    <div id="lsm-body" style="padding:0 20px 20px"></div>
+  </div>
+</div>
 
 </body>
 </html>
