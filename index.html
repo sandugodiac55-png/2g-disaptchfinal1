@@ -912,10 +912,64 @@ function copyText(text,label){
   });
 }
 
-/* ══ LOCKED ══ */
-function isLocked(drvName,week){
-  // No more close week logic — weeks are never locked
-  return false;
+/* ══ DISPATCHER WEEK LOCK ══ */
+// CP.activeWeek = săptămâna în care lucrează dispatcher-ul curent
+// null / undefined = lucrează în săptămâna reală curentă (CW())
+// dacă e setat = lucrează în acea săptămână, celelalte sunt blocate
+
+function getDispActiveWeek(){
+  // Săptămâna activă a dispatcher-ului curent
+  if(ROLE==='admin')return CW(); // admin vede tot
+  return CP.activeWeek||null; // null = nu a deschis încă o săptămână nouă
+}
+
+function getWorkWeek(){
+  // Săptămâna în care dispatcher-ul adaugă loaduri
+  if(ROLE==='admin')return CW();
+  return CP.activeWeek||CW();
+}
+
+function isWeekLocked(week){
+  // Admin: nimic nu e blocat
+  if(ROLE==='admin')return false;
+  // Dispatcher: săptămâna e blocată dacă activeWeek e setat și week != activeWeek
+  const aw=CP.activeWeek||null;
+  if(!aw)return false; // nu a deschis săptămână = totul liber (săptămâna curentă)
+  return week!==aw;
+}
+
+async function dispCloseWeek(){
+  if(ROLE!=='dispatcher'){notify('Doar dispatcherii pot face asta','err');return;}
+  const workW=getWorkWeek();
+  const wLoads=LOADS.filter(l=>l.dispEmail===CU.email&&(l.week===workW));
+  const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  if(!confirm(`Închide săptămâna ${wLbl(workW)}?\n${wLoads.length} loaduri · Gross: $${fmt(gross)}\n\nDupă închidere nu mai poți modifica nimic în această săptămână.`))return;
+
+  // Calculăm săptămâna următoare
+  const d=new Date(wRange(workW).start);
+  d.setDate(d.getDate()+7);
+  const nextW=CWfrom(d);
+
+  const{updateDoc,doc}=window._fb;
+  // Salvăm: closedWeeks[] += workW, activeWeek = nextW
+  const userDoc=USERS.find(u=>u.email===CU.email);
+  if(!userDoc){notify('User not found','err');return;}
+  const closed=[...(CP.closedWeeks||[])];
+  if(!closed.includes(workW))closed.push(workW);
+  await updateDoc(doc(window._db,'users',userDoc.id),{
+    closedWeeks:closed,
+    activeWeek:nextW
+  });
+  CP.closedWeeks=closed;
+  CP.activeWeek=nextW;
+  notify(`✅ Săptămâna ${wLbl(workW)} închisă! Acum lucrezi în ${wLbl(nextW)}`);
+  renderDriverPage();
+}
+
+function isDispWeekClosed(week){
+  // Verifică dacă o săptămână e închisă pentru dispatcher-ul curent
+  if(ROLE==='admin')return false;
+  return (CP.closedWeeks||[]).includes(week);
 }
 
 /* ══ AUTH ══ */
@@ -942,7 +996,7 @@ async function boot(user){
   document.getElementById('app').classList.add('show');
   const{getDocs,collection,query,where}=window._fb;
   const snap=await getDocs(query(collection(window._db,'users'),where('email','==',user.email)));
-  CP=snap.empty?{name:user.email,role:'dispatcher'}:{id:snap.docs[0].id,...snap.docs[0].data()};
+  CP=snap.empty?{name:user.email,role:'dispatcher',activeWeek:null,closedWeeks:[]}:{id:snap.docs[0].id,...snap.docs[0].data()};
   ROLE=CP.role||'dispatcher';
   document.getElementById('sb-av').textContent=avL(CP.name);
   document.getElementById('sb-uname').textContent=CP.name||user.email;
@@ -986,6 +1040,14 @@ async function loadMeta(){
   DRIVERS=ds.docs.map(d=>({id:d.id,...d.data()}));
   COMPANIES=cs.docs.map(d=>({id:d.id,...d.data()}));
   PASSWORDS=pw.docs.map(d=>({id:d.id,...d.data()}));
+  // Refresh CP week state from Firestore
+  if(CU){
+    const freshCP=USERS.find(u=>u.email===CU.email);
+    if(freshCP){
+      CP.activeWeek=freshCP.activeWeek||null;
+      CP.closedWeeks=freshCP.closedWeeks||[];
+    }
+  }
   // fill acc selects
   const csel=document.getElementById('acc-co-sel');
   if(csel)csel.innerHTML=`<option value="">All Companies</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
@@ -1166,10 +1228,40 @@ function renderDriverPage(){
   document.getElementById('btn-add-load').style.display=canEdit?'':'none';
   document.getElementById('btn-create-trip').style.display=canEdit?'':'none';
   const allDrvLoads=LOADS.filter(l=>l.driver===curDrv.name);
-  const wLoads=allDrvLoads.filter(l=>inW(l.date,curW));
+  const workW=getWorkWeek();
+  const wLoads=allDrvLoads.filter(l=>l.week===workW||inW(l.date,workW));
   const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const overMin=calcOverMin(wLoads,curDrv);
-  const dId=curDrv.id;
+
+  // Build week status badge + Close Week button for dispatcher
+  let weekStatusHtml='';
+  if(ROLE==='dispatcher'){
+    const aw=CP.activeWeek||null;
+    const isRealCurW=!aw; // nu a deschis săptămână nouă, lucrează în real curW
+    const workWLabel=wLbl(workW);
+    if(isRealCurW){
+      weekStatusHtml=`
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">
+            📅 Săptămâna activă: ${workWLabel}
+          </div>
+          <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="dispCloseWeek()">
+            🔒 Închide Săptămâna
+          </button>
+        </div>`;
+    } else {
+      weekStatusHtml=`
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">
+            📅 Săptămâna activă: ${workWLabel}
+          </div>
+          <button class="btn btn-sm" style="background:#fff7ed;border:1.5px solid var(--orange);color:var(--orange);font-size:11px;font-weight:700" onclick="dispCloseWeek()">
+            🔒 Închide Săptămâna
+          </button>
+        </div>`;
+    }
+  }
+
   document.getElementById('drv-hd-info').innerHTML=`
     <div class="drv-av-big">${avL(curDrv.name)}</div>
     <div style="flex:1">
@@ -1180,9 +1272,9 @@ function renderDriverPage(){
         <div class="drv-badge" style="color:var(--green)">Gross: ${fK(gross)}</div>
         <div class="drv-badge" style="color:${overMin>=0?'var(--orange)':'var(--red)'}">Over min: ${overMin<0?'-':''}${fK(Math.abs(overMin))}</div>
       </div>
+      ${weekStatusHtml?`<div style="margin-top:10px">${weekStatusHtml}</div>`:''}
     </div>`;
   document.getElementById('drv-pg-title').textContent=`${curDrv.name} — All Loads`;
-  // render all loads grouped by week
   renderDrvTrips(allDrvLoads);
 }
 
@@ -1194,15 +1286,13 @@ function renderDrvTrips(allDrvLoads){
     if(!weeks[w])weeks[w]=[];
     weeks[w].push(l);
   });
-  // Sort weeks oldest first — current week at the bottom
+  // Sort weeks oldest first — current/active week at the bottom
   const sortedWeeks=Object.keys(weeks).sort((a,b)=>a.localeCompare(b));
   const allTrips=TRIPS.filter(t=>t.driverName===curDrv?.name);
-  // isLocked always returns false now
   const el=document.getElementById('drv-trips');
-  el.innerHTML=''; // trips section unused now — all in one list below
+  el.innerHTML='';
 
   const tb=document.getElementById('drv-load-tb');
-  const statOrder=['Assigned','Picked Up','Delivered','Invoiced'];
   let html='';
 
   if(!sortedWeeks.length){
@@ -1211,27 +1301,31 @@ function renderDrvTrips(allDrvLoads){
     return;
   }
 
+  const workW=getWorkWeek(); // săptămâna activă a dispatcher-ului
+
   let totalLoads=0;
   sortedWeeks.forEach((w,wi)=>{
     const wk=weeks[w];
     totalLoads+=wk.length;
     const wGross=wk.reduce((s,l)=>s+(+l.rate||0),0);
-    const locked=false;
+    // locked = săptămână închisă de dispatcher (nu o poate edita)
+    const locked=ROLE==='dispatcher'?isDispWeekClosed(w):false;
+    const isActiveW=w===workW;
     const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
     const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
-    const wNum=wi+1; // Week 1 = oldest, current = last
-    const isCurW=w===curW;
-    const canEdit=ROLE==='admin'||ROLE==='dispatcher';
+    const wNum=wi+1;
+    const canEdit=ROLE==='admin'||(ROLE==='dispatcher'&&!locked);
 
-    // Week separator row — no loads/trips count
-    const sepBg=isCurW?'#eff6ff':'#f8fafc';
-    const sepBorder=isCurW?'#3b82f6':'#e2e8f0';
-    const sepText=isCurW?'#1e40af':'#374151';
+    // Week separator row
+    const sepBg=locked?'#2d3748':isActiveW?'#eff6ff':'#f8fafc';
+    const sepBorder=locked?'#4a5568':isActiveW?'#3b82f6':'#e2e8f0';
+    const sepText=locked?'#e2e8f0':isActiveW?'#1e40af':'#374151';
     html+=`<tr style="background:${sepBg}">
       <td colspan="10" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
         <span style="font-size:12px;font-weight:800;color:${sepText}">
-          📅 Week ${wNum}${isCurW?' (current)':''} — ${wLbl(w)}
+          ${locked?'🔒':'📅'} Week ${wNum}${isActiveW?' (activ)':locked?' (închis)':''} — ${wLbl(w)}
         </span>
+        ${locked?`<span style="margin-left:10px;font-size:10px;color:rgba(255,255,255,.45);font-weight:500">Blocat — contact admin pentru modificări</span>`:''}
       </td>
     </tr>`;
 
@@ -1272,8 +1366,8 @@ function renderDrvTrips(allDrvLoads){
         ?`<span style="display:inline-flex;align-items:center;gap:3px;background:${tripRpmOk?'#e0fdf4':'#fef2f2'};border:1px solid ${tripRpmOk?'var(--teal)':'var(--red)'};color:${tripRpmOk?'var(--teal)':'var(--red)'};border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;cursor:${canEditTrip?'pointer':'default'};white-space:nowrap" ${canEditTrip?`onclick="event.stopPropagation();openEditTrip('${loadTrip.id}')" title="Edit Trip #${loadTrip.tripNum||'?'}"`:''}
           >🗂 T#${loadTrip.tripNum||'?'}&nbsp;<span style="font-family:var(--mono);font-size:9px;color:${tripRpmOk?'var(--blue)':'var(--red)'}">$${(loadTrip.miles>0?(loadTrip.gross||0)/loadTrip.miles:0).toFixed(2)}/mi</span>${canEditTrip?'&nbsp;✏️':''}</span>`
         :'';
-      const rowBg=inTrip?'#f0f9ff':'#fff';
-      html+=`<tr style="background:${rowBg}">
+      const rowBg=locked?(inTrip?'#f1f5f9':'#f7fafc'):(inTrip?'#f0f9ff':'#fff');
+      html+=`<tr style="background:${rowBg}${locked?';opacity:.85':''}">
         <td class="bold" style="font-size:12px">
           <div onclick="copyText('${l.orderId||''}','Order ID')" title="Click to copy" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">${l.orderId||'—'}<span style="font-size:9px;color:var(--text3);opacity:.6">⎘</span></div>
           ${tripBadge?`<div style="margin-top:3px">${tripBadge}</div>`:''}
@@ -1297,12 +1391,12 @@ function renderDrvTrips(allDrvLoads){
             return `<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`;
           }
           if(ROLE==='dispatcher'){
-            if(isCurW){
-              return !inTrip
-                ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
-                :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
+            if(locked){
+              return `<span style="font-size:10px;color:var(--text3);opacity:.6">🔒</span>`;
             }
-            return `<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
+            return !inTrip
+              ?`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`
+              :`<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button>`;
           }
           return '';
         })()}</div></td>
@@ -1561,11 +1655,11 @@ function editLoad(id){
   om('m-load');
 }
 async function saveLoad(){
-  // Block dispatcher from saving edits on locked past weeks
+  // Block dispatcher from editing loads in closed weeks
   if(editLoadId&&ROLE==='dispatcher'){
     const origLoad=LOADS.find(l=>l.id===editLoadId);
-    if(origLoad&&isLocked(origLoad.driver,origLoad.week)){
-      notify('⛔ Week is locked — use Request Edit button','err');
+    if(origLoad&&isDispWeekClosed(origLoad.week)){
+      notify('🔒 Săptămâna este închisă — nu poți modifica','err');
       cm('m-load');return;
     }
   }
@@ -1593,10 +1687,14 @@ async function saveLoad(){
     if(editLoadId){
       // CRITICAL: preserve original week — never overwrite it on edit
       const origLoad=LOADS.find(l=>l.id===editLoadId);
-      const origWeek=origLoad?.week||curW;
+      const origWeek=origLoad?.week||getWorkWeek();
       await updateDoc(doc(db,'loads',editLoadId),{...data,week:origWeek,updatedAt:serverTimestamp()});
     }
-    else{await addDoc(collection(db,'loads'),{...data,week:curW,status:'Assigned',paid:false,createdAt:serverTimestamp()})}
+    else{
+      // Nou load: merge în săptămâna activă a dispatcher-ului
+      const targetWeek=getWorkWeek();
+      await addDoc(collection(db,'loads'),{...data,week:targetWeek,status:'Assigned',paid:false,createdAt:serverTimestamp()});
+    }
     notify(editLoadId?'Load updated':'Load added ✓');cm('m-load');
   }catch(e){notify('Error: '+e.message,'err')}
 }
@@ -1650,6 +1748,12 @@ async function tgPaid(id,v,locked){
   notify('✓ Marked PAID');
 }
 async function delLoad(id){
+  if(ROLE==='dispatcher'){
+    const l=LOADS.find(x=>x.id===id);
+    if(l&&isDispWeekClosed(l.week)){
+      notify('🔒 Săptămâna este închisă — contact admin','err');return;
+    }
+  }
   if(!confirm('Delete this load?'))return;
   const{deleteDoc,doc}=window._fb;
   await deleteDoc(doc(window._db,'loads',id));
@@ -2727,7 +2831,29 @@ function renderAdmin(){
         </div>`:''}
     </div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
   const disps=USERS.filter(u=>u.role==='dispatcher');
-  document.getElementById('adm-d').innerHTML=disps.map(d=>{const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px"><div style="display:flex;align-items:center;gap:10px;width:100%"><div class="ua">${avL(d.name)}</div><div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div></div><div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0">🚛 ${dr.name} · $${dr.minRate||'?'}/mi · ${dr.salaryPct||'?'}%</div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div></div>`}).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
+  document.getElementById('adm-d').innerHTML=disps.map(d=>{
+    const drs=DRIVERS.filter(dr=>dr.dispatcherEmail===d.email);
+    const aw=d.activeWeek||null;
+    const closed=d.closedWeeks||[];
+    const weekStatusHtml=aw
+      ?`<div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-left:46px;flex-wrap:wrap">
+          <span style="font-size:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:2px 8px;color:#1e40af;font-weight:700">📅 Activ: ${wLbl(aw)}</span>
+          ${closed.length?`<span style="font-size:10px;color:var(--text3)">${closed.length} săptămâni închise</span>`:''}
+          <button onclick="adminResetDispWeek('${d.id}')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:600">🔓 Reset Săptămână</button>
+        </div>`
+      :`<div style="padding-left:46px;margin-top:4px">
+          <span style="font-size:10px;color:var(--text3)">📅 Lucrează în săptămâna curentă${closed.length?` · ${closed.length} închise`:''}</span>
+          ${closed.length?`<button onclick="adminResetDispWeek('${d.id}')" style="margin-left:8px;font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:600">🔓 Reset</button>`:''}
+        </div>`;
+    return`<div class="ur" style="flex-direction:column;align-items:flex-start;gap:5px">
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <div class="ua">${avL(d.name)}</div>
+        <div><div class="un">${d.name}</div><div class="ue">${d.email}</div></div>
+      </div>
+      <div style="padding-left:46px">${drs.length?drs.map(dr=>`<div style="font-size:11px;color:var(--text3);padding:2px 0">🚛 ${dr.name} · $${dr.minRate||'?'}/mi · ${dr.salaryPct||'?'}%</div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic">No drivers</div>'}</div>
+      ${weekStatusHtml}
+    </div>`;
+  }).join('')||`<div class="em" style="padding:20px"><p>No dispatchers.</p></div>`;
   document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
   document.getElementById('adm-s').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Users</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${USERS.length}</div></div>
@@ -2737,6 +2863,16 @@ function renderAdmin(){
   </div>`;
 }
 function openUserModal(){['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('u-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');om('m-user')}
+
+async function adminResetDispWeek(userId){
+  const u=USERS.find(x=>x.id===userId);if(!u)return;
+  if(!confirm(`Reset săptămâna pentru ${u.name}?\nVa putea lucra din nou în săptămâna curentă. Săptămânile închise rămân în istoric.`))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'users',userId),{activeWeek:null});
+  notify(`✅ Resetat săptămâna pentru ${u.name}`);
+  await loadMeta();
+  renderAdmin();
+}
 async function saveUser(){const nm=document.getElementById('u-nm').value.trim(),em=document.getElementById('u-em').value.trim(),pw=document.getElementById('u-pw').value;if(!nm||!em){notify('Name & email required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'users'),{name:nm,email:em,role:document.getElementById('u-rl').value,company:document.getElementById('u-co').value,createdAt:new Date().toISOString()});notify(`Profile saved! Also create "${em}" in Firebase Auth.`,'inf');await loadMeta();renderAdmin();cm('m-user')}
 function openCompModal(){['co-nm','co-mc','co-dt','co-em','co-ph'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});om('m-co')}
 async function saveComp(){const nm=document.getElementById('co-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'companies'),{name:nm,mc:document.getElementById('co-mc').value.trim(),dot:document.getElementById('co-dt').value.trim(),email:document.getElementById('co-em').value.trim(),phone:document.getElementById('co-ph').value.trim()});notify('Company added ✓');await loadMeta();renderAdmin();cm('m-co')}
