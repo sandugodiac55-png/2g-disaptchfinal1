@@ -1401,7 +1401,17 @@ function renderDrvTrips(allDrvLoads){
           <div>${l.payMethod||'—'}</div>
           ${l.brokerEmail?`<div onclick="copyText('${l.brokerEmail}','Email')" title="Click to copy email" style="font-size:9px;color:var(--blue);cursor:pointer;margin-top:2px;display:inline-flex;align-items:center;gap:3px">${l.brokerEmail}<span style="opacity:.5">⎘</span></div>`:''}
         </td>
-        <td style="font-size:11px">${l.brokerFee?'$'+fmt(+l.brokerFee):'-'}</td>
+        <td style="font-size:11px">${l.brokerFee?(()=>{
+          const bfPaid=!!l.bfPaid;
+          return `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">
+            <span style="font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono)">$${fmt(+l.brokerFee)}</span>
+            <button onclick="tgBrokerFeePaid('${l.id}',${!bfPaid})"
+              style="padding:2px 8px;border-radius:5px;font-size:9px;font-weight:800;cursor:pointer;border:1.5px solid ${bfPaid?'#10b981':'#ef4444'};background:${bfPaid?'#d1fae5':'#fef2f2'};color:${bfPaid?'#065f46':'#dc2626'};font-family:inherit;white-space:nowrap">
+              ${bfPaid?'✓ BF PAID':'✗ BF UNPAID'}
+            </button>
+            ${l.bfProof?`<span title="Proof uploaded" style="font-size:9px;color:var(--blue);cursor:pointer" onclick="viewBfProof('${l.id}')">📎 proof</span>`:''}
+          </div>`;
+        })():'-'}</td>
         <td>${statusHtml}</td>
         <td>${(ROLE==='accounting'||ROLE==='admin')
           ?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="tgPaid('${l.id}',${!l.paid},false)">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
@@ -1773,6 +1783,89 @@ async function tgPaid(id,v,locked){
   await updateDoc(doc(db,'loads',id),{paid:true});
   notify('✓ Marked PAID');
 }
+/* ══ BROKER FEE PAID ══ */
+let _bfLoadId=null;
+function tgBrokerFeePaid(id, markPaid){
+  const l=LOADS.find(x=>x.id===id);if(!l)return;
+  if(!markPaid){
+    // Unmark — no photo needed, always allowed
+    const{updateDoc,doc}=window._fb;
+    updateDoc(doc(window._db,'loads',id),{bfPaid:false,bfProof:null,bfProofType:null,bfPaidAt:null,bfPaidBy:null});
+    notify('Broker fee marked UNPAID');
+    return;
+  }
+  // Mark paid — require photo
+  _bfLoadId=id;
+  document.getElementById('bf-load-id').value=id;
+  document.getElementById('bf-load-info').innerHTML=`<strong>Order ${l.orderId||'?'}</strong> · ${l.driver||'?'} · Broker fee: <span style="color:#065f46">$${fmt(+l.brokerFee||0)}</span>`;
+  document.getElementById('bf-file').value='';
+  document.getElementById('bf-file-preview').style.display='none';
+  document.getElementById('bf-img-preview').style.display='none';
+  document.getElementById('bf-doc-preview').style.display='none';
+  om('m-bf-paid');
+}
+function previewBfFile(input){
+  const f=input.files[0];if(!f)return;
+  const prev=document.getElementById('bf-file-preview');
+  const img=document.getElementById('bf-img-preview');
+  const doc=document.getElementById('bf-doc-preview');
+  prev.style.display='';
+  if(f.type.startsWith('image/')){
+    const r=new FileReader();
+    r.onload=e=>{img.src=e.target.result;img.style.display='';doc.style.display='none';};
+    r.readAsDataURL(f);
+  } else {
+    img.style.display='none';
+    doc.style.display='';
+    doc.innerHTML=`📄 ${f.name}`;
+  }
+}
+async function confirmBfPaid(){
+  const fi=document.getElementById('bf-file');
+  if(!fi?.files?.length){notify('Please upload a confirmation photo/document','err');return;}
+  const btn=document.getElementById('bf-confirm-btn');
+  btn.disabled=true;btn.textContent='Uploading…';
+  try{
+    const f=fi.files[0];
+    const{ref,uploadBytes,getDownloadURL,updateDoc,doc}=window._fb;
+    const path=`bfProofs/${_bfLoadId}_${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const storageRef=ref(window._storage,path);
+    await uploadBytes(storageRef,f);
+    const url=await getDownloadURL(storageRef);
+    await updateDoc(doc(window._db,'loads',_bfLoadId),{
+      bfPaid:true,bfProof:url,bfProofType:f.type,
+      bfPaidAt:new Date().toISOString(),
+      bfPaidBy:CP.name||CU.email
+    });
+    cm('m-bf-paid');
+    notify('✓ Broker fee marked PAID with proof');
+  }catch(err){
+    notify('Upload failed: '+err.message,'err');
+  }finally{
+    btn.disabled=false;btn.textContent='✓ Confirm Paid';
+  }
+}
+function viewBfProof(id){
+  const l=LOADS.find(x=>x.id===id);if(!l||!l.bfProof)return;
+  _bfLoadId=id;
+  const isImg=l.bfProofType?.startsWith('image/');
+  const content=document.getElementById('bf-proof-content');
+  content.innerHTML=isImg
+    ?`<img src="${l.bfProof}" style="max-width:100%;max-height:400px;border-radius:8px;border:1px solid var(--border)">`
+    :`<a href="${l.bfProof}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:14px 20px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;color:var(--blue);font-weight:700;text-decoration:none;font-size:13px">📄 Open Document</a>`;
+  document.getElementById('bf-proof-meta').textContent=`Paid by ${l.bfPaidBy||'—'}${l.bfPaidAt?' · '+l.bfPaidAt.split('T')[0]:''}`;
+  // Only dispatcher or admin can unmark
+  document.getElementById('bf-proof-unmark-btn').style.display=(ROLE==='dispatcher'||ROLE==='admin')?'':'none';
+  om('m-bf-proof');
+}
+function unmarkBfPaid(){
+  if(!_bfLoadId)return;
+  const{updateDoc,doc}=window._fb;
+  updateDoc(doc(window._db,'loads',_bfLoadId),{bfPaid:false,bfProof:null,bfProofType:null,bfPaidAt:null,bfPaidBy:null});
+  cm('m-bf-proof');
+  notify('Broker fee marked UNPAID');
+}
+
 async function delLoad(id){
   if(ROLE==='dispatcher'){
     const l=LOADS.find(x=>x.id===id);
@@ -3185,6 +3278,61 @@ async function saveComp(){const nm=document.getElementById('co-nm').value.trim()
 function openDriverModal(){['dr-nm','dr-ph','dr-min','dr-sal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('dr-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');document.getElementById('dr-dp').innerHTML=`<option value="">—</option>`+USERS.filter(u=>u.role==='dispatcher').map(d=>`<option value="${d.email}">${d.name||d.email}</option>`).join('');om('m-drv')}
 async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();if(!nm){notify('Name required','err');return}const{addDoc,collection}=window._fb;await addDoc(collection(window._db,'drivers'),{name:nm,phone:document.getElementById('dr-ph').value.trim(),company:document.getElementById('dr-co').value,dispatcherEmail:document.getElementById('dr-dp').value,minRate:parseFloat(document.getElementById('dr-min').value)||0,salaryPct:parseFloat(document.getElementById('dr-sal').value)||0});notify('Driver added ✓');await loadMeta();renderAdmin();cm('m-drv')}
 </script>
+
+<!-- BROKER FEE PAID CONFIRMATION MODAL -->
+<div class="ov" id="m-bf-paid">
+  <div class="mw" style="max-width:460px;border-radius:16px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,#065f46,#10b981);padding:20px 26px 18px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px">💸</div>
+        <div>
+          <div style="color:#fff;font-size:15px;font-weight:700">Confirm Broker Fee Paid</div>
+          <div style="color:rgba(255,255,255,.65);font-size:11px;margin-top:1px">Upload confirmation photo/document</div>
+        </div>
+      </div>
+      <div onclick="cm('m-bf-paid')" style="position:absolute;top:14px;right:14px;width:26px;height:26px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:15px" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+    </div>
+    <input type="hidden" id="bf-load-id">
+    <div style="padding:22px 26px;background:#fff;display:flex;flex-direction:column;gap:16px">
+      <div id="bf-load-info" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#065f46;font-weight:600"></div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;text-transform:uppercase;margin-bottom:8px">Confirmation Photo / Document <span style="color:#ef4444">*</span></label>
+        <div onclick="document.getElementById('bf-file').click()" id="bf-drop-zone" style="border:2px dashed #a7f3d0;border-radius:10px;padding:24px;text-align:center;cursor:pointer;background:#f0fdf4;transition:all .2s" onmouseover="this.style.borderColor='#10b981';this.style.background='#dcfce7'" onmouseout="this.style.borderColor='#a7f3d0';this.style.background='#f0fdf4'">
+          <div style="font-size:28px;margin-bottom:6px">📸</div>
+          <div style="font-size:12px;font-weight:700;color:#065f46">Click to upload photo or document</div>
+          <div style="font-size:10px;color:#6ee7b7;margin-top:3px">JPG, PNG, PDF</div>
+        </div>
+        <input type="file" id="bf-file" accept=".jpg,.jpeg,.png,.pdf" style="display:none" onchange="previewBfFile(this)">
+        <div id="bf-file-preview" style="margin-top:10px;display:none">
+          <img id="bf-img-preview" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #a7f3d0;display:none">
+          <div id="bf-doc-preview" style="display:none;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:7px;padding:8px 12px;font-size:11px;color:#065f46;font-weight:600"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 26px 20px;background:#f0fdf4;border-top:1px solid #a7f3d0;display:flex;justify-content:flex-end;gap:10px">
+      <button onclick="cm('m-bf-paid')" style="padding:9px 18px;border-radius:8px;border:1.5px solid #d1fae5;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button onclick="confirmBfPaid()" id="bf-confirm-btn" style="padding:9px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#065f46,#10b981);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(16,185,129,.3)">✓ Confirm Paid</button>
+    </div>
+  </div>
+</div>
+
+<!-- BROKER FEE PROOF VIEW MODAL -->
+<div class="ov" id="m-bf-proof">
+  <div class="mw" style="max-width:520px;border-radius:14px;overflow:hidden;padding:0">
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:16px 22px;display:flex;align-items:center;justify-content:space-between">
+      <div style="color:#fff;font-weight:700;font-size:14px">📎 Broker Fee Proof</div>
+      <div onclick="cm('m-bf-proof')" style="width:26px;height:26px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:15px" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">×</div>
+    </div>
+    <div style="padding:20px;background:#fff;text-align:center" id="bf-proof-content"></div>
+    <div style="padding:12px 20px;background:#f8fafc;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div id="bf-proof-meta" style="font-size:11px;color:var(--text3)"></div>
+      <div style="display:flex;gap:8px">
+        <button id="bf-proof-unmark-btn" onclick="unmarkBfPaid()" style="padding:7px 14px;border-radius:7px;border:1.5px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">✗ Mark Unpaid</button>
+        <button onclick="cm('m-bf-proof')" style="padding:7px 14px;border-radius:7px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- REOPEN WEEK MODAL (admin only) -->
 <div class="ov" id="m-reopen-week">
