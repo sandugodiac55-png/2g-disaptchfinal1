@@ -1042,7 +1042,7 @@ async function doLogin(){
   try{await window._fb.signInWithEmailAndPassword(window._auth,e,p)}
   catch{err.textContent='Incorrect email or password.';err.style.display='block'}
 }
-async function doLogout(){if(unsub)unsub();if(unsubTrips)unsubTrips();await window._fb.signOut(window._auth)}
+async function doLogout(){if(unsub)unsub();if(unsubTrips)unsubTrips();sessionStorage.removeItem('lastPg');await window._fb.signOut(window._auth)}
 
 window.addEventListener('load',()=>{
   window._fb.onAuthStateChanged(window._auth,async u=>{
@@ -1075,10 +1075,14 @@ async function boot(user){
   curW=CW(); // Always start on current real week
   updateWkLbl();
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
-  showPg(def[ROLE]||'dispatch');
+  const lastPg=sessionStorage.getItem('lastPg');
+  // Validate that the saved page is accessible for this role
+  const navItems=(buildNavItems()||[]).map(i=>i.id);
+  const restoredPg=(lastPg&&(navItems.includes(lastPg)||lastPg.startsWith('acc-')))?lastPg:null;
+  showPg(restoredPg||def[ROLE]||'dispatch');
 }
 
-function buildNav(){
+function buildNavItems(){
   const maps={
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
     accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
@@ -1087,7 +1091,11 @@ function buildNav(){
     accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
-  const items=(maps[ROLE]||maps.dispatcher);
+  return maps[ROLE]||maps.dispatcher;
+}
+
+function buildNav(){
+  const items=buildNavItems();
   const pendingMgrTasks=(MANAGER_TASKS||[]).filter(t=>t.status==='pending').length;
   const pendingEsc=(ESCALATIONS||[]).filter(e=>e.status==='pending').length;
   const activeProblemLoads=(LOADS||[]).filter(l=>l.accFlag==='problem').length;
@@ -1173,6 +1181,8 @@ function showPg(pg,opts={}){
   document.getElementById('tb-sub').textContent=wLbl(curW);
   const back=document.getElementById('tb-back');
   back.classList.toggle('show',pg==='driver');
+  // Persist current page (skip driver page — can't restore without curDrv context)
+  if(pg!=='driver') sessionStorage.setItem('lastPg', pg);
   renderPg(pg);
 }
 function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
