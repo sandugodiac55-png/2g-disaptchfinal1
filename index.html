@@ -732,15 +732,33 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
         <!-- OWNER PAGE -->
         <div class="pg" id="pg-owner">
-          <div class="ph"><div><div class="ph-t">Owner Dashboard</div><div class="ph-s">Full company overview</div></div></div>
-          <div class="kr">
-            <div class="kc o"><div class="kl">Total Loads</div><div class="kv" id="ow-l">0</div></div>
-            <div class="kc g"><div class="kl">Total Revenue</div><div class="kv" id="ow-g">$0</div></div>
-            <div class="kc b"><div class="kl">Paid</div><div class="kv" id="ow-p">$0</div></div>
-            <div class="kc p"><div class="kl">Pending</div><div class="kv" id="ow-pn">$0</div></div>
+          <div class="ph">
+            <div>
+              <div class="ph-t" id="ow-co-name">Owner Dashboard</div>
+              <div class="ph-s" id="ow-co-sub">Company overview</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
+                <button id="ow-tab-loads" onclick="owSetTab('loads')" style="padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;background:var(--navy);color:#fff">📦 Loads</button>
+                <button id="ow-tab-kpi" onclick="owSetTab('kpi')" style="padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2)">📊 KPI</button>
+              </div>
+            </div>
           </div>
-          <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:12px">Drivers Overview</div>
-          <div class="driver-grid" id="ow-drivers"></div>
+          <!-- KPI cards -->
+          <div class="kr" id="ow-kpis">
+            <div class="kc o"><div class="kl">Total Loads</div><div class="kv" id="ow-l">0</div><div class="kh">this week</div></div>
+            <div class="kc g"><div class="kl">Gross Revenue</div><div class="kv" id="ow-g">$0</div><div class="kh">this week</div></div>
+            <div class="kc b"><div class="kl">Paid</div><div class="kv" id="ow-p">$0</div><div class="kh">confirmed</div></div>
+            <div class="kc p"><div class="kl">Unpaid</div><div class="kv" id="ow-pn">$0</div><div class="kh">pending</div></div>
+          </div>
+          <!-- LOADS TAB -->
+          <div id="ow-tab-content-loads">
+            <div id="ow-loads-body"></div>
+          </div>
+          <!-- KPI TAB -->
+          <div id="ow-tab-content-kpi" style="display:none">
+            <div id="ow-kpi-body"></div>
+          </div>
         </div>
 
         <!-- PASSWORDS PAGE -->
@@ -871,7 +889,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <div class="fg"><label>Email</label><input type="email" id="u-em"></div>
       <div class="fg"><label>Temp Password</label><input type="password" id="u-pw"></div>
       <div class="fg"><label>Role</label><select id="u-rl"><option value="dispatcher">Dispatcher</option><option value="accounting">Accounting</option><option value="manager">Manager</option><option value="owner">Owner</option><option value="admin">Admin</option></select></div>
-      <div class="fg"><label>Company</label><select id="u-co"><option value="">— None —</option></select></div>
+      <div class="fg"><label id="u-co-label">Company <span style="font-size:10px;color:var(--text3)">(required for Owner role)</span></label><select id="u-co"><option value="">— None —</option></select></div>
     </div>
     <div class="mft"><button class="btn btn-ghost" onclick="cm('m-user')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Create</button></div>
   </div>
@@ -1113,7 +1131,7 @@ function buildNavItems(){
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
     accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
-    owner:[{id:'owner',i:'🏠',l:'Dashboard'},{id:'accounting',i:'💰',l:'Accounting'}],
+    owner:[{id:'owner',i:'🏠',l:'My Company'}],
     accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
@@ -3284,27 +3302,193 @@ async function setAccFlag(id,flag){
 }
 
 /* ══ OWNER ══ */
+let owTab='loads';
+function owSetTab(t){
+  owTab=t;
+  ['loads','kpi'].forEach(x=>{
+    document.getElementById('ow-tab-'+x).style.background=x===t?'var(--navy)':'transparent';
+    document.getElementById('ow-tab-'+x).style.color=x===t?'#fff':'var(--text2)';
+    document.getElementById('ow-tab-'+x).style.fontWeight=x===t?'700':'600';
+    document.getElementById('ow-tab-content-'+x).style.display=x===t?'':'none';
+  });
+}
+
 function renderOwner(){
-  const loads=LOADS.filter(l=>inW(l.date,curW));
-  const g=loads.reduce((s,l)=>s+(+l.rate||0),0),pa=loads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
-  document.getElementById('ow-l').textContent=loads.length;
-  document.getElementById('ow-g').textContent=fK(g);
-  document.getElementById('ow-p').textContent=fK(pa);
-  document.getElementById('ow-pn').textContent=fK(g-pa);
-  const grid=document.getElementById('ow-drivers');
-  grid.innerHTML=DRIVERS.map(d=>{
-    const dl=loads.filter(l=>l.driver===d.name);
-    const dg=dl.reduce((s,l)=>s+(+l.rate||0),0);
-    return`<div class="driver-card" onclick="openDriverPage('${d.id}')">
-      <div class="dc-head"><div class="dc-av">${avL(d.name)}</div><div><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||'—'}</div></div></div>
-      <div class="dc-stats">
-        <div class="dc-s"><div class="dc-sl">Loads</div><div class="dc-sv">${dl.length}</div></div>
-        <div class="dc-s"><div class="dc-sl">Gross</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
-        <div class="dc-s"><div class="dc-sl">Paid</div><div class="dc-sv" style="color:var(--blue)">${fK(dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0))}</div></div>
-        <div class="dc-s"><div class="dc-sl">Pending</div><div class="dc-sv" style="color:var(--red)">${fK(dg-dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0))}</div></div>
+  // Get owner's company
+  const ownerCo = CP.company ? COMPANIES.find(c=>c.name===CP.company||c.id===CP.company) : null;
+  const coName = ownerCo?.name || CP.company || null;
+
+  // Filter drivers & loads to owner's company only
+  const myDrivers = coName ? DRIVERS.filter(d=>d.company===coName) : DRIVERS;
+  const myLoads = coName ? LOADS.filter(l=>myDrivers.some(d=>d.name===l.driver)) : LOADS;
+  const wLoads = myLoads.filter(l=>inW(l.date,curW));
+  const allLoads = myLoads;
+
+  // Set header
+  document.getElementById('ow-co-name').textContent = coName || 'Owner Dashboard';
+  document.getElementById('ow-co-sub').textContent = coName
+    ? `${myDrivers.length} drivers · ${myLoads.length} total loads`
+    : 'All companies';
+
+  // KPI cards
+  const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const paid=wLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+  document.getElementById('ow-l').textContent=wLoads.length;
+  document.getElementById('ow-g').textContent=fK(gross);
+  document.getElementById('ow-p').textContent=fK(paid);
+  document.getElementById('ow-pn').textContent=fK(gross-paid);
+
+  // Render active tab
+  if(owTab==='loads') renderOwnerLoads(myDrivers, allLoads, wLoads);
+  else renderOwnerKpi(myDrivers, allLoads, wLoads);
+}
+
+function renderOwnerLoads(myDrivers, allLoads, wLoads){
+  const body=document.getElementById('ow-loads-body');
+  if(!myDrivers.length){
+    body.innerHTML=`<div class="em"><div class="e">🚛</div><p>No drivers in your company.</p></div>`;
+    return;
+  }
+
+  // Group loads by driver
+  body.innerHTML=myDrivers.map(d=>{
+    const dWLoads=wLoads.filter(l=>l.driver===d.name);
+    const dAllLoads=allLoads.filter(l=>l.driver===d.name);
+    const gross=dWLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const paidAmt=dWLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    const unpaid=dWLoads.filter(l=>!l.paid);
+    const overdue=unpaid.filter(l=>{
+      if(!l.date)return false;
+      const d=new Date(l.date+'T00:00:00');
+      return(new Date()-d)/(1000*60*60*24)>14;
+    });
+
+    const loadsHtml=dWLoads.length?dWLoads.map(l=>{
+      const age=l.date?Math.floor((new Date()-new Date(l.date+'T00:00:00'))/(1000*60*60*24)):0;
+      const isOverdue=!l.paid&&age>14;
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:${isOverdue?'#fef2f2':l.paid?'#f0fdf4':'var(--bg)'};border:1px solid ${isOverdue?'#fecaca':l.paid?'#bbf7d0':'var(--border)'};margin-bottom:6px">
+        <div style="flex:1">
+          <span style="font-size:12px;font-weight:800;color:var(--navy)">#${l.orderId||'—'}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:8px">${l.broker||'—'} · ${l.date||'—'}</span>
+          ${isOverdue?`<span style="margin-left:8px;font-size:10px;background:#fee2e2;color:#dc2626;border-radius:4px;padding:1px 6px;font-weight:700">⚠ OVERDUE ${age}d</span>`:''}
+        </div>
+        <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(+l.rate||0)}</span>
+        <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:${l.paid?'#d1fae5':'#fef3c7'};color:${l.paid?'#065f46':'#92400e'}">${l.paid?'PAID':'UNPAID'}</span>
+      </div>`;
+    }).join(''):`<div style="font-size:12px;color:var(--text3);padding:8px;text-align:center">No loads this week</div>`;
+
+    return`<div style="margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <!-- Driver header -->
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--navy);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center">${avL(d.name)}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:var(--navy)">${d.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${dAllLoads.length} loads total · $${d.minRate||'?'}/mi min</div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div style="text-align:right">
+            <div style="font-size:9px;color:var(--text3);letter-spacing:1px;font-weight:700">WEEK GROSS</div>
+            <div style="font-size:16px;font-weight:800;color:var(--green);font-family:var(--mono)">$${fmt(gross)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:9px;color:var(--text3);letter-spacing:1px;font-weight:700">UNPAID</div>
+            <div style="font-size:16px;font-weight:800;color:${unpaid.length?'var(--red)':'var(--text3)'};font-family:var(--mono)">$${fmt(gross-paidAmt)}</div>
+          </div>
+          ${overdue.length?`<div style="text-align:right"><div style="font-size:9px;color:#dc2626;letter-spacing:1px;font-weight:700">OVERDUE</div><div style="font-size:16px;font-weight:800;color:#dc2626;font-family:var(--mono)">${overdue.length}</div></div>`:''}
+        </div>
+      </div>
+      <!-- Loads list -->
+      <div style="padding:12px 16px">${loadsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderOwnerKpi(myDrivers, allLoads, wLoads){
+  const body=document.getElementById('ow-kpi-body');
+  if(!myDrivers.length){body.innerHTML=`<div class="em"><div class="e">📊</div><p>No drivers.</p></div>`;return;}
+
+  const weeks=[...new Set(allLoads.map(l=>l.week).filter(Boolean))].sort((a,b)=>b.localeCompare(a)).slice(0,8).reverse();
+
+  body.innerHTML=`
+    <!-- Per-driver KPI table -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg)">
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">📊 Driver Performance</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">All time · sorted by gross</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--bg)">
+              <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">DRIVER</th>
+              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">LOADS</th>
+              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">GROSS</th>
+              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">PAID</th>
+              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">UNPAID</th>
+              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">AVG RPM</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${myDrivers.map(d=>{
+              const dl=allLoads.filter(l=>l.driver===d.name);
+              const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+              const paidAmt=dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+              const miles=dl.reduce((s,l)=>s+(+l.miles||0),0);
+              const rpm=miles>0?gross/miles:0;
+              const rpmOk=d.minRate?rpm>=(+d.minRate):true;
+              const unpaidLoads=dl.filter(l=>!l.paid);
+              return`<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+                <td style="padding:12px 16px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${avL(d.name)}</div>
+                    <div>
+                      <div style="font-weight:700;color:var(--navy)">${d.name}</div>
+                      <div style="font-size:10px;color:var(--text3)">min $${d.minRate||'?'}/mi</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="padding:12px;text-align:right;font-weight:700;color:var(--navy)">${dl.length}</td>
+                <td style="padding:12px;text-align:right;font-weight:800;color:var(--green);font-family:var(--mono)">$${fmt(gross)}</td>
+                <td style="padding:12px;text-align:right;font-weight:700;color:#065f46;font-family:var(--mono)">$${fmt(paidAmt)}</td>
+                <td style="padding:12px;text-align:right;font-weight:700;color:${unpaidLoads.length?'var(--red)':'var(--text3)'};font-family:var(--mono)">$${fmt(gross-paidAmt)}</td>
+                <td style="padding:12px;text-align:right;font-weight:700;font-family:var(--mono);color:${rpmOk?'var(--green)':'var(--red)'}">$${rpm.toFixed(2)}</td>
+                <td style="padding:12px 16px;text-align:right">
+                  <span style="font-size:10px;padding:3px 8px;border-radius:8px;font-weight:700;background:${rpmOk?'#d1fae5':'#fee2e2'};color:${rpmOk?'#065f46':'#dc2626'}">
+                    ${rpmOk?'✓ ON TARGET':'⚠ BELOW MIN'}
+                  </span>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Weekly revenue per driver chart (bars) -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg)">
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">📈 Weekly Revenue by Driver</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Last 8 weeks</div>
+      </div>
+      <div style="padding:16px 18px;overflow-x:auto">
+        ${weeks.length?`
+        <div style="display:flex;gap:3px;align-items:flex-end;height:140px;min-width:400px">
+          ${weeks.map(w=>{
+            const wLoadsW=allLoads.filter(l=>l.week===w);
+            const total=wLoadsW.reduce((s,l)=>s+(+l.rate||0),0);
+            const maxW=Math.max(...weeks.map(ww=>allLoads.filter(l=>l.week===ww).reduce((s,l)=>s+(+l.rate||0),0)),1);
+            const h=Math.round((total/maxW)*120);
+            const isNow=w===curW;
+            return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="font-size:9px;color:var(--text3);font-weight:700;font-family:var(--mono)">$${total>=1000?(total/1000).toFixed(1)+'k':total}</div>
+              <div style="width:100%;height:${h||4}px;background:${isNow?'var(--orange)':'var(--navy)'};border-radius:4px 4px 0 0;opacity:${isNow?1:.7};min-height:4px"></div>
+              <div style="font-size:9px;color:${isNow?'var(--orange)':'var(--text3)'};font-weight:${isNow?'800':'600'};text-align:center">${w.split('-W')[1]?'W'+w.split('-W')[1]:w}</div>
+            </div>`;
+          }).join('')}
+        </div>`:`<div style="text-align:center;color:var(--text3);padding:40px;font-size:12px">No load history yet</div>`}
       </div>
     </div>`;
-  }).join('')||`<div class="em" style="grid-column:1/-1"><div class="e">🚛</div><p>No drivers.</p></div>`;
 }
 
 /* ══ PASSWORDS ══ */
@@ -4170,7 +4354,15 @@ function renderAdmin(){
     <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Companies</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${COMPANIES.length}</div></div>
   </div>`;
 }
-function openUserModal(){['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('u-co').innerHTML=`<option value="">—</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');om('m-user')}
+function openUserModal(){
+  ['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('u-rl').value='dispatcher';
+  document.getElementById('u-co').innerHTML=`<option value="">— None —</option>`+COMPANIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  // Show company field label based on role
+  const coLabel=document.getElementById('u-co-label');
+  if(coLabel)coLabel.textContent='Company (for Owner role)';
+  om('m-user');
+}
 
 async function adminResetDriverWeek(userId, drvId, drvName){
   const u=USERS.find(x=>x.id===userId);if(!u)return;
