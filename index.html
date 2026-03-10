@@ -2596,18 +2596,7 @@ function renderKPI(){
         </td>
       </tr>`;
     });
-    // Week total row
-    html+=`<tr class="cal-week-tot-row">
-      <td class="sticky-col">Week Total — ${disp.name?.split(' ')[0]||''}</td>
-      ${days.map(d=>{
-        const ds=d.toISOString().split('T')[0];
-        const dayG=dl.filter(l=>l.date===ds).reduce((s,l)=>s+(+l.rate||0),0);
-        return`<td class="cal-week-total" style="text-align:center;font-size:11px;font-family:var(--mono);color:${dayG>0?'var(--green)':'var(--text3)'}">
-          ${dayG>0?'$'+fmt(dayG):'—'}
-        </td>`;
-      }).join('')}
-      <td class="cal-week-total" style="text-align:right;font-family:var(--mono);font-size:12px;font-weight:800;color:var(--green)">$${fmt(gross)}</td>
-    </tr>`;
+
   });
   html+='</tbody>';
   table.innerHTML=html;
