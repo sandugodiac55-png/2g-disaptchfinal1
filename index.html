@@ -388,6 +388,8 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 .inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(242,101,34,.08)}
 .sel{background:var(--surface);border:1.5px solid var(--border);color:var(--text2);padding:6px 9px;border-radius:8px;font-family:var(--mono);font-size:11px;outline:none;cursor:pointer}
 </style>
+  <!-- EmailJS for weekly backup -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -844,7 +846,10 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <div class="pg" id="pg-admin">
           <div class="ph">
             <div><div class="ph-t">Admin Panel</div></div>
-            <button class="btn btn-primary" onclick="openUserModal()">＋ Add User</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost" onclick="triggerManualBackup()" title="Generează backup CSV pentru săptămâna trecută și trimite email">📧 Backup Manual</button>
+              <button class="btn btn-primary" onclick="openUserModal()">＋ Add User</button>
+            </div>
           </div>
           <div class="ag">
             <div class="ac" id="adm-req-panel" style="display:none"><div class="ach" style="background:#fff7ed;border-color:#fed7aa"><div class="act" style="color:var(--orange)">📨 Edit Requests</div></div><div id="adm-edit-req"></div></div>
@@ -1091,6 +1096,138 @@ async function doLogin(){
 }
 async function doLogout(){if(unsub)unsub();if(unsubTrips)unsubTrips();sessionStorage.removeItem('lastPg');await window._fb.signOut(window._auth)}
 
+/* ══ WEEKLY BACKUP SYSTEM ══ */
+// EmailJS config — fill these after creating EmailJS account
+const EMAILJS_SERVICE_ID  = 'service_gdispatch';   // your EmailJS service ID
+const EMAILJS_TEMPLATE_ID = 'template_backup';      // your EmailJS template ID
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';      // your EmailJS public key
+const BACKUP_EMAIL        = 'sandugodiac55@gmail.com';
+
+function initBackupScheduler(){
+  if(ROLE!=='admin')return;
+  checkAndRunWeeklyBackup();
+}
+
+async function checkAndRunWeeklyBackup(){
+  try{
+    const lastBackupKey='gdispatch_last_backup';
+    const last=localStorage.getItem(lastBackupKey);
+    const now=new Date();
+    // Run on Monday mornings if not run this week
+    const thisMonday=new Date(now);
+    const day=now.getDay();
+    const diff=day===0?-6:1-day;
+    thisMonday.setDate(now.getDate()+diff);
+    thisMonday.setHours(0,0,0,0);
+
+    if(!last||new Date(last)<thisMonday){
+      // Wait for data to load then run backup
+      setTimeout(()=>runWeeklyBackup(false),5000);
+    }
+  }catch(e){console.warn('Backup scheduler:',e);}
+}
+
+async function runWeeklyBackup(manual=true){
+  if(EMAILJS_PUBLIC_KEY==='YOUR_PUBLIC_KEY'){
+    if(manual)notify('⚠ EmailJS nu e configurat. Verifică documentația.','err');
+    return;
+  }
+  try{
+    notify('📧 Generez backup săptămânal...','inf');
+    // Get previous week
+    const now=new Date();
+    const prevMonday=new Date(now);
+    prevMonday.setDate(now.getDate()-now.getDay()-6);
+    prevMonday.setHours(0,0,0,0);
+    const prevWeek=CWfrom(prevMonday);
+    const weekLabel=wLbl(prevWeek);
+
+    // Build CSV per company
+    const attachments=[];
+    for(const co of COMPANIES){
+      const coDrivers=DRIVERS.filter(d=>(d.company||'').trim()===co.name.trim());
+      if(!coDrivers.length)continue;
+      const coLoads=LOADS.filter(l=>coDrivers.some(d=>d.name===l.driver)&&l.week===prevWeek);
+      if(!coLoads.length)continue;
+
+      // Main sheet: all loads
+      const mainRows=[
+        ['Order ID','Driver','Broker','Date','Miles','Rate ($)','Pickup','Delivery','Status','Paid','Dispatcher'],
+        ...coLoads.map(l=>[
+          l.orderId||'',l.driver||'',l.broker||'',l.date||'',
+          l.miles||0,l.rate||0,l.pickup||'',l.delivery||'',
+          l.status||'',l.paid?'YES':'NO',l.dispName||l.dispEmail||''
+        ])
+      ];
+
+      // Per-driver sheets data embedded in CSV with separator
+      let csvContent='\uFEFF'; // BOM
+      csvContent+=`G-Dispatch Backup — ${co.name} — ${weekLabel}\r\n\r\n`;
+      csvContent+=`=== ALL LOADS ===\r\n`;
+      csvContent+=mainRows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+
+      coDrivers.forEach(dr=>{
+        const dLoads=coLoads.filter(l=>l.driver===dr.name);
+        if(!dLoads.length)return;
+        const gross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
+        const paid=dLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+        csvContent+=`\r\n\r\n=== ${dr.name.toUpperCase()} ===\r\n`;
+        csvContent+=`Loads: ${dLoads.length} | Gross: $${fmt(gross)} | Paid: $${fmt(paid)} | Unpaid: $${fmt(gross-paid)}\r\n`;
+        const drRows=[
+          ['Order ID','Broker','Date','Miles','Rate ($)','Pickup','Delivery','Paid'],
+          ...dLoads.map(l=>[l.orderId||'',l.broker||'',l.date||'',l.miles||0,l.rate||0,l.pickup||'',l.delivery||'',l.paid?'YES':'NO'])
+        ];
+        csvContent+=drRows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+      });
+
+      attachments.push({company:co.name,csv:csvContent,loads:coLoads.length});
+    }
+
+    if(!attachments.length){
+      if(manual)notify('Nu sunt loaduri săptămâna trecută de exportat.','inf');
+      return;
+    }
+
+    // EmailJS can't send file attachments directly — send summary + download links
+    // Instead, generate and auto-download all CSVs + send summary email
+    attachments.forEach(a=>{
+      const blob=new Blob([a.csv],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const anchor=document.createElement('a');
+      anchor.href=url;
+      anchor.download=`backup-${a.company.replace(/\s/g,'-')}-${prevWeek}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      setTimeout(()=>URL.revokeObjectURL(url),2000);
+    });
+
+    // Send summary email via EmailJS
+    const summaryLines=attachments.map(a=>`• ${a.company}: ${a.loads} loaduri`).join('\n');
+    const totalLoads=attachments.reduce((s,a)=>s+a.loads,0);
+    const totalGross=LOADS.filter(l=>l.week===prevWeek).reduce((s,l)=>s+(+l.rate||0),0);
+
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: BACKUP_EMAIL,
+      week_label: weekLabel,
+      total_loads: totalLoads,
+      total_gross: '$'+fmt(totalGross),
+      companies_summary: summaryLines,
+      generated_at: new Date().toLocaleString('en-US')
+    });
+
+    localStorage.setItem('gdispatch_last_backup', new Date().toISOString());
+    notify(`✅ Backup ${weekLabel} trimis la ${BACKUP_EMAIL}`);
+  }catch(err){
+    console.error('Backup error:',err);
+    if(manual)notify('Eroare backup: '+err.message,'err');
+  }
+}
+
+// Manual backup button trigger
+function triggerManualBackup(){runWeeklyBackup(true);}
+
 window.addEventListener('load',()=>{
   window._fb.onAuthStateChanged(window._auth,async u=>{
     document.getElementById('loading').style.display='none';
@@ -1136,6 +1273,8 @@ async function boot(user){
   showPg(restoredPg||def[ROLE]||'dispatch');
   // Load salary config in background — non-blocking
   loadSalaryConfig();
+  // Init weekly backup scheduler (admin only)
+  setTimeout(initBackupScheduler, 8000);
 }
 
 function buildNavItems(){
