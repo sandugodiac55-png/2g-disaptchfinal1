@@ -1425,10 +1425,9 @@ async function loadMeta(){
 /* ══ REALTIME ══ */
 function subLoads(){
   if(unsub)unsub();
-  const{onSnapshot,collection,query,orderBy,where}=window._fb,db=window._db;
-  // Dispatchers and admin load ALL loads (KPI needs all dispatchers' data)
-  // Dispatcher's own loads filtered in JS on dispatch/driver pages
-  const q=query(collection(db,'loads'),orderBy('createdAt','desc'));
+  const{onSnapshot,collection,query,where}=window._fb,db=window._db;
+  // Load ALL loads — sort in JS to avoid needing Firestore composite index
+  const q=query(collection(db,'loads'));
   unsub=onSnapshot(q,snap=>{
     LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
     LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
@@ -1436,6 +1435,8 @@ function subLoads(){
     buildNav();
     renderCur();
   },err=>{
+    console.error('subLoads error:',err);
+    // Fallback: try filtered by dispEmail (dispatchers only)
     const q2=query(collection(db,'loads'),where('dispEmail','==',CU.email));
     onSnapshot(q2,snap=>{
       LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1448,9 +1449,9 @@ function subLoads(){
 }
 function subTrips(){
   if(unsubTrips)unsubTrips();
-  const{onSnapshot,collection,query,orderBy}=window._fb,db=window._db;
-  // Load ALL trips so KPI shows all dispatchers
-  const q=query(collection(db,'trips'),orderBy('createdAt','desc'));
+  const{onSnapshot,collection,query}=window._fb,db=window._db;
+  // Load ALL trips — sort in JS to avoid Firestore composite index
+  const q=query(collection(db,'trips'));
   unsubTrips=onSnapshot(q,snap=>{
     TRIPS=snap.docs.map(d=>({id:d.id,...d.data()}));
     TRIPS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
