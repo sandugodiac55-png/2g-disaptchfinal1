@@ -548,7 +548,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div class="tc" id="drv-loads-tc">
             <div class="tc-top"><div class="tc-title">Individual Loads</div><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="drv-load-cnt">0</div></div>
             <div class="tw"><table>
-              <thead><tr><th>ORDER ID</th><th>CAR</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
+              <thead><tr><th>ORDER ID</th><th>CAR</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BROKER</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
               <tbody id="drv-load-tb"></tbody>
             </table></div>
           </div>
@@ -1912,10 +1912,11 @@ function renderDrvTrips(allDrvLoads){
         <td style="white-space:nowrap">${l.car?`<span style="display:inline-flex;align-items:center;gap:3px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#0369a1">🚗 ${l.car}</span>`:'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
         <td style="font-size:12px">${l.origin||'—'} → ${l.dest||'—'}</td>
         <td class="money">$${fmt(+l.rate||0)}</td>
+        <td style="font-size:11px">${l.payMethod||'—'}</td>
         <td style="font-size:11px">
-          <div>${l.payMethod||'—'}</div>
-          ${l.broker?`<div style="font-size:10px;font-weight:700;color:var(--navy);margin-top:3px">${l.broker}</div>`:''}
-          ${l.brokerEmail?`<div onclick="copyText('${l.brokerEmail}','Email')" title="Click to copy email" style="font-size:9px;color:var(--blue);cursor:pointer;margin-top:1px;display:inline-flex;align-items:center;gap:3px">${l.brokerEmail}<span style="opacity:.5">⎘</span></div>`:''}
+          ${l.broker?`<div style="font-weight:700;color:var(--navy);font-size:11px">${l.broker}</div>`:''}
+          ${l.brokerEmail?`<div onclick="copyText('${l.brokerEmail}','Email')" title="Click to copy email" style="font-size:9px;color:var(--blue);cursor:pointer;margin-top:2px;display:inline-flex;align-items:center;gap:3px">${l.brokerEmail}<span style="opacity:.5">⎘</span></div>`:''}
+          ${!l.broker&&!l.brokerEmail?'<span style="color:var(--text3)">—</span>':''}
         </td>
         <td style="font-size:11px">${l.brokerFee?(()=>{
           const bfPaid=!!l.bfPaid;
