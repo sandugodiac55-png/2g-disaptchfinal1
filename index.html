@@ -4809,7 +4809,7 @@ async function saveOwnFee(coId,coName,val){
 function exportOwnFeeExcel(){
   const weeks=getOwnWeeks();
   const ownCfg=(SALARY_CONFIG._own)||{};
-  const rows=[['Company','Driver','Fee %',...weeks.map(w=>wLbl(w).split('–')[0].trim()+ Gross'),...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Fee'),'Total Gross','Total Fee']];
+  const rows=[['Company','Driver','Fee %',...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Gross'),...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Fee'),'Total Gross','Total Fee']];
   COMPANIES.forEach(co=>{
     const cd=DRIVERS.filter(d=>(d.company||'').trim()===co.name.trim());
     if(!cd.length)return;
