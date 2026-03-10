@@ -387,64 +387,6 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 .inp{background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:7px 11px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;transition:all .15s}
 .inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(242,101,34,.08)}
 .sel{background:var(--surface);border:1.5px solid var(--border);color:var(--text2);padding:6px 9px;border-radius:8px;font-family:var(--mono);font-size:11px;outline:none;cursor:pointer}
-
-/* ══ MOBILE RESPONSIVE ══ */
-#mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:190;backdrop-filter:blur(2px)}
-#mob-overlay.show{display:block}
-.sb-hamburger{display:none;align-items:center;justify-content:center;width:44px;height:44px;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:10px;margin:0 10px 0 auto;flex-shrink:0}
-@media(max-width:768px){
-  /* Sidebar → topbar + dropdown */
-  .sidebar{width:100%!important;height:56px;position:fixed;top:0;left:0;right:0;z-index:200;flex-direction:row;align-items:center;overflow:hidden;transition:height .28s cubic-bezier(.4,0,.2,1);box-shadow:0 2px 16px rgba(0,0,0,.3)}
-  .sidebar.mob-open{height:100dvh;flex-direction:column;align-items:stretch;overflow-y:auto}
-  .sb-logo{padding:0 14px;border-bottom:none;flex:1;height:56px;display:flex;align-items:center}
-  .sb-logo-name{font-size:15px}
-  .sb-logo-tag{display:none}
-  .sb-user{display:none}
-  .sidebar.mob-open .sb-user{display:flex;padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);margin-top:4px}
-  #sb-nav{display:none;padding-bottom:16px}
-  .sidebar.mob-open #sb-nav{display:flex}
-  .sb-sec{padding:10px 18px 4px}
-  .sb-bottom{display:none}
-  .sidebar.mob-open .sb-bottom{display:block;padding:14px 18px}
-  .sb-hamburger{display:flex!important}
-  /* Layout */
-  .layout{margin-left:0!important;margin-top:56px}
-  .topbar{position:sticky;top:0;z-index:150;padding:0 10px;gap:6px;height:48px;min-height:48px}
-  .tb-back{font-size:18px!important;padding:6px 8px!important}
-  .tb-title{font-size:14px!important}
-  .tb-sub{display:none}
-  .content{padding:10px;overflow-x:hidden}
-  /* Grids */
-  .g2,.g3{grid-template-columns:1fr!important;gap:10px!important}
-  .driver-grid{grid-template-columns:1fr 1fr!important;gap:10px!important}
-  /* Tables — scroll horizontally */
-  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
-  table{min-width:560px;font-size:12px}
-  th,td{padding:7px 9px!important;font-size:11px!important}
-  /* Modals — sheet from bottom */
-  .ov{align-items:flex-end!important;padding:0!important}
-  .ov>.modal,.ov>.md,.ov>.mo{width:100%!important;max-width:100%!important;border-radius:20px 20px 0 0!important;max-height:92dvh!important;margin:0!important}
-  /* Cards */
-  .drv-card{padding:12px 14px}
-  /* Topbar search */
-  #tb-search-inp{width:100px!important;font-size:12px}
-  /* Week nav */
-  .wk-range-lbl{display:none}
-  #wk-prev,#wk-next{padding:6px 12px!important;font-size:13px!important}
-  /* Accounting */
-  #acc-company-grid{grid-template-columns:1fr!important}
-  #acc-driver-grid{grid-template-columns:1fr!important}
-  /* KPI */
-  .cal-table{min-width:660px;font-size:11px}
-  /* Buttons */
-  .btn{min-height:40px}
-}
-@media(max-width:480px){
-  .driver-grid{grid-template-columns:1fr!important}
-  .content{padding:8px}
-  #tb-search-inp{width:75px!important}
-  table{min-width:500px;font-size:11px}
-}
 </style>
 </head>
 <body>
@@ -491,7 +433,6 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
 <!-- APP -->
 <div id="app">
-  <div id="mob-overlay" onclick="closeMobileNav()"></div>
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <div class="sb-logo" onclick="goHome()" style="cursor:pointer" title="Go to home">
@@ -502,12 +443,12 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         </svg>
         <div><div class="sb-logo-name">G-Dispatch</div><div class="sb-logo-tag">TMS v3</div></div>
       </div>
-      <button class="sb-hamburger" id="sb-hamburger" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
       <div class="sb-user">
         <div class="sb-av" id="sb-av">?</div>
         <div><div class="sb-uname" id="sb-uname">—</div><div class="sb-urole" id="sb-urole">—</div></div>
       </div>
       <nav id="sb-nav" style="flex:1;display:flex;flex-direction:column"></nav>
+
     </aside>
 
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1493,7 +1434,6 @@ function showPg(pg,opts={}){
   back.classList.toggle('show',pg==='driver');
   // Persist current page (skip driver page — can't restore without curDrv context)
   if(pg!=='driver') sessionStorage.setItem('lastPg', pg);
-  closeMobileNav();
   renderPg(pg);
 }
 
@@ -1534,7 +1474,6 @@ function tbSearchGo(){
   tbSearchShowLoad(load.id);
 }
 
-function showLoadCard(id){tbSearchShowLoad(id);}
 function tbSearchShowLoad(id){
   const l=LOADS.find(x=>x.id===id);
   if(!l)return;
@@ -1639,22 +1578,6 @@ function tbSearchShowLoad(id){
   om('m-load-search');
 }
 
-function toggleMobileNav(){
-  const sb=document.getElementById('sidebar');
-  const ov=document.getElementById('mob-overlay');
-  const open=sb.classList.toggle('mob-open');
-  ov.classList.toggle('show', open);
-  document.getElementById('sb-hamburger').textContent=open?'✕':'☰';
-}
-function closeMobileNav(){
-  const sb=document.getElementById('sidebar');
-  const ov=document.getElementById('mob-overlay');
-  if(sb.classList.contains('mob-open')){
-    sb.classList.remove('mob-open');
-    ov.classList.remove('show');
-    document.getElementById('sb-hamburger').textContent='☰';
-  }
-}
 function goBack(){showPg(ROLE==='admin'||ROLE==='dispatcher'?'dispatch':'owner');curDrv=null}
 function goHome(){
   const def={dispatcher:'dispatch',accounting:'accounting',manager:'kpi',owner:'owner',admin:'dispatch'};
@@ -1709,7 +1632,7 @@ function renderDispatch(){
   const isAll=['admin','owner','manager'].includes(ROLE);
   const cuEmail=(CU.email||"").trim().toLowerCase();
   const myDrivers=isAll?DRIVERS:DRIVERS.filter(d=>(d.dispatcherEmail||"").trim().toLowerCase()===cuEmail);
-  const wLoads=LOADS.filter(l=>inW(l.date,curW)||(l.week&&l.week===curW));
+  const wLoads=LOADS.filter(l=>inW(l.date,curW));
   const myLoads=isAll?wLoads:wLoads.filter(l=>l.dispEmail===CU.email);
   const gross=myLoads.reduce((s,l)=>s+(+l.rate||0),0),miles=0;
   const totalOverMin=myDrivers.reduce((s,d)=>{const dl=myLoads.filter(l=>l.driver===d.name);return s+calcOverMin(dl,d)},0);
@@ -2524,26 +2447,17 @@ function renderKPI(){
   const days=[];
   for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}
   const today=new Date();today.setHours(0,0,0,0);
-  const wLoads=LOADS.filter(l=>inW(l.date,curW)||(l.week&&l.week===curW));
+  const wLoads=LOADS.filter(l=>inW(l.date,curW));
   const wTrips=TRIPS.filter(t=>inW(t.weekDate||t.createdDate,curW));
   const dispatchers=USERS.filter(u=>u.role==='dispatcher');
-  // DEBUG
-  console.group('[KPI DEBUG] Week:',curW);
-  console.log('wLoads count:',wLoads.length,'| wTrips:',wTrips.length);
-  console.log('Dispatchers:',dispatchers.map(d=>d.name+'('+d.email+')'));
-  wLoads.forEach(l=>console.log('Load:',l.orderId,'driver:',l.driver,'dispEmail:',l.dispEmail,'week:',l.week,'date:',l.date));
-  DRIVERS.forEach(d=>console.log('Driver:',d.name,'dispatcherEmail:',d.dispatcherEmail,'company:',d.company));
-  console.groupEnd();
   // Build KPI stats per dispatcher
-  const normE=e=>(e||'').trim().toLowerCase();
   const stats=dispatchers.map(disp=>{
-    const dE=normE(disp.email);
-    const dispDriverNames2=new Set(DRIVERS.filter(d=>normE(d.dispatcherEmail)===dE).map(d=>d.name));
-    const dl=wLoads.filter(l=>normE(l.dispEmail)===dE||dispDriverNames2.has(l.driver));
-    const dt=wTrips.filter(t=>normE(t.dispEmail)===dE||dispDriverNames2.has(t.driverName));
+    const dispDriverNames2=new Set(DRIVERS.filter(d=>d.dispatcherEmail===disp.email).map(d=>d.name));
+    const dl=wLoads.filter(l=>l.dispEmail===disp.email||dispDriverNames2.has(l.driver));
+    const dt=wTrips.filter(t=>t.dispEmail===disp.email||dispDriverNames2.has(t.driverName));
     const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
     const miles=dt.reduce((s,t)=>s+(+t.miles||0),0);
-    const myDrivers=DRIVERS.filter(d=>normE(d.dispatcherEmail)===dE);
+    const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===disp.email);
     const overMin=myDrivers.reduce((s,d)=>{const dLoads=dl.filter(l=>l.driver===d.name);const dTrips=dt.filter(t=>t.driverName===d.name);const ov=dTrips.reduce((ss,trip)=>ss+tripOverMin(trip,d),0);return s+ov},0);
     return{...disp,loads:dl.length,gross,miles,rpm:miles>0?gross/miles:0,overMin,drivers:myDrivers,trips:dt};
   }).sort((a,b)=>b.gross-a.gross);
@@ -2562,10 +2476,9 @@ function renderKPI(){
   }).join('');
   let html=`<thead><tr><th class="sticky-col" style="min-width:160px">Dispatcher / Driver</th>${thCols}<th>Total</th></tr></thead><tbody>`;
   stats.forEach(disp=>{
-    const dE2=normE(disp.email);
-    const dispDriverNames=new Set(DRIVERS.filter(d=>normE(d.dispatcherEmail)===dE2).map(d=>d.name));
-    const dl=wLoads.filter(l=>normE(l.dispEmail)===dE2||dispDriverNames.has(l.driver));
-    const dt=wTrips.filter(t=>normE(t.dispEmail)===dE2||dispDriverNames.has(t.driverName));
+    const dispDriverNames=new Set(DRIVERS.filter(d=>d.dispatcherEmail===disp.email).map(d=>d.name));
+    const dl=wLoads.filter(l=>l.dispEmail===disp.email||dispDriverNames.has(l.driver));
+    const dt=wTrips.filter(t=>t.dispEmail===disp.email||dispDriverNames.has(t.driverName));
     const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
     const miles=dt.reduce((s,t)=>s+(+t.miles||0),0);
     const rpm=miles>0?gross/miles:0;
@@ -2621,31 +2534,16 @@ function renderKPI(){
             const deliveredLoad=tLoads.find(l=>l.status==='Delivered'||l.status==='Invoiced');
             const endDate=isDelivered?(deliveredLoad?.deliveredDate||deliveredLoad?.date||startDate)
               :(isPickedUp?todayStr:startDate);
+            // Route set by dispatcher on trip creation
             const pickup=(t.pickup||tLoads[0]?.origin||'?').split(',')[0];
             const delivery=(t.delivery||tLoads[tLoads.length-1]?.dest||'?').split(',')[0];
-            return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery,isTrip:true};
+            return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery};
           }).filter(Boolean);
-
-          // Standalone loads (no trip) — show as individual bars
-          const standaloneBars=dLoads.filter(l=>!allTrippedIds.has(l.id)&&l.date).map(l=>{
-            const lg=+(l.rate||0);
-            const rpmOk=minR>0?(l.miles>0?lg/l.miles>=minR:false):true;
-            const col=rpmOk?'#0d9488':'#6366f1'; // indigo for standalone
-            const startDate=l.date;
-            const isDelivered=l.status==='Delivered'||l.status==='Invoiced';
-            const isPickedUp=l.status==='Picked Up';
-            const endDate=isDelivered?(l.deliveredDate||l.date):(isPickedUp?todayStr:startDate);
-            const pickup=(l.origin||l.pickup||'?').split(',')[0];
-            const delivery=(l.dest||l.delivery||'?').split(',')[0];
-            return{l,tg:lg,trpm:l.miles>0?lg/l.miles:0,col,rpmOk,startDate,endDate,pickup,delivery,isTrip:false};
-          });
-
-          const allBars=[...tripBars,...standaloneBars];
 
           return days.map((d,di)=>{
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
-            const activeBars=allBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
+            const activeBars=tripBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
             return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px">
               ${activeBars.map(r=>{
                 const isStart=ds===r.startDate;
@@ -2654,14 +2552,11 @@ function renderKPI(){
                 const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
                 const marginL=isStart?'3px':'-1px';
                 const marginR=isEnd?'3px':'-1px';
-                const onclick=r.isTrip
-                  ?`event.stopPropagation();showTripPopover(event,'${r.t.id}')`
-                  :`event.stopPropagation();showLoadCard('${r.l.id}')`;
-                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="${onclick}">
+                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')">
                   ${isStart?`
-                    <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}${!r.isTrip?'<span style="font-size:9px;opacity:.7"> #'+(r.l.orderId||'')+'</span>':''}</div>
+                    <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
                     <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
-                    ${r.trpm>0?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}
+                    <div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi</div>
                   `:''}
                 </div>`;
               }).join('')}
