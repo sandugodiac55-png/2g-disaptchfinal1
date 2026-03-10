@@ -517,8 +517,12 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="fg"><label>Total Miles (required)</label><input type="number" id="trip-miles" placeholder="e.g. 2500" oninput="updateTripCalc()"></div>
                 <div class="fg"><label>Calc Rate/Mile</label><input id="trip-rpm" readonly></div>
               </div>
+              <div class="g2" style="margin-bottom:12px">
+                <div class="fg"><label>📍 De unde (oraș)</label><input id="trip-pickup" placeholder="ex: Fort Myers, FL"></div>
+                <div class="fg"><label>📍 Până unde (oraș)</label><input id="trip-delivery" placeholder="ex: Richardson, TX"></div>
+              </div>
               <div class="fg" style="margin-bottom:12px">
-                <label>Google Maps Route URL <span style="color:var(--red)">*</span> <span style="font-size:10px;color:var(--text3);font-weight:400">— required, opens in KPI calendar</span></label>
+                <label>Google Maps Route URL <span style="font-size:10px;color:var(--text3);font-weight:400">— optional</span></label>
                 <input id="trip-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px">
               </div>
               <div id="trip-sel-loads" class="ls-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
@@ -2041,11 +2045,6 @@ async function confirmTrip(){
   if(!miles){notify('Miles are required for trip','err');document.getElementById('trip-miles').classList.add('required-err');return}
   document.getElementById('trip-miles').classList.remove('required-err');
   const mapsUrl=document.getElementById('trip-maps-url').value.trim();
-  if(!mapsUrl||!mapsUrl.startsWith('http')){
-    notify('Google Maps URL is required','err');
-    document.getElementById('trip-maps-url').style.borderColor='var(--red)';
-    return;
-  }
   document.getElementById('trip-maps-url').style.borderColor='';
   const selLoads=LOADS.filter(l=>tripSelLoads.includes(l.id));
   const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
@@ -2054,7 +2053,9 @@ async function confirmTrip(){
   const firstLoad=selLoads[0];
   const tripWeek=firstLoad?.week||curW;
   const tripWeekDate=wRange(tripWeek).start.toISOString().split('T')[0];
-  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,mapsUrl,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
+  const tripPickup=document.getElementById('trip-pickup')?.value.trim()||'';
+  const tripDelivery=document.getElementById('trip-delivery')?.value.trim()||'';
+  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,mapsUrl,pickup:tripPickup||null,delivery:tripDelivery||null,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
   if(minRate>0&&rpm<minRate){
     // under minimum — require comment
     document.getElementById('trip-create-ui').classList.add('hidden');
@@ -2091,6 +2092,8 @@ function openEditTrip(tripId){
   editTripSelLoads=[...(trip.loadIds||[])];
   document.getElementById('et-miles').value=trip.miles||'';
   document.getElementById('et-maps-url').value=trip.mapsUrl||'';
+  document.getElementById('et-pickup').value=trip.pickup||'';
+  document.getElementById('et-delivery').value=trip.delivery||'';
   updateEditTripCalc();
   renderEditTripLoads();
   om('m-edit-trip');
@@ -2157,11 +2160,15 @@ async function saveEditTrip(){
     if(!comment){notify('Comment required when below minimum rate','err');return}
     const{updateDoc,doc}=window._fb;
     const mu2=document.getElementById('et-maps-url').value.trim();
-    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment,mapsUrl:mu2||null});
+    const pu2=document.getElementById('et-pickup').value.trim();
+    const dl2=document.getElementById('et-delivery').value.trim();
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment,mapsUrl:mu2||null,pickup:pu2||null,delivery:dl2||null});
   } else {
     const{updateDoc,doc}=window._fb;
     const mu3=document.getElementById('et-maps-url').value.trim();
-    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null,mapsUrl:mu3||null});
+    const pu3=document.getElementById('et-pickup').value.trim();
+    const dl3=document.getElementById('et-delivery').value.trim();
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null,mapsUrl:mu3||null,pickup:pu3||null,delivery:dl3||null});
   }
   notify('Trip updated ✓');
   cm('m-edit-trip');editTripId=null;editTripSelLoads=[];
@@ -5511,11 +5518,14 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
         <div class="fg"><label>Total Miles *</label><input type="number" id="et-miles" placeholder="e.g. 2500" oninput="updateEditTripCalc()"></div>
         <div class="fg"><label>Calc Rate/Mile</label><input id="et-rpm" readonly></div>
       </div>
-      <div class="fg">
-        <label>Google Maps Route URL <span style="color:var(--red)">*</span></label>
-        <input id="et-maps-url" placeholder="https://maps.google.com/...">
+      <div class="g2">
+        <div class="fg"><label>📍 De unde (oraș)</label><input id="et-pickup" placeholder="ex: Fort Myers, FL"></div>
+        <div class="fg"><label>📍 Până unde (oraș)</label><input id="et-delivery" placeholder="ex: Richardson, TX"></div>
       </div>
-      <div class="fg"><label>Google Maps Route URL <span style="color:var(--red)">*</span></label><input id="et-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px"></div>
+      <div class="fg">
+        <label>Google Maps Route URL</label>
+        <input id="et-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px">
+      </div>
       <div class="fg"><label>Select Loads for this Trip</label></div>
       <div id="et-load-list" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
       <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border)">
