@@ -915,8 +915,8 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
     </div>
     <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;font-size:12px;color:#1e3a5f;line-height:1.8">
-        Backup-ul descarcă <strong>un singur fișier JSON</strong> cu toate loadurile, tripurile, șoferii și companiile.<br>
-        Fișierul poate fi reimportat oricând sau deschis în Excel.
+        Backup-ul generează <strong>câte un fișier Excel per companie</strong>.<br>
+        Fiecare Excel are o foaie sumar + câte o foaie separată per șofer cu toate loadurile, statusul plăților și overdue.
       </div>
       <div>
         <label style="font-size:11px;font-weight:700;color:var(--text2)">Săptămâna</label>
@@ -926,13 +926,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <option value="all">Toate loadurile</option>
         </select>
       </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2)">Format</label>
-        <select id="bkp-format" class="inp sel" style="width:100%;margin-top:4px">
-          <option value="csv">CSV (Excel)</option>
-          <option value="json">JSON (complet)</option>
-        </select>
-      </div>
+
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn btn-ghost" onclick="cm('m-backup')">Anulează</button>
         <button class="btn btn-primary" onclick="runBackup()">⬇ Descarcă Backup</button>
@@ -1141,18 +1135,12 @@ async function doLogin(){
 async function doLogout(){if(unsub)unsub();if(unsubTrips)unsubTrips();sessionStorage.removeItem('lastPg');await window._fb.signOut(window._auth)}
 
 /* ══ BACKUP SYSTEM ══ */
-// Settings stored in localStorage
-function openBackupModal(){
-  om('m-backup');
-}
-
-function csvRow(arr){return arr.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')+'\r\n';}
+function openBackupModal(){om('m-backup');}
 
 async function runBackup(){
   const weekSel=document.getElementById('bkp-week')?.value||'prev';
-  const fmt2=document.getElementById('bkp-format')?.value||'csv';
   cm('m-backup');
-  notify('⏳ Generez backup...','inf');
+  notify('⏳ Generez backup Excel...','inf');
 
   // Determine target loads
   let targetLoads=LOADS;
@@ -1171,50 +1159,116 @@ async function runBackup(){
 
   if(!targetLoads.length){notify('Nu sunt loaduri pentru perioada selectată.','inf');return;}
 
-  const ts=new Date().toISOString().slice(0,10);
-  const fname=`gdispatch-backup-${fileLabel}-${ts}`;
-
-  if(fmt2==='json'){
-    // Full JSON backup
-    const data={
-      exportedAt:new Date().toISOString(),
-      week:fileLabel,
-      loads:targetLoads,
-      trips:TRIPS,
-      drivers:DRIVERS,
-      companies:COMPANIES
-    };
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download=fname+'.json';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    notify(`✅ Backup JSON descărcat — ${targetLoads.length} loaduri`);
-  } else {
-    // CSV per company
-    const companies=[...new Set(targetLoads.map(l=>l.company||'—'))].sort();
-    let combined='\uFEFF';
-    combined+=`G-Dispatch Backup — ${fileLabel} — ${new Date().toLocaleDateString('ro-MD')}\r\n\r\n`;
-    combined+=csvRow(['Order ID','Driver','Company','Dispatcher','Broker','Rate ($)','Miles','Pickup','Delivery','Date','Status','Paid','Pay Method','Car','Notes']);
-    targetLoads.forEach(l=>{
-      combined+=csvRow([l.orderId||'',l.driver||'',l.company||'',l.dispName||l.dispEmail||'',l.broker||'',l.rate||0,l.miles||0,l.origin||l.pickup||'',l.dest||l.delivery||'',l.date||'',l.status||'',l.paid?'YES':'NO',l.payMethod||'',l.car||'',l.notes||'']);
+  // Load SheetJS dynamically
+  if(!window.XLSX){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
     });
-    combined+='\r\n\r\nSUMAR PE COMPANII\r\n';
-    companies.forEach(coName=>{
-      const cl=targetLoads.filter(l=>(l.company||'—')===coName);
-      const gross=cl.reduce((s,l)=>s+(+l.rate||0),0);
-      const paid=cl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
-      combined+=csvRow([coName,`${cl.length} loaduri`,`Gross: $${fmt(gross)}`,`Paid: $${fmt(paid)}`,`Unpaid: $${fmt(gross-paid)}`]);
-    });
-    const blob=new Blob([combined],{type:'text/csv;charset=utf-8;'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download=fname+'.csv';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    notify(`✅ Backup CSV descărcat — ${targetLoads.length} loaduri`);
   }
+  const XLSX=window.XLSX;
+
+  // Group loads by company
+  const byCompany={};
+  targetLoads.forEach(l=>{
+    const co=l.company||'—';
+    if(!byCompany[co])byCompany[co]=[];
+    byCompany[co].push(l);
+  });
+
+  const ts=new Date().toISOString().slice(0,10);
+  let fileCount=0;
+
+  for(const [coName,coLoads] of Object.entries(byCompany)){
+    const wb=XLSX.utils.book_new();
+
+    // === SHEET 1: SUMAR COMPANIE ===
+    const coDrivers=[...new Set(coLoads.map(l=>l.driver||'—'))].sort();
+    const sumRows=[
+      ['G-Dispatch — '+coName,'','','','',''],
+      ['Perioada:',fileLabel,'','Generat:',new Date().toLocaleDateString('ro-MD'),''],
+      ['','','','','',''],
+      ['ȘOFER','LOADURI','GROSS ($)','PLĂTIT ($)','NEPLĂTIT ($)','OVERDUE']
+    ];
+    coDrivers.forEach(drv=>{
+      const dl=coLoads.filter(l=>l.driver===drv);
+      const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+      const paid=dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+      const unpaid=gross-paid;
+      const overdue=dl.filter(l=>{
+        if(l.paid)return false;
+        const due=getDueDate(l.date,l.payMethod);
+        return due&&new Date()>due;
+      }).length;
+      sumRows.push([drv,dl.length,gross,paid,unpaid,overdue>0?overdue+' OVERDUE':'OK']);
+    });
+    sumRows.push(['','','','','','']);
+    const totGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const totPaid=coLoads.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+    sumRows.push(['TOTAL',coLoads.length,totGross,totPaid,totGross-totPaid,'']);
+
+    const wsSumar=XLSX.utils.aoa_to_sheet(sumRows);
+    wsSumar['!cols']=[{wch:28},{wch:10},{wch:14},{wch:14},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,wsSumar,'📊 Sumar');
+
+    // === SHEET per DRIVER ===
+    coDrivers.forEach(drv=>{
+      const dl=coLoads.filter(l=>l.driver===drv).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
+      const paid=dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+
+      const rows=[
+        [drv+' — '+coName,'','','','','','','','',''],
+        ['Perioada:',fileLabel,'','Gross: $'+gross,'Plătit: $'+paid,'Neplătit: $'+(gross-paid),'','','',''],
+        ['','','','','','','','','',''],
+        ['ORDER ID','DATA','RUTĂ','RATE ($)','MILE','PAY METHOD','BROKER','STATUS','PLĂTIT','OVERDUE / DUE','COMMENT']
+      ];
+
+      dl.forEach(l=>{
+        const due=getDueDate(l.date,l.payMethod);
+        let dueStr='';
+        if(l.paid){dueStr='✓ Paid'+(l.paidDate?' ('+new Date(l.paidDate).toLocaleDateString('en-US',{month:'short',day:'numeric'})+')':'');}
+        else if(due){
+          const diff=Math.floor((new Date()-due)/86400000);
+          dueStr=diff>0?(diff+'d OVERDUE'):('Due '+due.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+        }
+        const route=(l.origin||l.pickup||'?').split(',')[0]+' → '+(l.dest||l.delivery||'?').split(',')[0];
+        rows.push([
+          l.orderId||'',
+          l.date||'',
+          route,
+          +l.rate||0,
+          +l.miles||0,
+          l.payMethod||'',
+          (l.broker||'')+(l.brokerEmail?' <'+l.brokerEmail+'>':''),
+          l.status||'',
+          l.paid?'YES':'NO',
+          dueStr,
+          l.accComment||l.notes||''
+        ]);
+      });
+
+      rows.push(['','','','','','','','','','','']);
+      rows.push(['TOTAL','',''  ,gross,'','','','',paid+'/$'+gross,'','']);
+
+      const sheetName=drv.substring(0,28).replace(/[:\\\/\?\*\[\]]/g,'');
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=[{wch:14},{wch:12},{wch:30},{wch:10},{wch:8},{wch:14},{wch:28},{wch:12},{wch:8},{wch:18},{wch:24}];
+      XLSX.utils.book_append_sheet(wb,ws,sheetName);
+    });
+
+    // Download
+    setTimeout(()=>{
+      XLSX.writeFile(wb,`GDispatch-${coName.replace(/\s+/g,'-')}-${fileLabel}-${ts}.xlsx`);
+    },fileCount*600);
+    fileCount++;
+  }
+
+  setTimeout(()=>{
+    notify('✅ '+fileCount+' fișiere Excel descărcate — câte unul per companie');
+  },fileCount*600+200);
 }
 
 function triggerManualBackup(){om('m-backup');}
