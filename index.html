@@ -790,19 +790,18 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             </div>
           </div>
 
-          <!-- Month selector + week range -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
-            <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:6px 14px">
-              <button onclick="salMonthNav(-1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 4px">‹</button>
-              <span style="font-size:13px;font-weight:700;color:var(--navy);min-width:110px;text-align:center" id="sal-month-lbl">—</span>
-              <button onclick="salMonthNav(1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 4px">›</button>
+          <!-- Week picker -->
+          <div style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:6px 14px">
+                <button onclick="salMonthNav(-1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 4px">‹</button>
+                <span style="font-size:13px;font-weight:700;color:var(--navy);min-width:110px;text-align:center" id="sal-month-lbl">—</span>
+                <button onclick="salMonthNav(1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 4px">›</button>
+              </div>
+              <div style="font-size:11px;color:var(--text3)" id="sal-weeks-range"></div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:6px 14px">
-              <span style="font-size:11px;color:var(--text3);font-weight:600">SĂPTĂMÂNI ÎN LUNĂ:</span>
-              <button onclick="setSalWeekCount(4,this)" id="sal-wk4" style="padding:3px 12px;border-radius:6px;border:1.5px solid #6366f1;background:#eef2ff;color:#6366f1;font-size:11px;font-weight:700;cursor:pointer">4</button>
-              <button onclick="setSalWeekCount(5,this)" id="sal-wk5" style="padding:3px 12px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">5</button>
-            </div>
-            <div style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="sal-weeks-range"></div>
+            <!-- Week checkboxes -->
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center" id="sal-week-picker"></div>
           </div>
 
           <!-- Tabs -->
@@ -3639,10 +3638,12 @@ async function delPw(id){
 let salMonth=null; // 'YYYY-MM'
 let salWeekCount=4;
 let salTab='emp';
+let salSelectedWeeks=new Set(); // ISO week strings selected by user
 
 function salInit(){
   const now=new Date();
   salMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  salSelectedWeeks=new Set();
   renderSalary();
 }
 
@@ -3650,19 +3651,25 @@ function salMonthNav(dir){
   const [y,m]=salMonth.split('-').map(Number);
   const d=new Date(y,m-1+dir,1);
   salMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  salSelectedWeeks=new Set(); // reset selection on month change
   renderSalary();
 }
 
-function setSalWeekCount(n,btn){
-  salWeekCount=n;
-  ['sal-wk4','sal-wk5'].forEach(id=>{
-    const b=document.getElementById(id);
-    if(!b)return;
-    const active=id===`sal-wk${n}`;
-    b.style.background=active?'#eef2ff':'var(--surface2)';
-    b.style.borderColor=active?'#6366f1':'var(--border)';
-    b.style.color=active?'#6366f1':'var(--text3)';
-  });
+function setSalWeekCount(n,btn){ salWeekCount=n; renderSalary(); } // kept for compat
+
+function toggleSalWeek(w){
+  if(salSelectedWeeks.has(w)) salSelectedWeeks.delete(w);
+  else salSelectedWeeks.add(w);
+  renderSalary();
+}
+
+function salSelectAll(){
+  const all=getSalMonthWeeks();
+  all.forEach(w=>salSelectedWeeks.add(w));
+  renderSalary();
+}
+function salSelectNone(){
+  salSelectedWeeks.clear();
   renderSalary();
 }
 
@@ -3676,26 +3683,27 @@ function setSalTab(tab,btn){
   });
 }
 
-function getSalWeeks(){
-  // Get all ISO weeks that fall within salMonth, limited to salWeekCount
+function getSalMonthWeeks(){
+  // Get all ISO weeks that have any Monday in salMonth
   if(!salMonth)return[];
   const [y,m]=salMonth.split('-').map(Number);
   const weeks=[];
   const d=new Date(y,m-1,1);
-  // find all mondays in this month
   while(d.getMonth()===m-1){
-    if(d.getDay()===1){
-      weeks.push(CWfrom(new Date(d)));
-    }
+    if(d.getDay()===1) weeks.push(CWfrom(new Date(d)));
     d.setDate(d.getDate()+1);
   }
-  // Also check if first week starts in prev month
-  const first=new Date(y,m-1,1);
-  const firstW=CWfrom(first);
-  if(!weeks.includes(firstW))weeks.unshift(firstW);
-  // Dedupe and limit to salWeekCount
-  const unique=[...new Set(weeks)].sort();
-  return unique.slice(0,salWeekCount);
+  // Also include the week that contains the 1st of month
+  const firstW=CWfrom(new Date(y,m-1,1));
+  if(!weeks.includes(firstW)) weeks.unshift(firstW);
+  return [...new Set(weeks)].sort();
+}
+
+function getSalWeeks(){
+  // Return selected weeks (or all if none selected)
+  const all=getSalMonthWeeks();
+  if(salSelectedWeeks.size===0) return all; // default: all weeks in month
+  return all.filter(w=>salSelectedWeeks.has(w));
 }
 
 function renderSalary(){
@@ -3705,14 +3713,47 @@ function renderSalary(){
   const lbl=document.getElementById('sal-month-lbl');
   if(lbl)lbl.textContent=monthName;
 
-  const weeks=getSalWeeks();
-  const rangeEl=document.getElementById('sal-weeks-range');
-  if(rangeEl&&weeks.length){
-    const{start}=wRange(weeks[0]),{end}=wRange(weeks[weeks.length-1]);
-    rangeEl.textContent=`${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}  (${weeks.length} wks)`;
+  // Build week picker checkboxes
+  const allWeeks=getSalMonthWeeks();
+  const picker=document.getElementById('sal-week-picker');
+  if(picker){
+    // If nothing selected, auto-select all
+    if(salSelectedWeeks.size===0) allWeeks.forEach(w=>salSelectedWeeks.add(w));
+
+    picker.innerHTML=`
+      <span style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-right:4px">SĂPTĂMÂNI:</span>
+      ${allWeeks.map((w,i)=>{
+        const{start,end}=wRange(w);
+        const sel=salSelectedWeeks.has(w);
+        const lbl=start.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        const endLbl=end.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        return`<button onclick="toggleSalWeek('${w}')" title="${lbl} – ${endLbl}"
+          style="padding:6px 14px;border-radius:20px;border:2px solid ${sel?'#6366f1':'var(--border)'};
+          background:${sel?'#eef2ff':'var(--surface)'};color:${sel?'#6366f1':'var(--text2)'};
+          font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;
+          transition:all .15s;white-space:nowrap">
+          ${sel?'✓ ':''}<span style="font-size:10px;opacity:.6">W${i+1}</span> ${lbl}
+        </button>`;
+      }).join('')}
+      <button onclick="salSelectAll()" style="padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">All</button>
+      <button onclick="salSelectNone()" style="padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">None</button>
+    `;
   }
 
-  if(salTab==='emp') renderSalEmp(weeks);
+  const selWeeks=getSalWeeks();
+  const rangeEl=document.getElementById('sal-weeks-range');
+  if(rangeEl){
+    if(selWeeks.length){
+      const{start}=wRange(selWeeks[0]),{end}=wRange(selWeeks[selWeeks.length-1]);
+      rangeEl.innerHTML=`<span style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--navy)">
+        📅 ${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · <b>${selWeeks.length} săpt.</b>
+      </span>`;
+    } else {
+      rangeEl.innerHTML=`<span style="font-size:11px;color:var(--red)">⚠ Nicio săptămână selectată</span>`;
+    }
+  }
+
+  if(salTab==='emp') renderSalEmp(selWeeks);
   else if(salTab==='founders') renderSalFounders();
   else renderSalExpenses();
 }
