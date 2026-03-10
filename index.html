@@ -388,8 +388,6 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 .inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(242,101,34,.08)}
 .sel{background:var(--surface);border:1.5px solid var(--border);color:var(--text2);padding:6px 9px;border-radius:8px;font-family:var(--mono);font-size:11px;outline:none;cursor:pointer}
 </style>
-  <!-- EmailJS for weekly backup -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -910,73 +908,34 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 <!-- USER MODAL -->
 <!-- BACKUP MODAL -->
 <div class="ov" id="m-backup">
-  <div class="mo" style="max-width:500px">
+  <div class="mo" style="max-width:480px">
     <div class="mhd" style="background:linear-gradient(135deg,#0f4c81,#1a6db5)">
-      <div class="mhd-t" style="color:#fff">📧 Configurare Backup Email</div>
+      <div class="mhd-t" style="color:#fff">📦 Backup G-Dispatch</div>
       <div class="mcl" onclick="cm('m-backup')" style="color:#fff">×</div>
     </div>
-    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
-
-      <!-- Step 1 -->
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px">
-        <div style="font-size:12px;font-weight:800;color:#1e40af;margin-bottom:8px">📋 Pași de configurare EmailJS</div>
-        <ol style="margin:0;padding-left:18px;font-size:12px;color:#1e3a5f;line-height:1.8">
-          <li>Mergi pe <strong>emailjs.com</strong> → creează cont gratuit</li>
-          <li>Email Services → Add Service → Gmail → conectează <strong>sandugodiac55@gmail.com</strong></li>
-          <li>Email Templates → Create Template → copiază variabilele de mai jos</li>
-          <li>Account → Public Key → copiază în câmpul de jos</li>
-        </ol>
-      </div>
-
-      <!-- Template variables -->
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px">
-        <div style="font-size:11px;font-weight:800;color:#166534;margin-bottom:6px">📝 Template EmailJS — copiază exact:</div>
-        <div style="font-family:monospace;font-size:11px;color:#14532d;line-height:1.7;white-space:pre-wrap">Subject: G-Dispatch Backup {{week_label}}
-
-Backup G-Dispatch
-Săptămâna: {{week_label}}
-Total loaduri: {{total_loads}}
-Total gross: {{total_gross}}
-
-Companii:
-{{companies_summary}}
-
-Generat: {{generated_at}}
-(CSV-urile se descarcă automat pe calculator)</div>
-      </div>
-
-      <!-- Inputs -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--text2)">Service ID</label>
-          <input id="bkp-service" placeholder="service_cn7ufbh" class="inp" style="width:100%;margin-top:4px;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--text2)">Template ID</label>
-          <input id="bkp-template" placeholder="template_backup" class="inp" style="width:100%;margin-top:4px;box-sizing:border-box">
-        </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;font-size:12px;color:#1e3a5f;line-height:1.8">
+        Backup-ul descarcă <strong>un singur fișier JSON</strong> cu toate loadurile, tripurile, șoferii și companiile.<br>
+        Fișierul poate fi reimportat oricând sau deschis în Excel.
       </div>
       <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2)">Public Key (Account → General)</label>
-        <input id="bkp-pubkey" placeholder="Cheia publică EmailJS" class="inp" style="width:100%;margin-top:4px;box-sizing:border-box">
+        <label style="font-size:11px;font-weight:700;color:var(--text2)">Săptămâna</label>
+        <select id="bkp-week" class="inp sel" style="width:100%;margin-top:4px">
+          <option value="prev">Săptămâna trecută</option>
+          <option value="curr">Săptămâna curentă</option>
+          <option value="all">Toate loadurile</option>
+        </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--text2)">Email destinatar</label>
-          <input id="bkp-email" placeholder="sandugodiac55@gmail.com" class="inp" style="width:100%;margin-top:4px;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--text2)">Săptămâna</label>
-          <select id="bkp-week" class="inp sel" style="width:100%;margin-top:4px;box-sizing:border-box">
-            <option value="prev">Săptămâna trecută</option>
-            <option value="curr">Săptămâna curentă</option>
-          </select>
-        </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2)">Format</label>
+        <select id="bkp-format" class="inp sel" style="width:100%;margin-top:4px">
+          <option value="csv">CSV (Excel)</option>
+          <option value="json">JSON (complet)</option>
+        </select>
       </div>
-
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn btn-ghost" onclick="cm('m-backup')">Anulează</button>
-        <button class="btn btn-primary" onclick="saveBkpSettings()">💾 Salvează Setările</button>
+        <button class="btn btn-primary" onclick="runBackup()">⬇ Descarcă Backup</button>
       </div>
     </div>
   </div>
@@ -1183,143 +1142,82 @@ async function doLogout(){if(unsub)unsub();if(unsubTrips)unsubTrips();sessionSto
 
 /* ══ BACKUP SYSTEM ══ */
 // Settings stored in localStorage
-function getBkpCfg(){
-  try{return JSON.parse(localStorage.getItem('gdispatch_bkp_cfg')||'{}');}catch{return{};}
-}
-function saveBkpCfg(cfg){localStorage.setItem('gdispatch_bkp_cfg',JSON.stringify(cfg));}
-
 function openBackupModal(){
-  const cfg=getBkpCfg();
-  document.getElementById('bkp-service').value=cfg.serviceId||'';
-  document.getElementById('bkp-template').value=cfg.templateId||'';
-  document.getElementById('bkp-pubkey').value=cfg.publicKey||'';
-  document.getElementById('bkp-email').value=cfg.email||'sandugodiac55@gmail.com';
-  document.getElementById('bkp-week').value=cfg.weekOffset||'prev';
-  cm('m-backup');
+  om('m-backup');
 }
 
-function saveBkpSettings(){
-  const cfg={
-    serviceId:document.getElementById('bkp-service').value.trim(),
-    templateId:document.getElementById('bkp-template').value.trim(),
-    publicKey:document.getElementById('bkp-pubkey').value.trim(),
-    email:document.getElementById('bkp-email').value.trim(),
-    weekOffset:document.getElementById('bkp-week').value
-  };
-  saveBkpCfg(cfg);
-  notify('✓ Setări salvate');
-  cm('m-backup');
-}
+function csvRow(arr){return arr.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')+'\r\n';}
 
 async function runBackup(){
-  const cfg=getBkpCfg();
-  if(!cfg.serviceId||!cfg.templateId||!cfg.publicKey){
-    notify('⚠ Configurează EmailJS mai întâi (butonul ⚙ Backup)','err');
-    openBackupModal();
-    return;
-  }
-
+  const weekSel=document.getElementById('bkp-week')?.value||'prev';
+  const fmt2=document.getElementById('bkp-format')?.value||'csv';
+  cm('m-backup');
   notify('⏳ Generez backup...','inf');
 
-  // Determine which week
-  const now=new Date();
-  let targetMonday=new Date(now);
-  const day=now.getDay();
-  if(cfg.weekOffset==='prev'){
-    // Previous week Monday
+  // Determine target loads
+  let targetLoads=LOADS;
+  let fileLabel='all';
+  if(weekSel!=='all'){
+    const now=new Date();
+    const day=now.getDay();
     const diff=day===0?-6:1-day;
-    targetMonday.setDate(now.getDate()+diff-7);
+    const mon=new Date(now);
+    mon.setDate(now.getDate()+diff+(weekSel==='prev'?-7:0));
+    mon.setHours(0,0,0,0);
+    const targetWeek=CWfrom(mon);
+    fileLabel=targetWeek;
+    targetLoads=LOADS.filter(l=>l.week===targetWeek||inW(l.date,targetWeek));
+  }
+
+  if(!targetLoads.length){notify('Nu sunt loaduri pentru perioada selectată.','inf');return;}
+
+  const ts=new Date().toISOString().slice(0,10);
+  const fname=`gdispatch-backup-${fileLabel}-${ts}`;
+
+  if(fmt2==='json'){
+    // Full JSON backup
+    const data={
+      exportedAt:new Date().toISOString(),
+      week:fileLabel,
+      loads:targetLoads,
+      trips:TRIPS,
+      drivers:DRIVERS,
+      companies:COMPANIES
+    };
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=fname+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    notify(`✅ Backup JSON descărcat — ${targetLoads.length} loaduri`);
   } else {
-    // Current week Monday
-    const diff=day===0?-6:1-day;
-    targetMonday.setDate(now.getDate()+diff);
-  }
-  targetMonday.setHours(0,0,0,0);
-  const targetWeek=CWfrom(targetMonday);
-  const weekLabel=wLbl(targetWeek);
-
-  const attachments=[];
-  for(const co of COMPANIES){
-    const coDrivers=DRIVERS.filter(d=>(d.company||'').trim()===co.name.trim());
-    if(!coDrivers.length)continue;
-    const coLoads=LOADS.filter(l=>coDrivers.some(d=>d.name===l.driver)&&l.week===targetWeek);
-    if(!coLoads.length)continue;
-
-    let csv='\uFEFF';
-    csv+=`G-Dispatch Backup — ${co.name} — ${weekLabel}\r\n\r\n`;
-    const header=['Order ID','Driver','Broker','Date','Miles','Rate ($)','Pickup','Delivery','Status','Paid','Dispatcher'];
-    csv+='=== TOATE LOADURILE ===\r\n';
-    csv+=csvRow(header);
-    coLoads.forEach(l=>{
-      csv+=csvRow([l.orderId||'',l.driver||'',l.broker||'',l.date||'',l.miles||0,l.rate||0,l.pickup||''
-,l.delivery||''
-,l.status||''
-,l.paid?'YES':'NO'
-,l.dispName||l.dispEmail||''
-]);
+    // CSV per company
+    const companies=[...new Set(targetLoads.map(l=>l.company||'—'))].sort();
+    let combined='\uFEFF';
+    combined+=`G-Dispatch Backup — ${fileLabel} — ${new Date().toLocaleDateString('ro-MD')}\r\n\r\n`;
+    combined+=csvRow(['Order ID','Driver','Company','Dispatcher','Broker','Rate ($)','Miles','Pickup','Delivery','Date','Status','Paid','Pay Method','Car','Notes']);
+    targetLoads.forEach(l=>{
+      combined+=csvRow([l.orderId||'',l.driver||'',l.company||'',l.dispName||l.dispEmail||'',l.broker||'',l.rate||0,l.miles||0,l.origin||l.pickup||'',l.dest||l.delivery||'',l.date||'',l.status||'',l.paid?'YES':'NO',l.payMethod||'',l.car||'',l.notes||'']);
     });
-
-    coDrivers.forEach(dr=>{
-      const dl=coLoads.filter(l=>l.driver===dr.name);
-      if(!dl.length)return;
-      const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
-      const paid=dl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
-      csv+=`\r\n=== ${dr.name.toUpperCase()} | Loads: ${dl.length} | Gross: $${fmt(gross)} | Paid: $${fmt(paid)} | Unpaid: $${fmt(gross-paid)} ===\r\n`;
-      csv+=csvRow(['Order ID','Broker','Date','Miles','Rate ($)','Pickup','Delivery','Paid']);
-      dl.forEach(l=>csv+=csvRow([l.orderId||''
-,l.broker||''
-,l.date||''
-,l.miles||0,l.rate||0,l.pickup||''
-,l.delivery||''
-,l.paid?'YES':'NO'
-]));
+    combined+='\r\n\r\nSUMAR PE COMPANII\r\n';
+    companies.forEach(coName=>{
+      const cl=targetLoads.filter(l=>(l.company||'—')===coName);
+      const gross=cl.reduce((s,l)=>s+(+l.rate||0),0);
+      const paid=cl.filter(l=>l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+      combined+=csvRow([coName,`${cl.length} loaduri`,`Gross: $${fmt(gross)}`,`Paid: $${fmt(paid)}`,`Unpaid: $${fmt(gross-paid)}`]);
     });
-
-    attachments.push({company:co.name,csv,loads:coLoads.length});
-  }
-
-  if(!attachments.length){
-    notify('Nu sunt loaduri pentru perioada selectată.','inf');
-    return;
-  }
-
-  // Download CSVs
-  attachments.forEach((a,i)=>{
-    setTimeout(()=>{
-      const blob=new Blob([a.csv],{type:'text/csv;charset=utf-8;'});
-      const url=URL.createObjectURL(blob);
-      const anc=document.createElement('a');
-      anc.href=url; anc.download=`backup-${a.company.replace(/\s/g,'-')}-${targetWeek}.csv`;
-      document.body.appendChild(anc); anc.click(); document.body.removeChild(anc);
-      setTimeout(()=>URL.revokeObjectURL(url),2000);
-    },i*400);
-  });
-
-  // Send summary email
-  try{
-    const summary=attachments.map(a=>`• ${a.company}: ${a.loads} loaduri`).join('\n');
-    const totalLoads=attachments.reduce((s,a)=>s+a.loads,0);
-    const totalGross=LOADS.filter(l=>l.week===targetWeek).reduce((s,l)=>s+(+l.rate||0),0);
-    emailjs.init(cfg.publicKey);
-    await emailjs.send(cfg.serviceId,cfg.templateId,{
-      to_email:cfg.email,
-      week_label:weekLabel,
-      total_loads:totalLoads,
-      total_gross:'$'+fmt(totalGross),
-      companies_summary:summary,
-      generated_at:new Date().toLocaleString('ro-MD')
-    });
-    notify(`✅ Backup ${weekLabel} — ${attachments.length} CSV descărcate + email trimis la ${cfg.email}`);
-  }catch(err){
-    notify(`⬇ ${attachments.length} CSV descărcate. Email eșuat: ${err.text||err.message}`,'err');
-    console.error('EmailJS error:',err);
+    const blob=new Blob([combined],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=fname+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    notify(`✅ Backup CSV descărcat — ${targetLoads.length} loaduri`);
   }
 }
 
-function csvRow(arr){return arr.map(v=>'"'+String(v==null?''
-:v).replace(/"/g,'""')+'"').join(',')+'\r\n';}
-
-function triggerManualBackup(){runBackup();}
+function triggerManualBackup(){om('m-backup');}
 
 window.addEventListener('load',()=>{
   window._fb.onAuthStateChanged(window._auth,async u=>{
