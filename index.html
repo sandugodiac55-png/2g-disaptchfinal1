@@ -521,9 +521,13 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="fg"><label>📍 De unde (oraș)</label><input id="trip-pickup" placeholder="ex: Fort Myers, FL"></div>
                 <div class="fg"><label>📍 Până unde (oraș)</label><input id="trip-delivery" placeholder="ex: Richardson, TX"></div>
               </div>
-              <div class="fg" style="margin-bottom:12px">
-                <label>Google Maps Route URL <span style="font-size:10px;color:var(--text3);font-weight:400">— optional</span></label>
+              <div class="fg" style="margin-bottom:8px">
+                <label>🗺 Google Maps URL 1 <span style="color:var(--red)">*</span></label>
                 <input id="trip-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px">
+              </div>
+              <div class="fg" style="margin-bottom:12px">
+                <label>🗺 Google Maps URL 2 <span style="font-size:10px;color:var(--text3);font-weight:400">— opțional</span></label>
+                <input id="trip-maps-url2" placeholder="https://maps.google.com/..." style="font-size:12px">
               </div>
               <div id="trip-sel-loads" class="ls-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -2055,7 +2059,8 @@ async function confirmTrip(){
   const tripWeekDate=wRange(tripWeek).start.toISOString().split('T')[0];
   const tripPickup=document.getElementById('trip-pickup')?.value.trim()||'';
   const tripDelivery=document.getElementById('trip-delivery')?.value.trim()||'';
-  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,mapsUrl,pickup:tripPickup||null,delivery:tripDelivery||null,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
+  const mapsUrl2=document.getElementById('trip-maps-url2')?.value.trim()||null;
+  pendingTripData={loadIds:[...tripSelLoads],miles,gross,rpm,mapsUrl,mapsUrl2,pickup:tripPickup||null,delivery:tripDelivery||null,driverName:curDrv.name,driverId:curDrv.id,dispEmail:CU.email,dispName:CP.name||CU.email,weekDate:tripWeekDate,createdDate:tripWeekDate,week:tripWeek};
   if(minRate>0&&rpm<minRate){
     // under minimum — require comment
     document.getElementById('trip-create-ui').classList.add('hidden');
@@ -2092,6 +2097,7 @@ function openEditTrip(tripId){
   editTripSelLoads=[...(trip.loadIds||[])];
   document.getElementById('et-miles').value=trip.miles||'';
   document.getElementById('et-maps-url').value=trip.mapsUrl||'';
+  document.getElementById('et-maps-url2').value=trip.mapsUrl2||'';
   document.getElementById('et-pickup').value=trip.pickup||'';
   document.getElementById('et-delivery').value=trip.delivery||'';
   updateEditTripCalc();
@@ -2160,15 +2166,17 @@ async function saveEditTrip(){
     if(!comment){notify('Comment required when below minimum rate','err');return}
     const{updateDoc,doc}=window._fb;
     const mu2=document.getElementById('et-maps-url').value.trim();
+    const mu2b=document.getElementById('et-maps-url2').value.trim();
     const pu2=document.getElementById('et-pickup').value.trim();
     const dl2=document.getElementById('et-delivery').value.trim();
-    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment,mapsUrl:mu2||null,pickup:pu2||null,delivery:dl2||null});
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:comment,mapsUrl:mu2||null,mapsUrl2:mu2b||null,pickup:pu2||null,delivery:dl2||null});
   } else {
     const{updateDoc,doc}=window._fb;
     const mu3=document.getElementById('et-maps-url').value.trim();
+    const mu3b=document.getElementById('et-maps-url2').value.trim();
     const pu3=document.getElementById('et-pickup').value.trim();
     const dl3=document.getElementById('et-delivery').value.trim();
-    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null,mapsUrl:mu3||null,pickup:pu3||null,delivery:dl3||null});
+    await updateDoc(doc(window._db,'trips',editTripId),{loadIds:editTripSelLoads,miles,gross,rpm,underMinComment:null,mapsUrl:mu3||null,mapsUrl2:mu3b||null,pickup:pu3||null,delivery:dl3||null});
   }
   notify('Trip updated ✓');
   cm('m-edit-trip');editTripId=null;editTripSelLoads=[];
@@ -2648,8 +2656,11 @@ function showTripPopover(e,tripId){
     (tLoads[0]?`<div style="margin-top:4px;color:var(--text3)">${tLoads[0].origin||'?'} → ${tLoads[tLoads.length-1].dest||'?'}</div>`:'')+
     (trip.dispName?`<div style="margin-top:2px;font-size:11px;color:var(--text3)">Dispatcher: ${trip.dispName}</div>`:'');
   const mapsBtn=document.getElementById('tp-maps-btn');
+  const mapsBtn2=document.getElementById('tp-maps-btn2');
   if(trip.mapsUrl){mapsBtn.href=trip.mapsUrl;mapsBtn.style.display='flex'}
   else{mapsBtn.style.display='none'}
+  if(trip.mapsUrl2){mapsBtn2.href=trip.mapsUrl2;mapsBtn2.style.display='flex'}
+  else{mapsBtn2.style.display='none'}
   const pop=document.getElementById('trip-popover');
   pop.style.display='block';
   document.getElementById('trip-popover-overlay').style.display='block';
@@ -5508,9 +5519,13 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
         <div class="fg"><label>📍 De unde (oraș)</label><input id="et-pickup" placeholder="ex: Fort Myers, FL"></div>
         <div class="fg"><label>📍 Până unde (oraș)</label><input id="et-delivery" placeholder="ex: Richardson, TX"></div>
       </div>
-      <div class="fg">
-        <label>Google Maps Route URL</label>
+      <div class="fg" style="margin-bottom:6px">
+        <label>🗺 Google Maps URL 1</label>
         <input id="et-maps-url" placeholder="https://maps.google.com/..." style="font-size:12px">
+      </div>
+      <div class="fg">
+        <label>🗺 Google Maps URL 2 <span style="font-size:10px;color:var(--text3);font-weight:400">— opțional</span></label>
+        <input id="et-maps-url2" placeholder="https://maps.google.com/..." style="font-size:12px">
       </div>
       <div class="fg"><label>Select Loads for this Trip</label></div>
       <div id="et-load-list" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
@@ -5749,7 +5764,8 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
   </div>
   <div id="tp-body" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a id="tp-maps-btn" href="#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Open Google Maps</a>
+    <a id="tp-maps-btn" href="#" target="_blank" style="display:none;flex:1;text-align:center;background:#0d9488;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Maps 1</a>
+    <a id="tp-maps-btn2" href="#" target="_blank" style="display:none;flex:1;text-align:center;background:#0f766e;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none">🗺 Maps 2</a>
     <button onclick="closeTripPopover()" style="flex:1;background:var(--bg2);border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2)">Close</button>
   </div>
 </div>
