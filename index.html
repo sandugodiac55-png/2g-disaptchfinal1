@@ -1408,6 +1408,8 @@ async function loadMeta(){
   // fill acc selects
   const csel=document.getElementById('acc-co-sel');
   if(csel)csel.innerHTML=`<option value="">All Companies</option>`+COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  // Re-render current page so accounting/dispatch sees companies after they load
+  if(ROLE)renderCur();
 }
 
 /* ══ REALTIME ══ */
