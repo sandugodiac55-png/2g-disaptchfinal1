@@ -2553,29 +2553,28 @@ function renderKPI(){
           return days.map((d,di)=>{
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
-            const dayTrips=tripRanges.filter(r=>r.startDate&&r.endDate&&ds>=r.startDate&&ds<=r.endDate);
+            // Each load in a trip shown individually on its own date
+            const dayTripLoads=visibleTrips.flatMap(t=>{
+              const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date===ds);
+              const tg=LOADS.filter(l=>t.loadIds?.includes(l.id)).reduce((s,l)=>s+(+l.rate||0),0);
+              const trpm=t.miles>0?tg/t.miles:0;
+              const rpmOk=minR>0?trpm>=minR:true;
+              const col=rpmOk?'#0d9488':'#ef4444';
+              return tLoads.map(l=>({l,t,trpm,col,rpmOk,tg}));
+            });
             const dayLoads=dLoads.filter(l=>l.date===ds&&!allTrippedIds.has(l.id));
-            return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px">
-              ${dayTrips.map(r=>{
-                const isStart=ds===r.startDate;
-                const isEnd=ds===r.endDate;
-                const isSingle=isStart&&isEnd;
-                // full-width bar stretching across borders
-                const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
-                const marginL=isStart?'3px':'-1px';
-                const marginR=isEnd?'3px':'-1px';
-                const clickAttr=`onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')"`;
-                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" ${clickAttr}>
-                  ${isStart?`
-                    <div style="font-size:11px;font-weight:800;color:${r.textCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
-                    <div style="font-size:9px;color:${r.textCol};opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.tLoads[0]?.origin?.split(',')[0]||'?'} → ${r.tLoads[r.tLoads.length-1]?.dest?.split(',')[0]||'?'}</div>
-                    <div style="font-size:9px;color:${r.textCol};opacity:.8">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi${r.t.mapsUrl?' 🗺':''}</div>
-                  `:`<div style="height:100%"></div>`}
-                </div>`;
-              }).join('')}
-              ${dayLoads.map(l=>`<div style="background:#94a3b8;border-radius:6px;margin:3px;padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="openDriverPage('${drv.id}')">
+            const allDayBlocks=[...dayTripLoads,...dayLoads.map(l=>({l,t:null}))];
+            const blockH=allDayBlocks.length>1?Math.max(36,Math.floor(62/allDayBlocks.length)):52;
+            return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:top;height:${Math.max(70,allDayBlocks.length*blockH+8)}px">
+              ${dayTripLoads.map(({l,t,trpm,col})=>`
+                <div style="background:${col};border-radius:6px;margin:2px 3px;padding:4px 7px;cursor:pointer;min-height:${blockH}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="event.stopPropagation();showTripPopover(event,'${t.id}')">
+                  <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(+l.rate||0)}</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(l.origin||l.pickup||'?').split(',')[0]} → ${(l.dest||l.delivery||'?').split(',')[0]}</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,.75)">T#${t.tripNum||'?'} · ${trpm.toFixed(2)}/mi</div>
+                </div>`).join('')}
+              ${dayLoads.map(l=>`<div style="background:#94a3b8;border-radius:6px;margin:2px 3px;padding:4px 7px;cursor:pointer;min-height:${blockH}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="openDriverPage('${drv.id}')">
                 <div style="font-size:11px;font-weight:800;color:#fff">$${fmt(+l.rate||0)}</div>
-                <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.origin?.split(',')[0]||'?'} → ${l.dest?.split(',')[0]||'?'}</div>
+                <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(l.origin||'?').split(',')[0]} → ${(l.dest||'?').split(',')[0]}</div>
               </div>`).join('')}
             </td>`;
           }).join('');
