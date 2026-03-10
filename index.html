@@ -2632,21 +2632,8 @@ function renderKPI(){
             return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery,isTrip:true};
           }).filter(Boolean);
 
-          // Standalone loads (no trip) — show as individual bars
-          const standaloneBars=dLoads.filter(l=>!allTrippedIds.has(l.id)&&l.date).map(l=>{
-            const lg=+(l.rate||0);
-            const rpmOk=minR>0?(l.miles>0?lg/l.miles>=minR:false):true;
-            const col=rpmOk?'#0d9488':'#6366f1'; // indigo for standalone
-            const startDate=l.date;
-            const isDelivered=l.status==='Delivered'||l.status==='Invoiced';
-            const isPickedUp=l.status==='Picked Up';
-            const endDate=isDelivered?(l.deliveredDate||l.date):(isPickedUp?todayStr:startDate);
-            const pickup=(l.origin||l.pickup||'?').split(',')[0];
-            const delivery=(l.dest||l.delivery||'?').split(',')[0];
-            return{l,tg:lg,trpm:l.miles>0?lg/l.miles:0,col,rpmOk,startDate,endDate,pickup,delivery,isTrip:false};
-          });
-
-          const allBars=[...tripBars,...standaloneBars];
+          // Only trip bars — no standalone loads
+          const allBars=[...tripBars];
 
           return days.map((d,di)=>{
             const ds=dayStrs[di];
