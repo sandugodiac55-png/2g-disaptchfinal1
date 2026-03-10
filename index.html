@@ -1336,10 +1336,13 @@ async function boot(user){
   const{getDocs,collection,query,where,setDoc,doc:docFn}=window._fb;
   const snap=await getDocs(query(collection(window._db,'users'),where('email','==',user.email)));
   if(!snap.empty){
-    CP={id:snap.docs[0].id,...snap.docs[0].data()};
+    // Merge ALL docs found for this email (handles duplicate old-id + uid docs)
+    const allDocs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const mergedCompanies=[...new Set(allDocs.flatMap(d=>d.companies||[]))];
+    CP={...allDocs[0],companies:mergedCompanies};
     // Sync user doc to uid-keyed path so Firestore Rules can verify role
     if(snap.docs[0].id!==user.uid){
-      try{await setDoc(docFn(window._db,'users',user.uid),{...CP,uid:user.uid},{merge:true});}
+      try{await setDoc(docFn(window._db,'users',user.uid),{...CP,uid:user.uid,companies:mergedCompanies},{merge:true});}
       catch(e){console.warn('uid-sync:',e);}
     }
   } else {
@@ -2719,10 +2722,18 @@ function renderAccView(){
 function getMyCompanies(){
   // Admin and accounting_manager see all companies
   if(ROLE==='admin'||ROLE==='accounting_manager')return COMPANIES;
-  const me=USERS.find(u=>u.email===CU.email);
-  const myCos=me?.companies||[];
+  // Find ALL user docs matching this email (may have duplicate docs: old id + uid)
+  const allMe=USERS.filter(u=>u.email===CU.email);
+  // Also match by uid directly (doc id = uid)
+  const byUid=USERS.find(u=>u.id===CU.uid);
+  if(byUid&&!allMe.find(u=>u.id===byUid.id))allMe.push(byUid);
+  // Merge companies from all matching docs
+  const myCos=[...new Set(allMe.flatMap(u=>u.companies||[]))];
+  console.log('[getMyCompanies] email:',CU.email,'uid:',CU.uid,'allMe:',allMe.length,'myCos:',myCos,'COMPANIES:',COMPANIES.map(c=>({id:c.id,name:c.name})));
   if(!myCos.length)return COMPANIES; // fallback: show all if none assigned
-  return COMPANIES.filter(c=>myCos.includes(c.id)||myCos.includes(c.name));
+  const result=COMPANIES.filter(c=>myCos.includes(c.id)||myCos.includes(c.name));
+  console.log('[getMyCompanies] result:',result.map(c=>c.name));
+  return result;
 }
 function renderAccCompanies(){
   const grid=document.getElementById('acc-company-grid');if(!grid)return;
