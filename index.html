@@ -1907,8 +1907,8 @@ function renderDrvTrips(allDrvLoads){
     // locked = this week is closed for this driver
     const locked=ROLE==='dispatcher'?isDrvWeekClosed(curDrv?.id,w):false;
     const isActiveW=w===workW;
-    const wTrips=allTrips.filter(t=>t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.createdDate||'',w));
-    const trippedIds=new Set(wTrips.flatMap(t=>t.loadIds||[]));
+    const wTrips=allTrips.filter(t=>t.week===w||t.weekDate===wRange(w).start.toISOString().split('T')[0]||inW(t.weekDate||t.createdDate||'',w));
+    const trippedIds=new Set(allTrips.flatMap(t=>t.loadIds||[]));
     const wNum=(curDrv?.weekOffset||0)+wi+1;
     const canEdit=ROLE==='admin'||(ROLE==='dispatcher'&&!locked);
 
@@ -1954,10 +1954,11 @@ function renderDrvTrips(allDrvLoads){
       } else {
         statusHtml=`<span class="pill ${sC(effectiveStatus)}">${effectiveStatus}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
       }
-      // Find this load's trip info
-      const loadTrip=inTrip?wTrips.find(t=>t.loadIds?.includes(l.id)):null;
+      // Find this load's trip info — search all trips, not just current week
+      const loadTrip=allTrips.find(t=>t.loadIds?.includes(l.id));
       const tripRpmOk=loadTrip?((+(curDrv?.minRate||0))>0?(loadTrip.miles>0?((loadTrip.gross||0)/loadTrip.miles)>=(+(curDrv?.minRate||0)):true):true):true;
-      const canEditTrip=canEdit&&loadTrip;
+      // canEditTrip: allow edit if dispatcher + week not locked (regardless of trip week)
+      const canEditTrip=(ROLE==='admin'||(ROLE==='dispatcher'&&!locked))&&loadTrip;
       const tripBadge=loadTrip
         ?`<span style="display:inline-flex;align-items:center;gap:3px;background:${tripRpmOk?'#e0fdf4':'#fef2f2'};border:1px solid ${tripRpmOk?'var(--teal)':'var(--red)'};color:${tripRpmOk?'var(--teal)':'var(--red)'};border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;cursor:${canEditTrip?'pointer':'default'};white-space:nowrap" ${canEditTrip?`onclick="event.stopPropagation();openEditTrip('${loadTrip.id}')" title="Edit Trip #${loadTrip.tripNum||'?'}"`:''}
           >🗂 T#${loadTrip.tripNum||'?'}&nbsp;<span style="font-family:var(--mono);font-size:9px;color:${tripRpmOk?'var(--blue)':'var(--red)'}">$${(loadTrip.miles>0?(loadTrip.gross||0)/loadTrip.miles:0).toFixed(2)}/mi</span>${canEditTrip?'&nbsp;✏️':''}</span>`
