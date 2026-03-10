@@ -805,10 +805,11 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           </div>
 
           <!-- Tabs -->
-          <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0">
+          <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;flex-wrap:wrap">
             <button onclick="setSalTab('emp',this)" id="sal-tab-emp" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--navy);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">👥 Employees</button>
             <button onclick="setSalTab('founders',this)" id="sal-tab-founders" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--surface2);color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🏆 Founders</button>
             <button onclick="setSalTab('expenses',this)" id="sal-tab-expenses" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--surface2);color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📊 Expenses</button>
+            <button onclick="setSalTab('own',this)" id="sal-tab-own" style="padding:8px 20px;border-radius:8px 8px 0 0;border:none;background:var(--surface2);color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🏢 OWN Company</button>
           </div>
 
           <!-- TAB: Employees -->
@@ -824,6 +825,11 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <!-- TAB: Expenses -->
           <div id="sal-pane-expenses" style="display:none">
             <div id="sal-expenses-content"></div>
+          </div>
+
+          <!-- TAB: OWN Company -->
+          <div id="sal-pane-own" style="display:none">
+            <div id="sal-own-content"></div>
           </div>
         </div>
 
@@ -3675,10 +3681,14 @@ function salSelectNone(){
 
 function setSalTab(tab,btn){
   salTab=tab;
-  ['emp','founders','expenses'].forEach(t=>{
+  ['emp','founders','expenses','own'].forEach(t=>{
     const b=document.getElementById(`sal-tab-${t}`);
     const p=document.getElementById(`sal-pane-${t}`);
-    if(b){b.style.background=t===tab?'var(--navy)':'var(--surface2)';b.style.color=t===tab?'#fff':'var(--text3)';}
+    if(b){
+      const isOwn=t==='own';
+      b.style.background=t===tab?(isOwn?'#f97316':'var(--navy)'):'var(--surface2)';
+      b.style.color=t===tab?'#fff':'var(--text3)';
+    }
     if(p)p.style.display=t===tab?'':'none';
   });
 }
@@ -3755,6 +3765,7 @@ function renderSalary(){
 
   if(salTab==='emp') renderSalEmp(selWeeks);
   else if(salTab==='founders') renderSalFounders();
+  else if(salTab==='own') renderSalOwn(selWeeks);
   else renderSalExpenses();
 }
 
@@ -3964,6 +3975,310 @@ function renderSalExpenses(){
     <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:700">TOTAL CHELTUIELI</span>
     <span style="color:#fff;font-size:22px;font-weight:800;font-family:var(--mono)">$${fmt(totalFixed+totalVariable)}</span>
   </div>`;
+}
+
+// ── OWN Company Tab ──
+function renderSalOwn(weeks){
+  const el=document.getElementById('sal-own-content');
+  if(!el)return;
+  if(!weeks.length){el.innerHTML=`<div class="em"><div class="e">📅</div><p>Selectează săptămânile de calcul.</p></div>`;return;}
+
+  const cfg=SALARY_CONFIG||{};
+  const ownCfg=cfg._own||{};
+
+  // ── 1. Gather data per company ──
+  const companies=COMPANIES;
+  const dispatchers=USERS.filter(u=>u.role==='dispatcher');
+
+  // Dispatcher salary total (% of their drivers' gross)
+  let totalDispSalary=0;
+  dispatchers.forEach(disp=>{
+    const myDrivers=DRIVERS.filter(d=>(d.dispatcherEmail||'').trim().toLowerCase()===(disp.email||'').trim().toLowerCase());
+    weeks.forEach(w=>{
+      myDrivers.forEach(dr=>{
+        const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
+        const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+        totalDispSalary+=gross*((+(dr.salaryPct||0))/100);
+      });
+    });
+  });
+
+  // Fixed expenses (from salaryConfig._expenses, prorated)
+  const fixedExpenses=(cfg._expenses||[]);
+  const totalFixed=fixedExpenses.reduce((s,e)=>s+(+(e.amount||0)),0);
+  const weeksInMonth=getSalMonthWeeks().length||4;
+  const fixedProrated=totalFixed*(weeks.length/weeksInMonth);
+
+  // Variable expenses
+  const totalVariable=(cfg._variableExpenses||[]).reduce((s,e)=>s+(+(e.amount||0)),0);
+  const variableProrated=totalVariable*(weeks.length/weeksInMonth);
+
+  // ── 2. Dispatch Fee per company ──
+  let totalDispFee=0;
+  const coRows=companies.map(co=>{
+    const coDrivers=DRIVERS.filter(d=>(d.company||'').trim()===co.name.trim());
+    const feePct=+(ownCfg[`fee_${co.id}`]||ownCfg[`fee_${co.name}`]||0);
+    let coWeekData=weeks.map(w=>{
+      const wLoads=LOADS.filter(l=>coDrivers.some(d=>d.name===l.driver)&&inW(l.date,w));
+      const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+      return{w,gross,fee:gross*(feePct/100)};
+    });
+    const coTotalGross=coWeekData.reduce((s,x)=>s+x.gross,0);
+    const coTotalFee=coWeekData.reduce((s,x)=>s+x.fee,0);
+    totalDispFee+=coTotalFee;
+    return{co,feePct,coWeekData,coTotalGross,coTotalFee,coDrivers};
+  }).filter(r=>r.coDrivers.length>0);
+
+  // ── 3. Profit calculation ──
+  const totalRevenue=totalDispFee;
+  const totalCosts=totalDispSalary+fixedProrated+variableProrated;
+  const netProfit=totalRevenue-totalCosts;
+  const perFounder=netProfit/2;
+
+  // ── 4. Render ──
+  let html=`
+  <!-- KPI Summary Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
+    <div style="background:linear-gradient(135deg,#0f4c81,#1a6db5);border-radius:14px;padding:16px 18px">
+      <div style="font-size:10px;color:rgba(255,255,255,.55);letter-spacing:1.5px;font-weight:700;margin-bottom:6px">DISPATCH FEE TOTAL</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(totalDispFee)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">${weeks.length} săpt. · ${coRows.length} companii</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#92400e,#b45309);border-radius:14px;padding:16px 18px">
+      <div style="font-size:10px;color:rgba(255,255,255,.55);letter-spacing:1.5px;font-weight:700;margin-bottom:6px">SALARII DISPATCHERS</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(totalDispSalary)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">${dispatchers.length} dispatchers</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#4a1d96,#6d28d9);border-radius:14px;padding:16px 18px">
+      <div style="font-size:10px;color:rgba(255,255,255,.55);letter-spacing:1.5px;font-weight:700;margin-bottom:6px">CHELTUIELI</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(fixedProrated+variableProrated)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">fixe + variabile prorate</div>
+    </div>
+    <div style="background:linear-gradient(135deg,${netProfit>=0?'#065f46,#059669':'#7f1d1d,#b91c1c'});border-radius:14px;padding:16px 18px">
+      <div style="font-size:10px;color:rgba(255,255,255,.55);letter-spacing:1.5px;font-weight:700;margin-bottom:6px">PROFIT NET</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;font-family:var(--mono)">${netProfit<0?'-':''}$${fmt(Math.abs(netProfit))}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">$${fmt(Math.abs(perFounder))} / fondator</div>
+    </div>
+  </div>
+
+  <!-- Section 1: Dispatch Fee per company -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">💼 Dispatch Fee per Companie</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">% configurabil per companie · calculat pe gross săptămânal</div>
+      </div>
+      <button onclick="exportOwnExcel()" style="padding:7px 14px;background:var(--orange);color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer">⬇ Export Excel</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--navy);color:#fff">
+            <th style="padding:10px 16px;text-align:left;font-size:10px;letter-spacing:1px;font-weight:700">COMPANIE</th>
+            <th style="padding:10px 12px;text-align:center;font-size:10px;letter-spacing:1px;font-weight:700">FEE %</th>
+            ${weeks.map(w=>`<th style="padding:10px 12px;text-align:right;font-size:10px;letter-spacing:.5px;font-weight:700">${wLbl(w).split('–')[0].trim()}<br><span style="opacity:.5;font-weight:400">gross / fee</span></th>`).join('')}
+            <th style="padding:10px 12px;text-align:right;font-size:10px;letter-spacing:1px;font-weight:700">TOTAL GROSS</th>
+            <th style="padding:10px 16px;text-align:right;font-size:10px;letter-spacing:1px;font-weight:700">DISPATCH FEE</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${coRows.map(r=>`
+          <tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+            <td style="padding:12px 16px">
+              <div style="font-weight:700;color:var(--navy)">${r.co.name}</div>
+              <div style="font-size:10px;color:var(--text3)">${r.coDrivers.length} șoferi</div>
+            </td>
+            <td style="padding:10px 12px;text-align:center">
+              <input type="number" value="${r.feePct||''}" placeholder="%" min="0" max="100" step="0.1"
+                style="width:56px;border:1.5px solid var(--border);border-radius:7px;padding:4px 6px;font-size:12px;font-family:var(--mono);font-weight:700;text-align:center;color:var(--orange)"
+                onblur="saveOwnFee('${r.co.id}','${r.co.name}',this.value)"
+                onfocus="this.style.borderColor='var(--orange)'" onblur2="this.style.borderColor='var(--border)'">
+              <span style="font-size:10px;color:var(--text3)">%</span>
+            </td>
+            ${r.coWeekData.map(x=>`<td style="padding:10px 12px;text-align:right;font-family:var(--mono)">
+              <div style="font-size:12px;color:var(--green);font-weight:700">$${fmt(x.gross)}</div>
+              <div style="font-size:11px;color:var(--orange);font-weight:600">$${fmt(x.fee)}</div>
+            </td>`).join('')}
+            <td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--green)">$${fmt(r.coTotalGross)}</td>
+            <td style="padding:10px 16px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--orange);font-size:14px">$${fmt(r.coTotalFee)}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--navy)">
+            <td colspan="2" style="padding:12px 16px;font-size:12px;font-weight:800;color:#fff">TOTAL</td>
+            ${weeks.map(w=>{
+              const wFee=coRows.reduce((s,r)=>s+(r.coWeekData.find(x=>x.w===w)?.fee||0),0);
+              return`<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;color:#fbbf24">$${fmt(wFee)}</td>`;
+            }).join('')}
+            <td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;color:#6ee7b7">$${fmt(coRows.reduce((s,r)=>s+r.coTotalGross,0))}</td>
+            <td style="padding:10px 16px;text-align:right;font-family:var(--mono);font-weight:800;color:#fbbf24;font-size:15px">$${fmt(totalDispFee)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 2: Dispatcher Salaries summary -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">👥 Salarii Dispatchers</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">% din gross-ul șoferilor lor</div>
+      </div>
+      <button onclick="exportDispSalaryExcel()" style="padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer">⬇ Export Excel</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--bg)">
+            <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">DISPATCHER</th>
+            ${weeks.map(w=>`<th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:.5px;font-weight:700;border-bottom:1px solid var(--border)">${wLbl(w).split('–')[0].trim()}</th>`).join('')}
+            <th style="padding:10px 16px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">TOTAL SALARIU</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${dispatchers.map(disp=>{
+            const myDrivers=DRIVERS.filter(d=>(d.dispatcherEmail||'').trim().toLowerCase()===(disp.email||'').trim().toLowerCase());
+            let dispTotal=0;
+            const weekCells=weeks.map(w=>{
+              let wSal=0;
+              myDrivers.forEach(dr=>{
+                const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
+                const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+                wSal+=gross*((+(dr.salaryPct||0))/100);
+              });
+              dispTotal+=wSal;
+              return`<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--blue)">$${fmt(wSal)}</td>`;
+            }).join('');
+            return`<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+              <td style="padding:12px 16px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${avL(disp.name)}</div>
+                  <div><div style="font-weight:700;color:var(--navy)">${disp.name}</div>
+                  <div style="font-size:10px;color:var(--text3)">${myDrivers.length} șoferi</div></div>
+                </div>
+              </td>
+              ${weekCells}
+              <td style="padding:10px 16px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--blue);font-size:14px">$${fmt(dispTotal)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--navy)">
+            <td style="padding:12px 16px;font-size:12px;font-weight:800;color:#fff">TOTAL</td>
+            ${weeks.map(w=>{
+              let wTotal=0;
+              dispatchers.forEach(disp=>{
+                const myDrivers=DRIVERS.filter(d=>(d.dispatcherEmail||'').trim().toLowerCase()===(disp.email||'').trim().toLowerCase());
+                myDrivers.forEach(dr=>{
+                  const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
+                  const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+                  wTotal+=gross*((+(dr.salaryPct||0))/100);
+                });
+              });
+              return`<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;color:#93c5fd">$${fmt(wTotal)}</td>`;
+            }).join('')}
+            <td style="padding:10px 16px;text-align:right;font-family:var(--mono);font-weight:800;color:#93c5fd;font-size:15px">$${fmt(totalDispSalary)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 3: Profit breakdown -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <div style="font-size:13px;font-weight:800;color:var(--navy)">📊 Profit Companiei</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${weeks.length} săpt. din ${weeksInMonth} ale lunii · cheltuieli prorate</div>
+    </div>
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:0">
+      ${[
+        {label:'Dispatch Fee Total (venituri)',val:totalDispFee,color:'var(--green)',sign:'+'},
+        {label:'Salarii Dispatchers',val:totalDispSalary,color:'var(--red)',sign:'−'},
+        {label:`Cheltuieli fixe (${weeks.length}/${weeksInMonth} săpt.)`,val:fixedProrated,color:'var(--red)',sign:'−'},
+        {label:`Cheltuieli variabile (${weeks.length}/${weeksInMonth} săpt.)`,val:variableProrated,color:'var(--red)',sign:'−'},
+      ].map((row,i,arr)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:13px;color:var(--text2);font-weight:600">${row.sign} ${row.label}</span>
+          <span style="font-family:var(--mono);font-size:14px;font-weight:800;color:${row.color}">${row.sign==='+'?'':'−'}$${fmt(row.val)}</span>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0 0">
+        <span style="font-size:14px;font-weight:800;color:var(--navy)">= PROFIT NET</span>
+        <span style="font-family:var(--mono);font-size:20px;font-weight:800;color:${netProfit>=0?'var(--green)':'var(--red)'}">$${fmt(netProfit)}</span>
+      </div>
+    </div>
+    <!-- Founders split -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--border)">
+      ${['Sandu','Andrian'].map(f=>`
+      <div style="padding:16px 20px;text-align:center;${f==='Andrian'?'border-left:1px solid var(--border)':''}">
+        <div style="font-size:10px;color:var(--text3);letter-spacing:1.5px;font-weight:700;margin-bottom:6px">🏆 ${f.toUpperCase()} (50%)</div>
+        <div style="font-size:24px;font-weight:800;font-family:var(--mono);color:${netProfit>=0?'var(--green)':'var(--red)'}">$${fmt(Math.abs(perFounder))}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  el.innerHTML=html;
+}
+
+async function saveOwnFee(coId, coName, val){
+  const pct=parseFloat(val)||0;
+  if(!SALARY_CONFIG._own)SALARY_CONFIG._own={};
+  SALARY_CONFIG._own[`fee_${coId}`]=pct;
+  SALARY_CONFIG._own[`fee_${coName}`]=pct;
+  await saveSalaryConfig();
+  const weeks=getSalWeeks();
+  renderSalOwn(weeks);
+}
+
+function exportOwnExcel(){
+  const weeks=getSalWeeks();
+  const ownCfg=(SALARY_CONFIG._own)||{};
+  const rows=[['Companie','Fee %',...weeks.map(w=>wLbl(w).split('–')[0].trim()),'Total Gross','Dispatch Fee']];
+  COMPANIES.forEach(co=>{
+    const coDrivers=DRIVERS.filter(d=>(d.company||'').trim()===co.name.trim());
+    if(!coDrivers.length)return;
+    const feePct=+(ownCfg[`fee_${co.id}`]||ownCfg[`fee_${co.name}`]||0);
+    const wData=weeks.map(w=>{
+      const wLoads=LOADS.filter(l=>coDrivers.some(d=>d.name===l.driver)&&inW(l.date,w));
+      return wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    });
+    const totalGross=wData.reduce((s,v)=>s+v,0);
+    const totalFee=totalGross*(feePct/100);
+    rows.push([co.name,feePct+'%',...wData.map(v=>'$'+fmt(v)),'$'+fmt(totalGross),'$'+fmt(totalFee)]);
+  });
+  exportToCSV(rows,'dispatch-fee-'+salMonth+'.csv');
+  notify('Export gata ✓');
+}
+
+function exportDispSalaryExcel(){
+  const weeks=getSalWeeks();
+  const dispatchers=USERS.filter(u=>u.role==='dispatcher');
+  const rows=[['Dispatcher',...weeks.map(w=>wLbl(w).split('–')[0].trim()),'Total Salariu']];
+  dispatchers.forEach(disp=>{
+    const myDrivers=DRIVERS.filter(d=>(d.dispatcherEmail||'').trim().toLowerCase()===(disp.email||'').trim().toLowerCase());
+    let total=0;
+    const wSals=weeks.map(w=>{
+      let s=0;
+      myDrivers.forEach(dr=>{
+        const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
+        const gross=wLoads.reduce((a,l)=>a+(+l.rate||0),0);
+        s+=gross*((+(dr.salaryPct||0))/100);
+      });
+      total+=s;return'$'+fmt(s);
+    });
+    rows.push([disp.name,...wSals,'$'+fmt(total)]);
+  });
+  exportToCSV(rows,'salarii-dispatchers-'+salMonth+'.csv');
+  notify('Export gata ✓');
+}
+
+function exportToCSV(rows,filename){
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
 }
 
 // ── Salary Config Helpers ──
