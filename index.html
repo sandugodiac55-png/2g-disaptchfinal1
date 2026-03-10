@@ -2185,7 +2185,7 @@ async function delTrip(id){
 function openLoadModal(){
   editLoadId=null;
   document.getElementById('m-load-t').textContent=`Add Load — ${curDrv?.name||'?'}`;
-  ['fl-oid','fl-ori','fl-dst','fl-rt','fl-br','fl-be','fl-bp','fl-nt','fl-bf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  ['fl-oid','fl-ori','fl-dst','fl-rt','fl-br','fl-be','fl-bp','fl-nt','fl-bf','fl-car'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
   document.getElementById('fl-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('fl-pay').value='';
   setSw('sw-bf',false);
@@ -2716,6 +2716,12 @@ function getMyCompanies(){
 }
 function renderAccCompanies(){
   const grid=document.getElementById('acc-company-grid');if(!grid)return;
+  // If COMPANIES not yet loaded, reload meta and retry
+  if(!COMPANIES.length){
+    loadMeta().then(()=>renderAccCompanies());
+    grid.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">⏳ Se încarcă companiile...</div>`;
+    return;
+  }
   const myCos=getMyCompanies();
   if(!myCos.length){grid.innerHTML=`<div class="em"><div class="e">🏢</div><p>No companies assigned.</p></div>`;return;}
   grid.innerHTML=myCos.map(co=>{
