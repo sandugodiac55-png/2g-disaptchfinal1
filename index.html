@@ -1405,11 +1405,13 @@ function buildNav(){
 /* ══ META ══ */
 async function loadMeta(){
   const{getDocs,collection}=window._fb,db=window._db;
-  const[us,ds,cs,pw]=await Promise.all([getDocs(collection(db,'users')),getDocs(collection(db,'drivers')),getDocs(collection(db,'companies')),getDocs(collection(db,'passwords'))]);
-  USERS=us.docs.map(d=>({id:d.id,...d.data()}));
-  DRIVERS=ds.docs.map(d=>({id:d.id,...d.data()}));
-  COMPANIES=cs.docs.map(d=>({id:d.id,...d.data()}));
-  PASSWORDS=pw.docs.map(d=>({id:d.id,...d.data()}));
+  // Fetch each collection separately with error handling — Firestore rules
+  // require user doc keyed by UID; if uid-sync hasn't propagated, some reads may fail
+  const safeGet=async(col)=>{try{const s=await getDocs(collection(db,col));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){console.warn('loadMeta blocked:',col,e.code);return[];}};
+  [USERS,DRIVERS,COMPANIES,PASSWORDS]=await Promise.all([
+    safeGet('users'),safeGet('drivers'),safeGet('companies'),safeGet('passwords')
+  ]);
+  console.log('[loadMeta] USERS:',USERS.length,'COMPANIES:',COMPANIES.length,'DRIVERS:',DRIVERS.length);
   // Refresh CP week state from Firestore
   if(CU){
     const freshCP=USERS.find(u=>u.email===CU.email);
