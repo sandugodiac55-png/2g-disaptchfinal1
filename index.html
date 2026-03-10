@@ -282,7 +282,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 .tot-cell .over{color:var(--green)}.tot-cell .under{color:var(--red)}
 
 /* LEADERBOARD */
-.lb-row-kpi{display:grid;grid-template-columns:40px 1fr 70px 110px 90px 90px 110px 120px;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center}
+.lb-row-kpi{display:grid;grid-template-columns:40px 1fr 70px 110px 110px 120px;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center}
 .lb-th-kpi{background:var(--surface2);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
 .lb-row-kpi:last-child{border-bottom:none}
 .lb-row-kpi:hover{background:var(--bg)}
@@ -575,7 +575,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <!-- Summary leaderboard -->
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
             <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:14px;font-weight:800;color:var(--navy)">Dispatcher Rankings</div>
-            <div class="lb-row-kpi lb-th-kpi"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>MILES</div><div>$/MILE</div><div>OVER MIN</div><div>BONUS</div></div>
+            <div class="lb-row-kpi lb-th-kpi"><div>#</div><div>DISPATCHER</div><div>LOADS</div><div>GROSS</div><div>OVER MIN</div><div>BONUS</div></div>
             <div id="kpi-lb"></div>
           </div>
         </div>
@@ -2516,7 +2516,7 @@ function renderKPI(){
       <td class="cal-week-total" style="text-align:right">
         <div style="font-size:11px;font-family:var(--mono);line-height:1.7">
           <div>Gross: <strong style="color:var(--green)">$${fmt(gross)}</strong></div>
-          ${rpm>0?`<div>$/mi: <strong style="color:var(--blue)">$${rpm.toFixed(2)}</strong></div>`:''}
+
           ${overMin>0?`<div>Over min: <strong style="color:var(--orange);font-size:12px">+$${fmt(overMin)}</strong></div>`:''}
           ${overMin<0?`<div>Over min: <strong style="color:var(--red);font-size:12px">-$${fmt(Math.abs(overMin))}</strong></div>`:''}
         </div>
@@ -2620,8 +2620,6 @@ function renderKPI(){
       </div>
       <div style="font-family:var(--mono)">${s.loads}</div>
       <div style="font-family:var(--mono);color:var(--green);font-weight:700">$${fmt(s.gross)}</div>
-      <div style="font-family:var(--mono)">${s.miles.toLocaleString()}</div>
-      <div style="font-family:var(--mono);color:var(--blue);font-weight:700">${s.rpm>0?'$'+s.rpm.toFixed(2):'—'}</div>
       <div style="font-family:var(--mono);font-weight:800;color:${s.overMin>0?'var(--green)':s.overMin<0?'var(--red)':'var(--text3)'}">
         ${s.overMin!==0?(s.overMin>0?'+':'-')+'$'+fmt(Math.abs(s.overMin)):'—'}
         ${s.overMin>0&&oWin&&s.email===oWin.email?'<span style="font-size:11px">⚡</span>':''}
