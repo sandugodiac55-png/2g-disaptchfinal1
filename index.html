@@ -548,7 +548,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div class="tc" id="drv-loads-tc">
             <div class="tc-top"><div class="tc-title">Individual Loads</div><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="drv-load-cnt">0</div></div>
             <div class="tw"><table>
-              <thead><tr><th>ORDER ID</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BR.FEE</th><th>CAR</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>NOTES</th><th>ACTIONS</th></tr></thead>
+              <thead><tr><th>ORDER ID</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
               <tbody id="drv-load-tb"></tbody>
             </table></div>
           </div>
@@ -1904,8 +1904,9 @@ function renderDrvTrips(allDrvLoads){
         :'';
       const rowBg=locked?(inTrip?'#f1f5f9':'#f7fafc'):(inTrip?'#f0f9ff':'#fff');
       html+=`<tr style="background:${rowBg}${locked?';opacity:.85':''}">
-        <td class="bold" style="font-size:12px">
+        <td class="bold" style="font-size:12px;min-width:110px">
           <div onclick="copyText('${l.orderId||''}','Order ID')" title="Click to copy" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">${l.orderId||'—'}<span style="font-size:9px;color:var(--text3);opacity:.6">⎘</span></div>
+          ${l.car?`<div style="margin-top:4px"><span style="display:inline-flex;align-items:center;gap:3px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#0369a1;white-space:nowrap">🚗 ${l.car}</span></div>`:''}
           ${tripBadge?`<div style="margin-top:3px">${tripBadge}</div>`:''}
         </td>
         <td style="font-size:12px">${l.origin||'—'} → ${l.dest||'—'}</td>
@@ -1931,14 +1932,12 @@ function renderDrvTrips(allDrvLoads){
             </button>
           </div>`;
         })():'-'}</td>
-        <td style="font-size:11px;color:var(--navy);font-weight:600;max-width:130px;white-space:normal">${l.car?`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#0369a1">🚗 ${l.car}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}</td>
         <td>${statusHtml}</td>
         <td>${(ROLE==='accounting'||ROLE==='admin')
           ?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="tgPaid('${l.id}',${!l.paid},false)">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
           :`<span class="pb ${l.paid?'paid':'unpaid'}" style="cursor:default;pointer-events:none">${l.paid?'✓ PAID':'✗ UNPAID'}</span>`
         }</td>
         <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
-        <td style="font-size:11px;color:var(--text3);max-width:120px;white-space:normal">${l.notes||''}</td>
         <td><div style="display:flex;gap:4px">${(()=>{
           if(ROLE==='admin'){
             return `<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`;
