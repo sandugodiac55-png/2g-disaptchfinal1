@@ -2468,8 +2468,9 @@ function renderKPI(){
   const dispatchers=USERS.filter(u=>u.role==='dispatcher');
   // Build KPI stats per dispatcher
   const stats=dispatchers.map(disp=>{
-    const dl=wLoads.filter(l=>l.dispEmail===disp.email);
-    const dt=wTrips.filter(t=>t.dispEmail===disp.email);
+    const dispDriverNames2=new Set(DRIVERS.filter(d=>d.dispatcherEmail===disp.email).map(d=>d.name));
+    const dl=wLoads.filter(l=>l.dispEmail===disp.email||dispDriverNames2.has(l.driver));
+    const dt=wTrips.filter(t=>t.dispEmail===disp.email||dispDriverNames2.has(t.driverName));
     const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
     const miles=dt.reduce((s,t)=>s+(+t.miles||0),0);
     const myDrivers=DRIVERS.filter(d=>d.dispatcherEmail===disp.email);
@@ -2491,8 +2492,9 @@ function renderKPI(){
   }).join('');
   let html=`<thead><tr><th class="sticky-col" style="min-width:160px">Dispatcher / Driver</th>${thCols}<th>Total</th></tr></thead><tbody>`;
   stats.forEach(disp=>{
-    const dl=wLoads.filter(l=>l.dispEmail===disp.email);
-    const dt=wTrips.filter(t=>t.dispEmail===disp.email);
+    const dispDriverNames=new Set(DRIVERS.filter(d=>d.dispatcherEmail===disp.email).map(d=>d.name));
+    const dl=wLoads.filter(l=>l.dispEmail===disp.email||dispDriverNames.has(l.driver));
+    const dt=wTrips.filter(t=>t.dispEmail===disp.email||dispDriverNames.has(t.driverName));
     const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
     const miles=dt.reduce((s,t)=>s+(+t.miles||0),0);
     const rpm=miles>0?gross/miles:0;
@@ -2530,52 +2532,73 @@ function renderKPI(){
         ${(()=>{
           const allTrippedIds=new Set(dTrips.flatMap(t=>t.loadIds||[]));
           const minR=+(drv.minRate||0);
-          // Only show trips where at least one load is Picked Up / Delivered / Invoiced
-          const visibleTrips=dTrips.filter(t=>{
-            const tl=LOADS.filter(l=>t.loadIds?.includes(l.id));
-            return tl.some(l=>l.status==='Picked Up'||l.status==='Delivered'||l.status==='Invoiced');
-          });
-          const tripRanges=visibleTrips.map(t=>{
+          // Show ALL trips
+          const visibleTrips=dTrips;
+          const dayStrs=days.map(d=>d.toISOString().split('T')[0]);
+          const todayStr=new Date().toISOString().split('T')[0];
+
+          // Build ranges for trips
+          const tripRangesFinal=visibleTrips.map(t=>{
             const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date);
             const dates=tLoads.map(l=>l.date).filter(Boolean).sort();
+            if(!dates.length)return null;
             const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
             const trpm=t.miles>0?tg/t.miles:0;
             const rpmOk=minR>0?trpm>=minR:true;
-            // Only 2 colors: teal=ok, red=below min
             const col=rpmOk?'#0d9488':'#ef4444';
-            const textCol='#fff';
-            const tLoadWeeks=new Set(tLoads.map(l=>l.week||curW));
-            const spansWeeks=tLoadWeeks.size>1;
-            return{t,tLoads,tg,trpm,col,textCol,rpmOk,spansWeeks,startDate:dates[0]||null,endDate:dates[dates.length-1]||null};
+            const startDate=dates[0];
+            const deliveredLoad=tLoads.find(l=>l.status==='Delivered'||l.status==='Invoiced');
+            const endDate=deliveredLoad?.deliveredDate||deliveredLoad?.date||
+              (tLoads.some(l=>l.status==='Picked Up')?todayStr:startDate);
+            return{t,tLoads,tg,trpm,col,rpmOk,startDate,endDate};
+          }).filter(Boolean);
+
+          // Build ranges for standalone loads (no trip) — also show as continuous bars
+          const standaloneRanges=dLoads.filter(l=>!allTrippedIds.has(l.id)&&l.date).map(l=>{
+            const startDate=l.date;
+            const endDate=(l.status==='Delivered'||l.status==='Invoiced')
+              ?(l.deliveredDate||l.date)
+              :(l.status==='Picked Up'?todayStr:l.date);
+            return{l,startDate,endDate};
           });
-          // Get week day strings
-          const dayStrs=days.map(d=>d.toISOString().split('T')[0]);
+
           return days.map((d,di)=>{
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
-            // Each load in a trip shown individually on its own date
-            const dayTripLoads=visibleTrips.flatMap(t=>{
-              const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date===ds);
-              const tg=LOADS.filter(l=>t.loadIds?.includes(l.id)).reduce((s,l)=>s+(+l.rate||0),0);
-              const trpm=t.miles>0?tg/t.miles:0;
-              const rpmOk=minR>0?trpm>=minR:true;
-              const col=rpmOk?'#0d9488':'#ef4444';
-              return tLoads.map(l=>({l,t,trpm,col,rpmOk,tg}));
-            });
-            const dayLoads=dLoads.filter(l=>l.date===ds&&!allTrippedIds.has(l.id));
-            const allDayBlocks=[...dayTripLoads,...dayLoads.map(l=>({l,t:null}))];
-            const blockH=allDayBlocks.length>1?Math.max(36,Math.floor(62/allDayBlocks.length)):52;
-            return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:top;height:${Math.max(70,allDayBlocks.length*blockH+8)}px">
-              ${dayTripLoads.map(({l,t,trpm,col})=>`
-                <div style="background:${col};border-radius:6px;margin:2px 3px;padding:4px 7px;cursor:pointer;min-height:${blockH}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="event.stopPropagation();showTripPopover(event,'${t.id}')">
-                  <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(+l.rate||0)}</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(l.origin||l.pickup||'?').split(',')[0]} → ${(l.dest||l.delivery||'?').split(',')[0]}</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,.75)">T#${t.tripNum||'?'} · ${trpm.toFixed(2)}/mi</div>
-                </div>`).join('')}
-              ${dayLoads.map(l=>`<div style="background:#94a3b8;border-radius:6px;margin:2px 3px;padding:4px 7px;cursor:pointer;min-height:${blockH}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="openDriverPage('${drv.id}')">
-                <div style="font-size:11px;font-weight:800;color:#fff">$${fmt(+l.rate||0)}</div>
-                <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(l.origin||'?').split(',')[0]} → ${(l.dest||'?').split(',')[0]}</div>
-              </div>`).join('')}
+            const dayTrips=tripRangesFinal.filter(r=>ds>=r.startDate&&ds<=r.endDate);
+            const dayStandalone=standaloneRanges.filter(r=>ds>=r.startDate&&ds<=r.endDate);
+            return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px">
+              ${dayTrips.map(r=>{
+                const isStart=ds===r.startDate;
+                const isEnd=ds===r.endDate;
+                const isSingle=isStart&&isEnd;
+                const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
+                const marginL=isStart?'3px':'-1px';
+                const marginR=isEnd?'3px':'-1px';
+                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')">
+                  ${isStart?`
+                    <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(r.tLoads[0]?.origin||'?').split(',')[0]} → ${(r.tLoads[r.tLoads.length-1]?.dest||'?').split(',')[0]}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi</div>
+                  `:''}
+                </div>`;
+              }).join('')}
+              ${dayStandalone.map(r=>{
+                const isStart=ds===r.startDate;
+                const isEnd=ds===r.endDate;
+                const isSingle=isStart&&isEnd;
+                const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
+                const marginL=isStart?'3px':'-1px';
+                const marginR=isEnd?'3px':'-1px';
+                const stCol=r.l.status==='Delivered'||r.l.status==='Invoiced'?'#64748b':'#94a3b8';
+                return`<div style="background:${stCol};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="openDriverPage('${drv.id}')">
+                  ${isStart?`
+                    <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(+r.l.rate||0)}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(r.l.origin||'?').split(',')[0]} → ${(r.l.dest||'?').split(',')[0]}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.7)">${r.l.status||'Assigned'} · no trip</div>
+                  `:''}
+                </div>`;
+              }).join('')}
             </td>`;
           }).join('');
         })()}
