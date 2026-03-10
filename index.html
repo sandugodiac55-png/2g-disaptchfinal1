@@ -575,8 +575,8 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="fg"><label>Calc Rate/Mile</label><input id="trip-rpm" readonly></div>
               </div>
               <div class="g2" style="margin-bottom:12px">
-                <div class="fg"><label>📍 De unde (oraș)</label><input id="trip-pickup" placeholder="ex: Fort Myers, FL"></div>
-                <div class="fg"><label>📍 Până unde (oraș)</label><input id="trip-delivery" placeholder="ex: Richardson, TX"></div>
+                <div class="fg"><label>📍 From (city)</label><input id="trip-pickup" placeholder="ex: Fort Myers, FL"></div>
+                <div class="fg"><label>📍 To (city)</label><input id="trip-delivery" placeholder="ex: Richardson, TX"></div>
               </div>
               <div class="fg" style="margin-bottom:8px">
                 <label>🗺 Google Maps URL 1 <span style="color:var(--red)">*</span></label>
@@ -883,7 +883,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <!-- OWN COMPANY PAGE -->
         <div class="pg" id="pg-own">
           <div class="ph">
-            <div><div class="ph-t">🏢 OWN Company</div><div class="ph-s">Dispatch Fee · Salarii · Profit</div></div>
+            <div><div class="ph-t">🏢 OWN Company</div><div class="ph-s">Dispatch Fee · Salaries · Profit</div></div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-ghost" onclick="ownMonthNav(-1)">‹</button>
               <span style="font-size:13px;font-weight:700;color:var(--navy);line-height:36px;min-width:110px;text-align:center" id="own-month-lbl">—</span>
@@ -913,7 +913,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             <div><div class="ph-t">Admin Panel</div></div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-ghost" onclick="openBackupModal()" title="Configurare EmailJS">⚙ Backup</button>
-              <button class="btn btn-primary" onclick="runBackup()" title="Generează CSV per companie + trimite email">📧 Backup Acum</button>
+              <button class="btn btn-primary" onclick="runBackup()" title="Download Excel backup per company">📧 Backup Now</button>
               <button class="btn btn-primary" onclick="openUserModal()">＋ Add User</button>
             </div>
           </div>
@@ -932,35 +932,115 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
 <!-- LOAD MODAL (simplified — no driver selector) -->
 <div class="ov" id="m-load">
-  <div class="modal">
-    <div class="mhd"><div class="mhd-t" id="m-load-t">Add Load</div><div class="mcl" onclick="cm('m-load')">×</div></div>
-    <div class="mbd"><div class="g2">
-      <div class="ftitle">📦 Load Info</div><div></div>
-      <div class="fg"><label>Order ID *</label><input id="fl-oid" placeholder="LD-001"></div>
-      <div class="fg"><label>Date</label><input type="date" id="fl-date"></div>
-      <div class="fg"><label>Pickup Location</label><input id="fl-ori" placeholder="Chicago, IL"></div>
-      <div class="fg"><label>Delivery Location</label><input id="fl-dst" placeholder="Dallas, TX"></div>
-      <div class="fsep"></div><div class="ftitle">💰 Rate & Payment</div><div></div>
-      <div class="fg"><label>Total Rate ($) *</label><input type="number" id="fl-rt" placeholder="0.00" step="0.01"></div>
-      <div class="fg"><label>Payment Method *</label>
-        <select id="fl-pay">
-          <option value="">— Select —</option>
-          <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
-          <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
-          <option>15 B. Days</option><option>21 B. Days</option><option>30 B. Days</option>
-          <option>Factoring</option>
-        </select>
+  <div class="modal" style="width:620px;max-width:96%;padding:0;overflow:hidden;border-radius:16px">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a2744 0%,#243156 100%);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;font-weight:700;margin-bottom:4px">DISPATCHER</div>
+        <div style="font-size:17px;font-weight:800;color:#fff" id="m-load-t">Add Load</div>
       </div>
-      <div class="fg"><label>🚗 Car</label><input id="fl-car" placeholder="e.g. 2024 Mazda CX-90"></div>
-      <div class="fsep"></div><div class="ftitle">🏢 Broker</div><div></div>
-      <div class="fg"><label>Broker Name</label><input id="fl-br" placeholder="Echo Global"></div>
-      <div class="fg"><label>Broker Email</label><input type="email" id="fl-be" placeholder="broker@co.com"></div>
-      <div class="fg"><label>Broker Phone</label><input id="fl-bp" placeholder="+1 555 000 0000"></div>
-      <div class="fg"><label>Broker Fee ($)</label><input type="number" id="fl-bf" placeholder="0.00" step="0.01"></div>
-      <div class="trow full"><span class="trow-l">Broker Fee Paid</span><div class="sw" id="sw-bf" onclick="this.classList.toggle('on')"></div></div>
-      <div class="fg"><label>Notes</label><textarea id="fl-nt" placeholder="Additional notes…"></textarea></div>
-    </div></div>
-    <div class="mft"><button class="btn btn-ghost" onclick="cm('m-load')">Cancel</button><button class="btn btn-orange" onclick="saveLoad()">💾 Save Load</button></div>
+      <button onclick="cm('m-load')" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;background:var(--surface);max-height:78vh;overflow-y:auto">
+
+      <!-- LOAD INFO -->
+      <div style="background:var(--bg);border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#fff7ed,#ffedd5);padding:10px 16px;border-bottom:1.5px solid #fed7aa;display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px">📦</span>
+          <span style="font-size:11px;font-weight:800;color:#c2410c;letter-spacing:1.5px">LOAD INFO</span>
+        </div>
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">ORDER ID *</label>
+            <input id="fl-oid" placeholder="LD-001" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">🚗 CAR</label>
+            <input id="fl-car" placeholder="e.g. 2024 Mazda CX-90" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">PICKUP LOCATION</label>
+            <input id="fl-ori" placeholder="Chicago, IL" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">DELIVERY LOCATION</label>
+            <input id="fl-dst" placeholder="Dallas, TX" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div style="grid-column:1/2">
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">DATE</label>
+            <input type="date" id="fl-date" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+        </div>
+      </div>
+
+      <!-- RATE & PAYMENT -->
+      <div style="background:var(--bg);border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#fff7ed,#fef9c3);padding:10px 16px;border-bottom:1.5px solid #fde68a;display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px">⚡</span>
+          <span style="font-size:11px;font-weight:800;color:#b45309;letter-spacing:1.5px">RATE & PAYMENT</span>
+        </div>
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">TOTAL RATE ($) *</label>
+            <input type="number" id="fl-rt" placeholder="0.00" step="0.01" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:14px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">PAYMENT METHOD *</label>
+            <select id="fl-pay" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+              <option value="">— Select —</option>
+              <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
+              <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
+              <option>15 B. Days</option><option>21 B. Days</option><option>30 B. Days</option>
+              <option>Factoring</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- BROKER -->
+      <div style="background:var(--bg);border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#eff6ff,#dbeafe);padding:10px 16px;border-bottom:1.5px solid #bfdbfe;display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px">🏢</span>
+          <span style="font-size:11px;font-weight:800;color:#1d4ed8;letter-spacing:1.5px">BROKER</span>
+        </div>
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">BROKER NAME</label>
+            <input id="fl-br" placeholder="Echo Global" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">BROKER EMAIL</label>
+            <input type="email" id="fl-be" placeholder="broker@co.com" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">BROKER FEE ($)</label>
+            <input type="number" id="fl-bf" placeholder="0.00" step="0.01" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:5px">BROKER PHONE</label>
+            <input id="fl-bp" placeholder="+1 555 000 0000" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px">
+            <span style="font-size:12px;font-weight:600;color:#166534">Broker Fee Paid</span>
+            <div class="sw" id="sw-bf" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;display:block;margin-bottom:6px">📝 NOTES</label>
+        <textarea id="fl-nt" placeholder="Additional notes…" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;resize:vertical;min-height:72px;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex;gap:10px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface)">
+      <button class="btn btn-ghost" onclick="cm('m-load')" style="flex:1">Cancel</button>
+      <button class="btn btn-orange" onclick="saveLoad()" style="flex:2">💾 Save Load</button>
+    </div>
   </div>
 </div>
 
@@ -969,26 +1049,26 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 <div class="ov" id="m-backup">
   <div class="mo" style="max-width:480px">
     <div class="mhd" style="background:linear-gradient(135deg,#0f4c81,#1a6db5)">
-      <div class="mhd-t" style="color:#fff">📦 Backup G-Dispatch</div>
+      <div class="mhd-t" style="color:#fff">📦 G-Dispatch Backup</div>
       <div class="mcl" onclick="cm('m-backup')" style="color:#fff">×</div>
     </div>
     <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;font-size:12px;color:#1e3a5f;line-height:1.8">
-        Backup-ul generează <strong>câte un fișier Excel per companie</strong>.<br>
-        Fiecare Excel are o foaie sumar + câte o foaie separată per șofer cu toate loadurile, statusul plăților și overdue.
+        Generates <strong>one Excel file per company</strong>.<br>
+        Each file has a summary sheet + one sheet per driver with all loads, payment status and overdue.
       </div>
       <div>
         <label style="font-size:11px;font-weight:700;color:var(--text2)">Săptămâna</label>
         <select id="bkp-week" class="inp sel" style="width:100%;margin-top:4px">
-          <option value="prev">Săptămâna trecută</option>
-          <option value="curr">Săptămâna curentă</option>
-          <option value="all">Toate loadurile</option>
+          <option value="prev">Last week</option>
+          <option value="curr">Current week</option>
+          <option value="all">All loads</option>
         </select>
       </div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
-        <button class="btn btn-ghost" onclick="cm('m-backup')">Anulează</button>
-        <button class="btn btn-primary" onclick="runBackup()">⬇ Descarcă Backup</button>
+        <button class="btn btn-ghost" onclick="cm('m-backup')">Cancel</button>
+        <button class="btn btn-primary" onclick="runBackup()">⬇ Download Backup</button>
       </div>
     </div>
   </div>
@@ -1199,7 +1279,7 @@ function openBackupModal(){om('m-backup');}
 async function runBackup(){
   const weekSel=document.getElementById('bkp-week')?.value||'prev';
   cm('m-backup');
-  notify('⏳ Generez backup Excel...','inf');
+  notify('⏳ Generating Excel backup...','inf');
 
   // Determine target loads
   let targetLoads=LOADS;
@@ -1216,7 +1296,7 @@ async function runBackup(){
     targetLoads=LOADS.filter(l=>l.week===targetWeek||inW(l.date,targetWeek));
   }
 
-  if(!targetLoads.length){notify('Nu sunt loaduri pentru perioada selectată.','inf');return;}
+  if(!targetLoads.length){notify('No loads found for the selected period.','inf');return;}
 
   // Load SheetJS dynamically
   if(!window.XLSX){
@@ -1247,9 +1327,9 @@ async function runBackup(){
     const coDrivers=[...new Set(coLoads.map(l=>l.driver||'—'))].sort();
     const sumRows=[
       ['G-Dispatch — '+coName,'','','','',''],
-      ['Perioada:',fileLabel,'','Generat:',new Date().toLocaleDateString('ro-MD'),''],
+      ['Period:',fileLabel,'','Generated:',new Date().toLocaleDateString('en-US'),''],
       ['','','','','',''],
-      ['ȘOFER','LOADURI','GROSS ($)','PLĂTIT ($)','NEPLĂTIT ($)','OVERDUE']
+      ['DRIVER','LOADS','GROSS ($)','PAID ($)','UNPAID ($)','OVERDUE']
     ];
     coDrivers.forEach(drv=>{
       const dl=coLoads.filter(l=>l.driver===drv);
@@ -1270,7 +1350,7 @@ async function runBackup(){
 
     const wsSumar=XLSX.utils.aoa_to_sheet(sumRows);
     wsSumar['!cols']=[{wch:28},{wch:10},{wch:14},{wch:14},{wch:14},{wch:14}];
-    XLSX.utils.book_append_sheet(wb,wsSumar,'📊 Sumar');
+    XLSX.utils.book_append_sheet(wb,wsSumar,'📊 Summary');
 
     // === SHEET per DRIVER ===
     coDrivers.forEach(drv=>{
@@ -1280,9 +1360,9 @@ async function runBackup(){
 
       const rows=[
         [drv+' — '+coName,'','','','','','','','',''],
-        ['Perioada:',fileLabel,'','Gross: $'+gross,'Plătit: $'+paid,'Neplătit: $'+(gross-paid),'','','',''],
+        ['Period:',fileLabel,'','Gross: $'+gross,'Paid: $'+paid,'Unpaid: $'+(gross-paid),'','','',''],
         ['','','','','','','','','',''],
-        ['ORDER ID','DATA','RUTĂ','RATE ($)','MILE','PAY METHOD','BROKER','STATUS','PLĂTIT','OVERDUE / DUE','COMMENT']
+        ['ORDER ID','DATE','ROUTE','RATE ($)','MILES','PAY METHOD','BROKER','STATUS','PAID','OVERDUE / DUE','COMMENT']
       ];
 
       dl.forEach(l=>{
@@ -1326,7 +1406,7 @@ async function runBackup(){
   }
 
   setTimeout(()=>{
-    notify('✅ '+fileCount+' fișiere Excel descărcate — câte unul per companie');
+    notify('✅ '+fileCount+' Excel files downloaded — one per company');
   },fileCount*600+200);
 }
 
@@ -1606,7 +1686,7 @@ function tbSearchShowLoad(id){
             const dispUser=USERS.find(u=>u.email===l.dispEmail);
             const dispName=dispUser?.name||l.dispName||(l.dispEmail||'').split('@')[0]||'—';
             const dispPhone=dispUser?.phone||'—';
-            return [['Nume',dispName],['Telefon',dispPhone],['Email',l.dispEmail||'—']].map(([k,v])=>`
+            return [['Name',dispName],['Phone',dispPhone],['Email',l.dispEmail||'—']].map(([k,v])=>`
           <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
             <span style="font-size:11px;color:var(--text3)">${k}</span>
             <span style="font-size:12px;font-weight:700;color:var(--navy);text-align:right;max-width:60%;word-break:break-all">${v||'—'}</span>
@@ -4074,7 +4154,7 @@ function renderSalary(){
     if(selWeeks.length){
       const{start}=wRange(selWeeks[0]),{end}=wRange(selWeeks[selWeeks.length-1]);
       rangeEl.innerHTML=`<span style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--navy)">
-        📅 ${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · <b>${selWeeks.length} săpt.</b>
+        📅 ${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · <b>${selWeeks.length} wks.</b>
       </span>`;
     } else {
       rangeEl.innerHTML=`<span style="font-size:11px;color:var(--red)">⚠ Nicio săptămână selectată</span>`;
@@ -4269,7 +4349,7 @@ function renderSalExpenses(){
   el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <!-- Fixed -->
     <div class="tc">
-      <div class="tc-top"><div class="tc-title">📌 Cheltuieli Fixe</div><button onclick="addExpense('fixed')" class="btn btn-ghost btn-sm">＋ Add</button></div>
+      <div class="tc-top"><div class="tc-title">📌 Fixed Expenses</div><button onclick="addExpense('fixed')" class="btn btn-ghost btn-sm">＋ Add</button></div>
       ${renderExpList(fixedExp,'fixed')}
       <div style="padding:10px 14px;border-top:2px solid var(--border);display:flex;justify-content:space-between;background:var(--surface2)">
         <span style="font-size:11px;font-weight:700;color:var(--text3)">TOTAL FIX</span>
@@ -4278,7 +4358,7 @@ function renderSalExpenses(){
     </div>
     <!-- Variable -->
     <div class="tc">
-      <div class="tc-top"><div class="tc-title">📊 Cheltuieli Flotante</div><button onclick="addExpense('variable')" class="btn btn-ghost btn-sm">＋ Add</button></div>
+      <div class="tc-top"><div class="tc-title">📊 Variable Expenses</div><button onclick="addExpense('variable')" class="btn btn-ghost btn-sm">＋ Add</button></div>
       ${renderExpList(varExp,'variable')}
       <div style="padding:10px 14px;border-top:2px solid var(--border);display:flex;justify-content:space-between;background:var(--surface2)">
         <span style="font-size:11px;font-weight:700;color:var(--text3)">TOTAL FLOTANT</span>
@@ -4365,7 +4445,7 @@ function renderOwnContent(weeks){
 }
 
 function renderOwnFee(weeks,el){
-  if(!weeks.length){el.innerHTML=`<div class="em"><div class="e">📅</div><p>Selectează săptămânile.</p></div>`;return;}
+  if(!weeks.length){el.innerHTML=`<div class="em"><div class="e">📅</div><p>Select weeks.</p></div>`;return;}
   const ownCfg=(SALARY_CONFIG._own)||{};
 
   // Build company rows with driver breakdown
@@ -4395,7 +4475,7 @@ function renderOwnFee(weeks,el){
     <div>
       <div style="font-size:10px;color:rgba(255,255,255,.6);letter-spacing:2px;font-weight:700">TOTAL DISPATCH FEE</div>
       <div style="font-size:32px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(totalFee)}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5)">${weeks.length} săpt. · ${coRows.length} companii</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5)">${weeks.length} wks · ${coRows.length} companies</div>
     </div>
     <button onclick="exportOwnFeeExcel()" style="padding:9px 18px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer">⬇ Export Excel</button>
   </div>`;
@@ -4409,7 +4489,7 @@ function renderOwnFee(weeks,el){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>
           <span style="font-size:13px;font-weight:800;color:#fff">${r.co.name}</span>
-          <span style="font-size:10px;color:rgba(255,255,255,.4)">${r.coDrivers.length} șoferi</span>
+          <span style="font-size:10px;color:rgba(255,255,255,.4)">${r.coDrivers.length} drivers</span>
         </div>
         <div style="display:flex;align-items:center;gap:20px">
           <div style="text-align:right">
@@ -4613,7 +4693,7 @@ function renderOwnExpenses(el){
 }
 
 function renderOwnProfit(weeks,el){
-  if(!weeks.length){el.innerHTML=`<div class="em"><div class="e">📈</div><p>Selectează săptămânile.</p></div>`;return;}
+  if(!weeks.length){el.innerHTML=`<div class="em"><div class="e">📈</div><p>Select weeks.</p></div>`;return;}
   const ownCfg=(SALARY_CONFIG._own)||{};
   const cfg=SALARY_CONFIG||{};
   const dispatchers=USERS.filter(u=>u.role==='dispatcher');
@@ -4729,7 +4809,7 @@ async function saveOwnFee(coId,coName,val){
 function exportOwnFeeExcel(){
   const weeks=getOwnWeeks();
   const ownCfg=(SALARY_CONFIG._own)||{};
-  const rows=[['Companie','Șofer','Fee %',...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Gross'),...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Fee'),'Total Gross','Total Fee']];
+  const rows=[['Company','Driver','Fee %',...weeks.map(w=>wLbl(w).split('–')[0].trim()+ Gross'),...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Fee'),'Total Gross','Total Fee']];
   COMPANIES.forEach(co=>{
     const cd=DRIVERS.filter(d=>(d.company||'').trim()===co.name.trim());
     if(!cd.length)return;
@@ -4750,7 +4830,7 @@ function exportSingleDispatcher(dispId,dispName){
   const disp=USERS.find(u=>u.id===dispId);
   if(!disp)return;
   const md=DRIVERS.filter(d=>(d.dispatcherEmail||'').trim().toLowerCase()===(disp.email||'').trim().toLowerCase());
-  const rows=[['Șofer','Companie','Sal %',...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Gross'),...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Sal'),'Total Gross','Total Salariu']];
+  const rows=[['Driver','Company','Sal %',...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Gross'),...weeks.map(w=>wLbl(w).split('–')[0].trim()+' Sal'),'Total Gross','Total Salary']];
   md.forEach(dr=>{
     const pct=+(dr.salaryPct||0);
     const wG=weeks.map(w=>LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w)).reduce((s,l)=>s+(+l.rate||0),0));
@@ -4833,7 +4913,7 @@ async function setFounderSalary(i,monthKey,val){
   renderSalFounders();
 }
 async function removeFounder(i){
-  if(!confirm('Ștergi fondatorul?'))return;
+  if(!confirm('Delete this founder?'))return;
   SALARY_CONFIG.founders.splice(i,1);
   await saveSalaryConfig();
   renderSalFounders();
@@ -4858,7 +4938,7 @@ async function setExpAmount(i,monthKey,val){
   renderSalExpenses();
 }
 async function removeExpense(i){
-  if(!confirm('Ștergi cheltuiala?'))return;
+  if(!confirm('Delete this expense?'))return;
   SALARY_CONFIG.expenses.splice(i,1);
   await saveSalaryConfig();
   renderSalExpenses();
@@ -4911,7 +4991,7 @@ function openEditUserModal(userId){
   document.getElementById('eu-subtitle').textContent=u.email||'';
   // Populate company dropdown
   const coSel=document.getElementById('eu-co');
-  coSel.innerHTML=`<option value="">— Selectează compania —</option>`+COMPANIES.map(c=>`<option value="${c.name}" ${u.company===c.name?'selected':''}>${c.name}</option>`).join('');
+  coSel.innerHTML=`<option value="">— Select company —</option>`+COMPANIES.map(c=>`<option value="${c.name}" ${u.company===c.name?'selected':''}>${c.name}</option>`).join('');
   euToggleCo();
   om('m-edit-user');
 }
@@ -4926,35 +5006,35 @@ async function saveEditUser(){
   const{updateDoc,doc}=window._fb;
   const ph=document.getElementById('eu-phone').value.trim();
   await updateDoc(doc(window._db,'users',_editUserId),{name:nm,role:rl,company:co||null,phone:ph||null});
-  notify('✓ User actualizat');
+  notify('✓ User updated');
   await loadMeta();
   renderAdmin();
   cm('m-edit-user');
 }
 
 async function deleteUser(id, name){
-  if(!confirm(`Ștergi userul "${name}"?\n\nAceastă acțiune este ireversibilă.`))return;
+  if(!confirm(`Delete user "${name}"?\n\nThis action is irreversible.`))return;
   const{deleteDoc,doc}=window._fb;
   await deleteDoc(doc(window._db,'users',id));
-  notify(`✓ User "${name}" șters`);
+  notify(`✓ User "${name}" deleted`);
   await loadMeta();
   renderAdmin();
 }
 
 async function deleteCompany(id, name){
-  if(!confirm(`Ștergi compania "${name}"?\n\nAceastă acțiune este ireversibilă.`))return;
+  if(!confirm(`Delete company "${name}"?\n\nThis action is irreversible.`))return;
   const{deleteDoc,doc}=window._fb;
   await deleteDoc(doc(window._db,'companies',id));
-  notify(`✓ Compania "${name}" ștearsă`);
+  notify(`✓ Company "${name}" deleted`);
   await loadMeta();
   renderAdmin();
 }
 
 async function deleteDriver(id, name){
-  if(!confirm(`Ștergi șoferul "${name}"?\n\nToate loadurile asociate rămân în sistem.\nAceastă acțiune este ireversibilă.`))return;
+  if(!confirm(`Delete driver "${name}"?\n\nAll associated loads remain in the system.\nThis action is irreversible.`))return;
   const{deleteDoc,doc}=window._fb;
   await deleteDoc(doc(window._db,'drivers',id));
-  notify(`✓ Șoferul "${name}" șters`);
+  notify(`✓ Driver "${name}" deleted`);
   await loadMeta();
   renderAdmin();
 }
@@ -4986,14 +5066,14 @@ function openSetWeekNumModal(drvId, drvName, currentOffset){
 function updateWnPreview(){
   const val=parseInt(document.getElementById('wn-input').value)||1;
   const offset=Math.max(0,val-1);
-  document.getElementById('wn-preview').textContent=`Prima săptămână afișată: Week ${val}  |  Offset salvat: ${offset}`;
+  document.getElementById('wn-preview').textContent=`First displayed week: Week ${val}  |  Saved offset: ${offset}`;
   document.getElementById('wn-input').dataset.offset=offset;
 }
 async function confirmSetWeekNum(){
   const offset=parseInt(document.getElementById('wn-input').dataset.offset)||0;
   const{updateDoc,doc}=window._fb;
   await updateDoc(doc(window._db,'drivers',_wnDrvId),{weekOffset:offset});
-  notify(`✅ Numerotarea săptămânilor actualizată`);
+  notify(`✅ Week numbering updated`);
   cm('m-set-week-num');
   await loadMeta();
   renderAdmin();
@@ -5374,9 +5454,9 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     </div>
     <div style="padding:22px 24px;background:#fff;display:flex;flex-direction:column;gap:16px">
       <div style="background:#faf5ff;border:1px solid #d8b4fe;border-radius:8px;padding:10px 14px;font-size:11px;color:#6d28d9;line-height:1.6">
-        📋 Introdu numărul săptămânii cu care <strong>începe</strong> acest șofer.<br>
-        Ex: dacă în Google Sheets era la săptămâna <strong>35</strong>, pune <strong>35</strong>.<br>
-        Săptămânile vor fi numerotate 35, 36, 37…
+        📋 Enter the week number this driver <strong>starts</strong> from.<br>
+        E.g. if in Google Sheets they were at week <strong>35</strong>, enter <strong>35</strong>.<br>
+        Weeks will be numbered 35, 36, 37…
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Numărul primei săptămâni</label>
@@ -5388,7 +5468,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     </div>
     <div style="padding:12px 24px 18px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px">
       <button onclick="cm('m-set-week-num')" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
-      <button onclick="confirmSetWeekNum()" style="padding:8px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 8px rgba(124,58,237,.3)">✓ Salvează</button>
+      <button onclick="confirmSetWeekNum()" style="padding:8px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 3px 8px rgba(124,58,237,.3)">✓ Save</button>
     </div>
   </div>
 </div>
@@ -5408,7 +5488,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
     </div>
     <div style="padding:22px 24px;background:#fff;display:flex;flex-direction:column;gap:16px">
       <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;font-size:11px;color:#4338ca;line-height:1.5">
-        📋 Alege orice zi din săptămâna de start. Sistemul va calcula automat săptămâna ISO corectă (Luni–Duminică).
+        📋 Pick any day from the starting week. The system will automatically calculate the correct ISO week (Mon–Sun).
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Selectează o zi din săptămâna dorită</label>
@@ -5594,8 +5674,8 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
         <div class="fg"><label>Calc Rate/Mile</label><input id="et-rpm" readonly></div>
       </div>
       <div class="g2">
-        <div class="fg"><label>📍 De unde (oraș)</label><input id="et-pickup" placeholder="ex: Fort Myers, FL"></div>
-        <div class="fg"><label>📍 Până unde (oraș)</label><input id="et-delivery" placeholder="ex: Richardson, TX"></div>
+        <div class="fg"><label>📍 From (city)</label><input id="et-pickup" placeholder="ex: Fort Myers, FL"></div>
+        <div class="fg"><label>📍 To (city)</label><input id="et-delivery" placeholder="ex: Richardson, TX"></div>
       </div>
       <div class="fg" style="margin-bottom:6px">
         <label>🗺 Google Maps URL 1</label>
@@ -5887,7 +5967,7 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       <div id="eu-co-wrap">
         <label style="font-size:10px;font-weight:800;color:var(--orange);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px">Company <span style="color:var(--text3);font-weight:600">(obligatoriu pentru Owner)</span></label>
         <select id="eu-co" style="width:100%;padding:10px 14px;border:1.5px solid var(--orange);border-radius:10px;font-family:var(--font);font-size:14px;color:var(--navy);background:var(--bg);outline:none;box-sizing:border-box;cursor:pointer">
-          <option value="">— Selectează compania —</option>
+          <option value="">— Select company —</option>
         </select>
       </div>
       <!-- Info note -->
