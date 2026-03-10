@@ -3691,6 +3691,12 @@ function setSalTab(tab,btn){
     }
     if(p)p.style.display=t===tab?'':'none';
   });
+  // Trigger render for the selected tab
+  const weeks=getSalWeeks();
+  if(tab==='emp')renderSalEmp(weeks);
+  else if(tab==='founders')renderSalFounders();
+  else if(tab==='own')renderSalOwn(weeks);
+  else renderSalExpenses();
 }
 
 function getSalMonthWeeks(){
@@ -3980,7 +3986,8 @@ function renderSalExpenses(){
 // ── OWN Company Tab ──
 function renderSalOwn(weeks){
   const el=document.getElementById('sal-own-content');
-  if(!el)return;
+  if(!el){console.error('sal-own-content not found');return;}
+  try{
   if(!weeks.length){el.innerHTML=`<div class="em"><div class="e">📅</div><p>Selectează săptămânile de calcul.</p></div>`;return;}
 
   const cfg=SALARY_CONFIG||{};
@@ -4218,6 +4225,10 @@ function renderSalOwn(weeks){
   </div>`;
 
   el.innerHTML=html;
+  }catch(err){
+    console.error('renderSalOwn error:',err);
+    el.innerHTML=`<div style="padding:20px;color:red;font-size:12px">Eroare la randare: ${err.message}</div>`;
+  }
 }
 
 async function saveOwnFee(coId, coName, val){
