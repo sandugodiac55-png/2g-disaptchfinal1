@@ -2532,43 +2532,36 @@ function renderKPI(){
         ${(()=>{
           const allTrippedIds=new Set(dTrips.flatMap(t=>t.loadIds||[]));
           const minR=+(drv.minRate||0);
-          // Show ALL trips
-          const visibleTrips=dTrips;
+          // ONE bar per trip only — span from first load date to delivered date (or today if picked up)
           const dayStrs=days.map(d=>d.toISOString().split('T')[0]);
           const todayStr=new Date().toISOString().split('T')[0];
 
-          // Build ranges for trips
-          const tripRangesFinal=visibleTrips.map(t=>{
+          const tripBars=dTrips.map(t=>{
             const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date);
             const dates=tLoads.map(l=>l.date).filter(Boolean).sort();
             if(!dates.length)return null;
-            const tg=tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+            const tg=+(t.gross||0)||tLoads.reduce((s,l)=>s+(+l.rate||0),0);
             const trpm=t.miles>0?tg/t.miles:0;
             const rpmOk=minR>0?trpm>=minR:true;
             const col=rpmOk?'#0d9488':'#ef4444';
             const startDate=dates[0];
+            const isDelivered=tLoads.some(l=>l.status==='Delivered'||l.status==='Invoiced');
+            const isPickedUp=tLoads.some(l=>l.status==='Picked Up');
             const deliveredLoad=tLoads.find(l=>l.status==='Delivered'||l.status==='Invoiced');
-            const endDate=deliveredLoad?.deliveredDate||deliveredLoad?.date||
-              (tLoads.some(l=>l.status==='Picked Up')?todayStr:startDate);
-            return{t,tLoads,tg,trpm,col,rpmOk,startDate,endDate};
+            const endDate=isDelivered?(deliveredLoad?.deliveredDate||deliveredLoad?.date||startDate)
+              :(isPickedUp?todayStr:startDate);
+            // Route set by dispatcher on trip creation
+            const pickup=(t.pickup||tLoads[0]?.origin||'?').split(',')[0];
+            const delivery=(t.delivery||tLoads[tLoads.length-1]?.dest||'?').split(',')[0];
+            return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery};
           }).filter(Boolean);
-
-          // Build ranges for standalone loads (no trip) — also show as continuous bars
-          const standaloneRanges=dLoads.filter(l=>!allTrippedIds.has(l.id)&&l.date).map(l=>{
-            const startDate=l.date;
-            const endDate=(l.status==='Delivered'||l.status==='Invoiced')
-              ?(l.deliveredDate||l.date)
-              :(l.status==='Picked Up'?todayStr:l.date);
-            return{l,startDate,endDate};
-          });
 
           return days.map((d,di)=>{
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
-            const dayTrips=tripRangesFinal.filter(r=>ds>=r.startDate&&ds<=r.endDate);
-            const dayStandalone=standaloneRanges.filter(r=>ds>=r.startDate&&ds<=r.endDate);
+            const activeBars=tripBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
             return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px">
-              ${dayTrips.map(r=>{
+              ${activeBars.map(r=>{
                 const isStart=ds===r.startDate;
                 const isEnd=ds===r.endDate;
                 const isSingle=isStart&&isEnd;
@@ -2578,29 +2571,14 @@ function renderKPI(){
                 return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')">
                   ${isStart?`
                     <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
-                    <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(r.tLoads[0]?.origin||'?').split(',')[0]} → ${(r.tLoads[r.tLoads.length-1]?.dest||'?').split(',')[0]}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
                     <div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi · ${(+r.t.miles||0).toLocaleString()}mi</div>
-                  `:''}
-                </div>`;
-              }).join('')}
-              ${dayStandalone.map(r=>{
-                const isStart=ds===r.startDate;
-                const isEnd=ds===r.endDate;
-                const isSingle=isStart&&isEnd;
-                const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
-                const marginL=isStart?'3px':'-1px';
-                const marginR=isEnd?'3px':'-1px';
-                const stCol=r.l.status==='Delivered'||r.l.status==='Invoiced'?'#64748b':'#94a3b8';
-                return`<div style="background:${stCol};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="openDriverPage('${drv.id}')">
-                  ${isStart?`
-                    <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(+r.l.rate||0)}</div>
-                    <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(r.l.origin||'?').split(',')[0]} → ${(r.l.dest||'?').split(',')[0]}</div>
-                    <div style="font-size:9px;color:rgba(255,255,255,.7)">${r.l.status||'Assigned'} · no trip</div>
                   `:''}
                 </div>`;
               }).join('')}
             </td>`;
           }).join('');
+        })()}
         })()}
         <td class="tot-cell">
           <strong>$${fmt(dGross)}</strong><br>
