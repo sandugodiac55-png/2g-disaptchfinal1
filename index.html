@@ -1141,6 +1141,8 @@ let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
 let _metaReady=false; // guard: don't render until COMPANIES/USERS/DRIVERS loaded
 let accTab='pending',accSrch='',accCo='',accView='companies',accSelCo=null,accSelDrv=null;
 let tripSelLoads=[],pendingTripData=null,pendingPayId=null,pendingPayLocked=false,pendingPaySource='',pendingAdvStatNext='',editTripId=null;
+let _dispatchCoView=null;
+let _driverStatusModal=null; // {drvId, drvName}
 
 /* ══ WEEK ══ */
 const CW=()=>{const n=new Date(),d=new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const yr=new Date(Date.UTC(d.getUTCFullYear(),0,1));return`${d.getUTCFullYear()}-W${String(Math.ceil((((d-yr)/86400000)+1)/7)).padStart(2,'0')}`};
@@ -1784,8 +1786,6 @@ function renderPg(pg){
 }
 
 /* ══ DISPATCH PAGE ══ */
-let _dispatchCoView=null; // null = company list, string = selected company name
-
 function renderDispatch(){
   document.getElementById('d-wlbl').textContent=wLbl(curW);
   const isAll=['admin','owner','manager'].includes(ROLE);
@@ -1825,52 +1825,96 @@ function renderDispatch(){
         <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wg)}</span>
       </div>`;
     }).join('');
-    return`<div class="driver-card" onclick="openDriverPage('${d.id}')">
-      <div class="dc-head">
-        <div class="dc-av">${avL(d.name)}</div>
-        <div style="flex:1"><div class="dc-name">${d.name}</div></div>
-        <div style="text-align:right"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:15px;font-weight:800;color:var(--green);font-family:var(--mono)">${fK(totalGross)}</div></div>
+    // Driver week status
+    const drvStatus=(d.weekStatus||{})[curW]||'working';
+    const statusCfg={
+      working:{label:'✅ Working',bg:'#ecfdf5',color:'#065f46',border:'#a7f3d0'},
+      sick:{label:'🤒 Sick',bg:'#fef2f2',color:'#991b1b',border:'#fecaca'},
+      broken:{label:'🔧 Breakdown',bg:'#fffbeb',color:'#92400e',border:'#fde68a'},
+      rest:{label:'😴 Resting',bg:'#f0f9ff',color:'#075985',border:'#bae6fd'},
+    };
+    const sc=statusCfg[drvStatus]||statusCfg.working;
+    const canSetStatus=(ROLE==='dispatcher'||ROLE==='admin');
+    return`<div class="driver-card${drvStatus!=='working'?' locked':''}">
+      <div class="dc-head" onclick="openDriverPage('${d.id}')" style="cursor:pointer">
+        <div class="dc-av" style="${drvStatus!=='working'?'background:#94a3b8':''}">${avL(d.name)}</div>
+        <div style="flex:1"><div class="dc-name">${d.name}</div><div class="dc-co">${d.company||''}</div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:var(--text3)">Week</div><div style="font-size:15px;font-weight:800;color:var(--green);font-family:var(--mono)">${fK(dg)}</div></div>
       </div>
-      <div class="dc-stats" style="margin-bottom:10px">
-        <div class="dc-s"><div class="dc-sl">This Week</div><div class="dc-sv" style="color:var(--green)">${fK(dg)}</div></div>
+      <!-- Status badge + button -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${sc.bg};color:${sc.color};border:1px solid ${sc.border}">${sc.label}</span>
+        ${canSetStatus?`<button onclick="event.stopPropagation();openDrvStatusModal('${d.id}','${d.name.replace(/'/g,"\\'")}','${drvStatus}')" style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:7px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg2)'">✏️ Status</button>`:''}
+      </div>
+      <div class="dc-stats" style="margin-bottom:10px" onclick="openDriverPage('${d.id}')" style="cursor:pointer">
         <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:${overMin>0?'var(--green)':overMin<0?'var(--red)':'var(--text3)'}">${overMin<0?'-':''}${fK(Math.abs(overMin))}</div></div>
+        <div class="dc-s"><div class="dc-sl">Rate/Mile</div><div class="dc-sv" style="color:${rpmOk?'var(--green)':'var(--red)'}">$${rpm.toFixed(2)}</div></div>
       </div>
-      <div class="dc-bar" style="margin-bottom:10px">
-        <div class="dc-barlabel"><span>Rate/Mile</span><span style="color:${rpmOk?'var(--green)':'var(--red)'};font-weight:700">$${rpm.toFixed(2)} / min $${d.minRate||'—'}</span></div>
+      <div class="dc-bar" style="margin-bottom:10px" onclick="openDriverPage('${d.id}')" style="cursor:pointer">
+        <div class="dc-barlabel"><span>vs Min</span><span style="color:${rpmOk?'var(--green)':'var(--red)'};font-weight:700">$${rpm.toFixed(2)} / $${d.minRate||'—'}</span></div>
         <div class="dc-bartrack"><div class="dc-barfill" style="width:${Math.min(rpm/(+(d.minRate||rpm||1))*100,100)}%;background:${rpmOk?'var(--green)':'var(--red)'}"></div></div>
       </div>
-      ${weekRows?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px">${weekRows}</div>`:''}
+      ${weekRows?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px" onclick="openDriverPage('${d.id}')" style="cursor:pointer">${weekRows}</div>`:''}
     </div>`;
   };
 
   // ── ADMIN: company-card view ──────────────────────────────────────
   if(ROLE==='admin'){
     if(!_dispatchCoView){
-      // Show company cards (like Accounting board)
+      // Show company cards
       grid.innerHTML=`<div style="grid-column:1/-1">
-        <div style="margin-bottom:6px;color:var(--text3);font-size:12px">Select a company to view drivers</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:12px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:4px">
           ${companies.map(co=>{
             const coDrvs=myDrivers.filter(d=>(d.company||'—')===co);
             const coLoads=wLoads.filter(l=>coDrvs.some(d=>d.name===l.driver));
             const coGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
-            const coPending=coLoads.filter(l=>!l.paid).reduce((s,l)=>s+(+l.rate||0),0);
-            const coPaid=coLoads.filter(l=>l.paid).length;
-            return`<div onclick="dispatchSelectCo('${co.replace(/'/g,"\\'")}\")" style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .18s;box-shadow:0 1px 4px rgba(0,0,0,.05)" onmouseover="this.style.borderColor='var(--orange)';this.style.boxShadow='0 4px 16px rgba(231,111,34,.15)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='0 1px 4px rgba(0,0,0,.05)'">
-              <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px">${co}</div>
-              <div style="display:flex;gap:16px">
-                <div>
-                  <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">Total</div>
-                  <div style="font-size:16px;font-weight:800;color:var(--navy);font-family:var(--mono)">$${fmt(coGross)}</div>
+            const workingDrvs=coDrvs.filter(d=>{
+              const st=(d.weekStatus||{})[curW];
+              return !st||st==='working';
+            });
+            const offDrvs=coDrvs.filter(d=>{
+              const st=(d.weekStatus||{})[curW];
+              return st&&st!=='working';
+            });
+            const coEsc=co.replace(/'/g,"\\'");
+            return`<div onclick="dispatchSelectCo('${coEsc}')" style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:0;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(26,37,64,.06);overflow:hidden" onmouseover="this.style.borderColor='var(--orange)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(242,101,34,.12)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)';this.style.boxShadow='0 2px 8px rgba(26,37,64,.06)'">
+              <!-- Header -->
+              <div style="background:linear-gradient(135deg,var(--navy) 0%,#243156 100%);padding:16px 18px 14px">
+                <div style="font-size:13px;font-weight:800;color:#fff;letter-spacing:-.2px;margin-bottom:2px">${co}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);letter-spacing:.5px">CLICK TO VIEW DRIVERS</div>
+              </div>
+              <!-- Stats -->
+              <div style="padding:14px 18px">
+                <!-- Gross this week -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                  <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Week Gross</span>
+                  <span style="font-size:18px;font-weight:800;color:var(--green);font-family:var(--mono)">$${fmt(coGross)}</span>
                 </div>
-                <div>
-                  <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">Pending</div>
-                  <div style="font-size:16px;font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(coPending)}</div>
+                <!-- Divider -->
+                <div style="height:1px;background:var(--border);margin-bottom:12px"></div>
+                <!-- Drivers row -->
+                <div style="display:flex;gap:10px">
+                  <div style="flex:1;background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:center">
+                    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--navy);font-family:var(--mono)">${coDrvs.length}</div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:1px">drivers</div>
+                  </div>
+                  <div style="flex:1;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 12px;text-align:center">
+                    <div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Working</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--green);font-family:var(--mono)">${workingDrvs.length}</div>
+                    <div style="font-size:10px;color:#065f46;margin-top:1px">this week</div>
+                  </div>
+                  ${offDrvs.length>0?`<div style="flex:1;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;text-align:center">
+                    <div style="font-size:10px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Off</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--red);font-family:var(--mono)">${offDrvs.length}</div>
+                    <div style="font-size:10px;color:#991b1b;margin-top:1px">this week</div>
+                  </div>`:''}
                 </div>
-                <div>
-                  <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">Drivers</div>
-                  <div style="font-size:16px;font-weight:800;color:var(--green);font-family:var(--mono)">${coDrvs.length}</div>
-                </div>
+                ${offDrvs.length>0?`<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px">${offDrvs.map(d=>{
+                  const st=(d.weekStatus||{})[curW]||'off';
+                  const icons={sick:'🤒',broken:'🔧',rest:'😴',off:'⛔'};
+                  return`<span style="font-size:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:2px 7px;color:#9a3412;font-weight:600">${icons[st]||'⛔'} ${d.name.split(' ')[0]}</span>`;
+                }).join('')}</div>`:''}
               </div>
             </div>`;
           }).join('')}
@@ -1936,7 +1980,84 @@ function renderDispatch(){
 
 function dispatchSelectCo(co){_dispatchCoView=co;renderDispatch();}
 
-/* ══ DRIVER PAGE ══ */
+/* ══ DRIVER WEEK STATUS ══ */
+function openDrvStatusModal(drvId, drvName, currentStatus){
+  document.getElementById('dsm-drv-id').value=drvId;
+  document.getElementById('dsm-name').textContent=drvName;
+  document.getElementById('dsm-week').textContent='Week: '+wLbl(curW);
+  document.getElementById('dsm-selected').value=currentStatus||'working';
+  // Get existing reason
+  const drv=DRIVERS.find(d=>d.id===drvId);
+  const existingReason=(drv?.weekStatusReason||{})[curW]||'';
+  document.getElementById('dsm-reason').value=existingReason;
+  const opts=[
+    {val:'working',label:'✅ Working',desc:'Available and active this week',bg:'#ecfdf5',color:'#065f46',border:'#a7f3d0'},
+    {val:'sick',label:'🤒 Sick',desc:'Driver is sick / medical leave',bg:'#fef2f2',color:'#991b1b',border:'#fecaca'},
+    {val:'broken',label:'🔧 Breakdown',desc:'Truck breakdown / mechanical issue',bg:'#fffbeb',color:'#92400e',border:'#fde68a'},
+    {val:'rest',label:'😴 Resting',desc:'Planned rest / vacation',bg:'#f0f9ff',color:'#075985',border:'#bae6fd'},
+  ];
+  document.getElementById('dsm-options').innerHTML=opts.map(o=>`
+    <div onclick="selectDrvStatus('${o.val}')" id="dsm-opt-${o.val}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:2px solid ${(currentStatus||'working')===o.val?o.border:'var(--border)'};background:${(currentStatus||'working')===o.val?o.bg:'var(--surface2)'};cursor:pointer;transition:all .15s">
+      <div style="font-size:20px">${o.label.split(' ')[0]}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:${(currentStatus||'working')===o.val?o.color:'var(--navy)'}">${o.label.split(' ').slice(1).join(' ')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px">${o.desc}</div>
+      </div>
+      ${(currentStatus||'working')===o.val?`<span style="font-size:16px">✓</span>`:''}
+    </div>`).join('');
+  const showReason=(currentStatus||'working')!=='working';
+  document.getElementById('dsm-reason-wrap').style.display=showReason?'block':'none';
+  om('m-drv-status');
+}
+
+function selectDrvStatus(val){
+  document.getElementById('dsm-selected').value=val;
+  const opts=['working','sick','broken','rest'];
+  const cfgs={
+    working:{bg:'#ecfdf5',color:'#065f46',border:'#a7f3d0',label:'Working',icon:'✅',desc:'Available and active this week'},
+    sick:{bg:'#fef2f2',color:'#991b1b',border:'#fecaca',label:'Sick',icon:'🤒',desc:'Driver is sick / medical leave'},
+    broken:{bg:'#fffbeb',color:'#92400e',border:'#fde68a',label:'Breakdown',icon:'🔧',desc:'Truck breakdown / mechanical issue'},
+    rest:{bg:'#f0f9ff',color:'#075985',border:'#bae6fd',label:'Resting',icon:'😴',desc:'Planned rest / vacation'},
+  };
+  opts.forEach(o=>{
+    const el=document.getElementById('dsm-opt-'+o);
+    if(!el)return;
+    const cfg=cfgs[o];
+    const sel=o===val;
+    el.style.background=sel?cfg.bg:'var(--surface2)';
+    el.style.borderColor=sel?cfg.border:'var(--border)';
+    el.innerHTML=`<div style="font-size:20px">${cfg.icon}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:${sel?cfg.color:'var(--navy)'}">${cfg.label}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px">${cfg.desc}</div>
+      </div>
+      ${sel?'<span style="font-size:16px">✓</span>':''}`;
+  });
+  document.getElementById('dsm-reason-wrap').style.display=val!=='working'?'block':'none';
+}
+
+async function saveDrvStatus(){
+  const drvId=document.getElementById('dsm-drv-id').value;
+  const status=document.getElementById('dsm-selected').value;
+  const reason=document.getElementById('dsm-reason').value.trim();
+  if(!drvId)return;
+  const drv=DRIVERS.find(d=>d.id===drvId);
+  if(!drv){notify('Driver not found','err');return;}
+  const weekStatus={...(drv.weekStatus||{}),[curW]:status};
+  const weekStatusReason={...(drv.weekStatusReason||{}),[curW]:reason};
+  try{
+    const{updateDoc,doc:docFn}=window._fb;
+    await updateDoc(docFn(window._db,'drivers',drvId),{weekStatus,weekStatusReason});
+    // Update local
+    drv.weekStatus=weekStatus;
+    drv.weekStatusReason=weekStatusReason;
+    cm('m-drv-status');
+    notify('✅ Status updated for '+drv.name);
+    renderCur();
+  }catch(e){notify('Error saving status: '+e.message,'err');}
+}
+
+
 function openDriverPage(drvId){
   curDrv=DRIVERS.find(d=>d.id===drvId)||null;
   if(!curDrv)return;
@@ -6040,6 +6161,38 @@ async function saveDrv(){const nm=document.getElementById('dr-nm').value.trim();
       <button onclick="cm('m-load-search')" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
     </div>
     <div id="lsm-body" style="max-height:90vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- DRIVER WEEK STATUS MODAL -->
+<div class="ov" id="m-drv-status">
+  <div class="md" style="max-width:400px;width:95%;padding:0;overflow:hidden;border-radius:18px">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a2744 0%,#243156 100%);padding:22px 24px 18px;position:relative">
+      <button onclick="cm('m-drv-status')" style="position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;font-weight:700;margin-bottom:4px">DRIVER STATUS</div>
+      <div style="font-size:19px;font-weight:800;color:#fff" id="dsm-name">Driver</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px" id="dsm-week"></div>
+    </div>
+    <!-- Body -->
+    <div style="padding:22px 24px;background:var(--surface)">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Select status for this week</div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="dsm-options">
+        <!-- injected by JS -->
+      </div>
+      <input type="hidden" id="dsm-drv-id">
+      <input type="hidden" id="dsm-selected" value="working">
+      <!-- Reason field -->
+      <div id="dsm-reason-wrap" style="margin-top:14px;display:none">
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:6px">Reason / Note <span style="color:var(--text3);font-weight:400;text-transform:none">(optional)</span></label>
+        <textarea id="dsm-reason" placeholder="e.g. truck breakdown on I-95, back Monday..." style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:13px;resize:vertical;min-height:65px;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="display:flex;gap:10px;padding:14px 24px 18px;background:var(--surface);border-top:1px solid var(--border)">
+      <button onclick="cm('m-drv-status')" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;color:var(--text2)">Cancel</button>
+      <button onclick="saveDrvStatus()" style="flex:2;padding:11px;background:var(--orange);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--orange2)'" onmouseout="this.style.background='var(--orange)'">Save Status</button>
+    </div>
   </div>
 </div>
 
