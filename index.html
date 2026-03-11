@@ -1149,8 +1149,8 @@ function wRange(ws){try{const[y,w]=ws.split('-W'),jan4=new Date(+y,0,4),mo=new D
 function inW(ds,ws){if(!ds||!ws)return false;const d=new Date(ds+'T00:00:00'),{start,end}=wRange(ws);return d>=start&&d<=end}
 function wLbl(ws){try{const{start,end}=wRange(ws);return`${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`}catch{return ws}}
 function CWfrom(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dy=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-dy);const yr=new Date(Date.UTC(dt.getUTCFullYear(),0,1));return`${dt.getUTCFullYear()}-W${String(Math.ceil((((dt-yr)/86400000)+1)/7)).padStart(2,'0')}`}
-function prevWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()-7);curW=CWfrom(d);updateWkLbl();renderCur()}
-function nextWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()+7);curW=CWfrom(d);updateWkLbl();renderCur()}
+function prevWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()-7);curW=CWfrom(d);_dispatchCoView=null;updateWkLbl();renderCur()}
+function nextWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()+7);curW=CWfrom(d);_dispatchCoView=null;updateWkLbl();renderCur()}
 function goToday(){curW=CW();updateWkLbl();renderCur()}
 function updateWkLbl(){document.getElementById('wk-lbl').textContent=wLbl(curW)}
 
@@ -1757,7 +1757,7 @@ function renderCur(){
   renderPg(pg);
 }
 function renderPg(pg){
-  if(pg==='dispatch')renderDispatch();
+  if(pg==='dispatch'){if(ROLE==='admin')_dispatchCoView=null;renderDispatch();}
   if(pg==='driver'&&curDrv)renderDriverPage();
   if(pg==='kpi'){if(ROLE==='dispatcher'||ROLE==='admin')renderKPI();else{notify('Access restricted','err');return;}}
   if(pg==='accounting'){if(accView==='companies')renderAccView();else renderAcc();}
@@ -1784,6 +1784,8 @@ function renderPg(pg){
 }
 
 /* ══ DISPATCH PAGE ══ */
+let _dispatchCoView=null; // null = company list, string = selected company name
+
 function renderDispatch(){
   document.getElementById('d-wlbl').textContent=wLbl(curW);
   const isAll=['admin','owner','manager'].includes(ROLE);
@@ -1791,7 +1793,7 @@ function renderDispatch(){
   const myDrivers=isAll?DRIVERS:DRIVERS.filter(d=>(d.dispatcherEmail||"").trim().toLowerCase()===cuEmail);
   const wLoads=LOADS.filter(l=>inW(l.date,curW)||(l.week&&l.week===curW));
   const myLoads=isAll?wLoads:wLoads.filter(l=>l.dispEmail===CU.email);
-  const gross=myLoads.reduce((s,l)=>s+(+l.rate||0),0),miles=0;
+  const gross=myLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const totalOverMin=myDrivers.reduce((s,d)=>{const dl=myLoads.filter(l=>l.driver===d.name);return s+calcOverMin(dl,d)},0);
   document.getElementById('dk-l').textContent=myLoads.length;
   document.getElementById('dk-g').textContent=fK(gross);
@@ -1799,47 +1801,31 @@ function renderDispatch(){
   document.getElementById('dk-ov').textContent=fK(totalOverMin);
   const grid=document.getElementById('d-drivers');
   if(!myDrivers.length){grid.innerHTML=`<div class="em" style="grid-column:1/-1"><div class="e">🚛</div><p>No drivers assigned. Add drivers in Admin panel.</p></div>`;return}
-  // Get all unique weeks across all loads for this dispatcher
   const allMyLoads=isAll?LOADS:LOADS.filter(l=>l.dispEmail===CU.email);
-
-  // Group drivers by company
   const companies=[...new Set(myDrivers.map(d=>d.company||'—'))].sort();
-  
+
   const driverCardHtml=(d)=>{
     const allDL=allMyLoads.filter(l=>l.driver===d.name);
-    const dl=wLoads.filter(l=>l.driver===d.name); // current week
+    const dl=wLoads.filter(l=>l.driver===d.name);
     const dg=dl.reduce((s,l)=>s+(+l.rate||0),0),dm=dl.reduce((s,l)=>s+(+l.miles||0),0);
     const totalGross=allDL.reduce((s,l)=>s+(+l.rate||0),0);
     const overMin=calcOverMin(dl,d);
-    const locked=false;
     const rpm=dm>0?dg/dm:0;
     const rpmOk=d.minRate&&rpm>0?rpm>=(+d.minRate):true;
-
-    // Build per-week history rows (newest first)
     const weekMap={};
-    allDL.forEach(l=>{
-      const w=l.week||CWfrom(new Date(l.date+'T00:00:00'));
-      if(!weekMap[w])weekMap[w]=[];
-      weekMap[w].push(l);
-    });
+    allDL.forEach(l=>{const w=l.week||CWfrom(new Date(l.date+'T00:00:00'));if(!weekMap[w])weekMap[w]=[];weekMap[w].push(l);});
     const sortedWks=Object.keys(weekMap).sort((a,b)=>b.localeCompare(a));
     const weekRows=sortedWks.map((w,wi)=>{
-      const wk=weekMap[w];
-      const wg=wk.reduce((s,l)=>s+(+l.rate||0),0);
+      const wg=weekMap[w].reduce((s,l)=>s+(+l.rate||0),0);
       const isCur=w===curW;
-      const isLk=false;
-      const wNum=sortedWks.length-wi;
       return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:${isCur?'#fff7ed':'var(--bg)'};border:1px solid ${isCur?'var(--orange)':'transparent'};margin-bottom:3px">
-        <span style="font-size:11px;font-weight:600;color:${isCur?'var(--orange)':'var(--text2)'}">
-          Week ${wNum}${isCur?' ●':''}
+        <span style="font-size:11px;font-weight:600;color:${isCur?'var(--orange)':'var(--text2)'}">Week ${sortedWks.length-wi}${isCur?' ●':''}
           <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">${wLbl(w).split('–')[0].trim()}</span>
         </span>
         <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">$${fmt(wg)}</span>
       </div>`;
     }).join('');
-
-    return`<div class="driver-card ${locked?'locked':''}" onclick="openDriverPage('${d.id}')">
-      ${locked?`<div class="lock-badge">🔒 Locked</div>`:''}
+    return`<div class="driver-card" onclick="openDriverPage('${d.id}')">
       <div class="dc-head">
         <div class="dc-av">${avL(d.name)}</div>
         <div style="flex:1"><div class="dc-name">${d.name}</div></div>
@@ -1857,35 +1843,98 @@ function renderDispatch(){
     </div>`;
   };
 
-  // Render grouped by company
-  grid.innerHTML=`<div style="grid-column:1/-1">` + companies.map(co=>{
-    const coDrvs=myDrivers.filter(d=>(d.company||'—')===co);
-    const coLoads=wLoads.filter(l=>coDrvs.some(d=>d.name===l.driver));
-    const coGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
-    const coTotal=allMyLoads.filter(l=>coDrvs.some(d=>d.name===l.driver)).reduce((s,l)=>s+(+l.rate||0),0);
-    return`
-      <div style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 16px;background:var(--navy);border-radius:12px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>
-            <span style="font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px">${co}</span>
-            <span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:500">${coDrvs.length} driver${coDrvs.length!==1?'s':''}</span>
-          </div>
-          <div style="display:flex;gap:16px;align-items:center">
-            <div style="text-align:right">
-              <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">THIS WEEK</div>
-              <div style="font-size:14px;font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(coGross)}</div>
+  // ── ADMIN: company-card view ──────────────────────────────────────
+  if(ROLE==='admin'){
+    if(!_dispatchCoView){
+      // Show company cards (like Accounting board)
+      grid.innerHTML=`<div style="grid-column:1/-1">
+        <div style="margin-bottom:6px;color:var(--text3);font-size:12px">Select a company to view drivers</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:12px">
+          ${companies.map(co=>{
+            const coDrvs=myDrivers.filter(d=>(d.company||'—')===co);
+            const coLoads=wLoads.filter(l=>coDrvs.some(d=>d.name===l.driver));
+            const coGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
+            const coPending=coLoads.filter(l=>!l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+            const coPaid=coLoads.filter(l=>l.paid).length;
+            return`<div onclick="dispatchSelectCo('${co.replace(/'/g,"\\'")}\")" style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .18s;box-shadow:0 1px 4px rgba(0,0,0,.05)" onmouseover="this.style.borderColor='var(--orange)';this.style.boxShadow='0 4px 16px rgba(231,111,34,.15)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='0 1px 4px rgba(0,0,0,.05)'">
+              <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px">${co}</div>
+              <div style="display:flex;gap:16px">
+                <div>
+                  <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">Total</div>
+                  <div style="font-size:16px;font-weight:800;color:var(--navy);font-family:var(--mono)">$${fmt(coGross)}</div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">Pending</div>
+                  <div style="font-size:16px;font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(coPending)}</div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">Drivers</div>
+                  <div style="font-size:16px;font-weight:800;color:var(--green);font-family:var(--mono)">${coDrvs.length}</div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    } else {
+      // Show drivers of selected company
+      const co=_dispatchCoView;
+      const coDrvs=myDrivers.filter(d=>(d.company||'—')===co);
+      const coLoads=wLoads.filter(l=>coDrvs.some(d=>d.name===l.driver));
+      const coGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
+      const coTotal=allMyLoads.filter(l=>coDrvs.some(d=>d.name===l.driver)).reduce((s,l)=>s+(+l.rate||0),0);
+      grid.innerHTML=`<div style="grid-column:1/-1">
+        <!-- Back + company header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <button onclick="_dispatchCoView=null;renderDispatch()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer">← Back</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex:1;padding:10px 16px;background:var(--navy);border-radius:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>
+              <span style="font-size:13px;font-weight:800;color:#fff">${co}</span>
+              <span style="font-size:11px;color:rgba(255,255,255,.45)">${coDrvs.length} driver${coDrvs.length!==1?'s':''}</span>
             </div>
-            <div style="text-align:right">
-              <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">ALL TIME</div>
-              <div style="font-size:14px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(coTotal)}</div>
+            <div style="display:flex;gap:16px">
+              <div style="text-align:right">
+                <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">THIS WEEK</div>
+                <div style="font-size:14px;font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(coGross)}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">ALL TIME</div>
+                <div style="font-size:14px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(coTotal)}</div>
+              </div>
             </div>
           </div>
         </div>
         <div class="driver-grid" style="margin:0">${coDrvs.map(d=>driverCardHtml(d)).join('')}</div>
       </div>`;
+    }
+    return;
+  }
+
+  // ── NON-ADMIN: grouped by company (existing behaviour) ───────────
+  grid.innerHTML=`<div style="grid-column:1/-1">` + companies.map(co=>{
+    const coDrvs=myDrivers.filter(d=>(d.company||'—')===co);
+    const coLoads=wLoads.filter(l=>coDrvs.some(d=>d.name===l.driver));
+    const coGross=coLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const coTotal=allMyLoads.filter(l=>coDrvs.some(d=>d.name===l.driver)).reduce((s,l)=>s+(+l.rate||0),0);
+    return`<div style="margin-bottom:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 16px;background:var(--navy);border-radius:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>
+          <span style="font-size:13px;font-weight:800;color:#fff">${co}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.45)">${coDrvs.length} driver${coDrvs.length!==1?'s':''}</span>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">THIS WEEK</div><div style="font-size:14px;font-weight:800;color:var(--orange);font-family:var(--mono)">$${fmt(coGross)}</div></div>
+          <div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;font-weight:700">ALL TIME</div><div style="font-size:14px;font-weight:800;color:#fff;font-family:var(--mono)">$${fmt(coTotal)}</div></div>
+        </div>
+      </div>
+      <div class="driver-grid" style="margin:0">${coDrvs.map(d=>driverCardHtml(d)).join('')}</div>
+    </div>`;
   }).join('') + '</div>';
 }
+
+function dispatchSelectCo(co){_dispatchCoView=co;renderDispatch();}
 
 /* ══ DRIVER PAGE ══ */
 function openDriverPage(drvId){
