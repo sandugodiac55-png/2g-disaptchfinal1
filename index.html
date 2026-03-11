@@ -216,12 +216,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .tc-title{font-size:14px;font-weight:700;color:var(--navy)}
 .mla{margin-left:auto}
 .tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:700px}
-thead th{padding:6px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+table{width:100%;border-collapse:collapse;min-width:600px}
+thead th{padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:hover{background:var(--bg)}
 tbody tr:last-child{border-bottom:none}
-td{padding:7px 12px;color:var(--text2);font-size:11px;white-space:nowrap}
+td{padding:8px 12px;color:var(--text2);font-size:12px;white-space:nowrap}
 td.bold{color:var(--navy);font-weight:700;font-family:var(--mono)}
 td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
@@ -1846,15 +1846,15 @@ function renderDispatch(){
         <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${sc.bg};color:${sc.color};border:1px solid ${sc.border}">${sc.label}</span>
         ${canSetStatus?`<button onclick="event.stopPropagation();openDrvStatusModal('${d.id}','${d.name.replace(/'/g,"\\'")}','${drvStatus}')" style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:7px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg2)'">✏️ Status</button>`:''}
       </div>
-      <div class="dc-stats" style="margin-bottom:10px" onclick="openDriverPage('${d.id}')" style="cursor:pointer">
+      <div class="dc-stats" style="margin-bottom:10px;cursor:pointer" onclick="openDriverPage('${d.id}')">
         <div class="dc-s"><div class="dc-sl">Over Min</div><div class="dc-sv" style="color:${overMin>0?'var(--green)':overMin<0?'var(--red)':'var(--text3)'}">${overMin<0?'-':''}${fK(Math.abs(overMin))}</div></div>
         <div class="dc-s"><div class="dc-sl">Rate/Mile</div><div class="dc-sv" style="color:${rpmOk?'var(--green)':'var(--red)'}">$${rpm.toFixed(2)}</div></div>
       </div>
-      <div class="dc-bar" style="margin-bottom:10px" onclick="openDriverPage('${d.id}')" style="cursor:pointer">
+      <div class="dc-bar" style="margin-bottom:10px;cursor:pointer" onclick="openDriverPage('${d.id}')">
         <div class="dc-barlabel"><span>vs Min</span><span style="color:${rpmOk?'var(--green)':'var(--red)'};font-weight:700">$${rpm.toFixed(2)} / $${d.minRate||'—'}</span></div>
         <div class="dc-bartrack"><div class="dc-barfill" style="width:${Math.min(rpm/(+(d.minRate||rpm||1))*100,100)}%;background:${rpmOk?'var(--green)':'var(--red)'}"></div></div>
       </div>
-      ${weekRows?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px" onclick="openDriverPage('${d.id}')" style="cursor:pointer">${weekRows}</div>`:''}
+      ${weekRows?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px;cursor:pointer" onclick="openDriverPage('${d.id}')">${weekRows}</div>`:''}
     </div>`;
   };
 
@@ -4363,15 +4363,15 @@ function renderSalEmp(weeks){
         <div style="display:flex;align-items:center;gap:12px">
           <div style="text-align:right">
             <div style="font-size:10px;color:rgba(255,255,255,.5)">SALARY</div>
-            <div style="font-size:14px;font-weight:800;color:#34d399;font-family:var(--mono)" id="disp-sal-${disp.id}">$0</div>
+            <div style="font-size:16px;font-weight:800;color:#34d399;font-family:var(--mono)" id="disp-sal-${disp.id}">$0</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:10px;color:rgba(255,255,255,.5)">KPI BONUS</div>
-            <div style="font-size:14px;font-weight:800;color:#fbbf24;font-family:var(--mono)" id="disp-kpi-${disp.id}">$0</div>
+            <div style="font-size:16px;font-weight:800;color:#fbbf24;font-family:var(--mono)" id="disp-kpi-${disp.id}">$0</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:10px;color:rgba(255,255,255,.5)">TOTAL</div>
-            <div style="font-size:14px;font-weight:800;color:#fff;font-family:var(--mono)" id="disp-tot-${disp.id}">$0</div>
+            <div style="font-size:16px;font-weight:800;color:#fff;font-family:var(--mono)" id="disp-tot-${disp.id}">$0</div>
           </div>
           <button onclick="exportSingleDispatcher('${disp.id}','${escQ(disp.name)}')" style="padding:5px 12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer">⬇ Excel</button>
         </div>
@@ -4393,8 +4393,21 @@ function renderSalEmp(weeks){
       </div>
 
       <!-- Drivers table -->
-      <div class="tw"><table>
-        <thead><tr><th>DRIVER</th><th>SAL %</th>${weeks.map(w=>`<th style="font-size:9px">${wLbl(w).split('–')[0].trim()}<br><span style="font-weight:400;opacity:.6">gross/sal</span></th>`).join('')}<th>TOTAL GROSS</th><th>SALARY</th></tr></thead>
+      <div class="tw"><table style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:180px">
+          <col style="width:60px">
+          ${weeks.map(()=>`<col style="width:130px">`).join('')}
+          <col style="width:120px">
+          <col style="width:110px">
+        </colgroup>
+        <thead><tr>
+          <th style="text-align:left">DRIVER</th>
+          <th style="text-align:center">SAL %</th>
+          ${weeks.map(w=>`<th style="font-size:9px;text-align:center">${wLbl(w).split('–')[0].trim()}<br><span style="font-weight:400;opacity:.6">gross / sal</span></th>`).join('')}
+          <th style="text-align:right">TOTAL GROSS</th>
+          <th style="text-align:right">SALARY</th>
+        </tr></thead>
         <tbody>`;
 
     myDrivers.forEach(dr=>{
@@ -4402,22 +4415,22 @@ function renderSalEmp(weeks){
       let driverTotalSal=0;
       const pct=+(dr.salaryPct||0);
       html+=`<tr>
-        <td style="font-weight:600">${dr.name}<br><span style="font-size:9px;color:var(--text3)">${dr.company||''}</span></td>
-        <td><input type="number" value="${pct||''}" placeholder="%" style="width:52px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--mono)" onblur="saveSalPct('${dr.id}',this.value)" title="Salary %"></td>`;
+        <td style="font-weight:600;font-size:13px">${dr.name}<br><span style="font-size:10px;color:var(--text3)">${dr.company||''}</span></td>
+        <td style="text-align:center"><input type="number" value="${pct||''}" placeholder="%" style="width:46px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:center" onblur="saveSalPct('${dr.id}',this.value)" title="Salary %"></td>`;
       weeks.forEach(w=>{
         const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
         const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
         const sal=gross*(pct/100);
         driverTotalGross+=gross;
         driverTotalSal+=sal;
-        html+=`<td style="font-size:11px;font-family:var(--mono)">
-          <span style="color:var(--green)">$${fmt(gross)}</span><br>
-          <span style="color:var(--blue);font-size:10px">$${fmt(sal)}</span>
+        html+=`<td style="text-align:center;padding:8px 10px">
+          <div style="font-size:13px;font-weight:700;color:var(--green);font-family:var(--mono)">$${fmt(gross)}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--blue);font-family:var(--mono);margin-top:2px">$${fmt(sal)}</div>
         </td>`;
       });
       dispTotalSalary+=driverTotalSal;
-      html+=`<td style="font-family:var(--mono);color:var(--green);font-weight:700">$${fmt(driverTotalGross)}</td>
-        <td style="font-family:var(--mono);color:var(--blue);font-weight:700">$${fmt(driverTotalSal)}</td>
+      html+=`<td style="text-align:right;font-family:var(--mono);font-size:14px;font-weight:800;color:var(--green)">$${fmt(driverTotalGross)}</td>
+        <td style="text-align:right;font-family:var(--mono);font-size:14px;font-weight:800;color:var(--blue)">$${fmt(driverTotalSal)}</td>
       </tr>`;
     });
 
