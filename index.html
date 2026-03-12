@@ -848,8 +848,8 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
         <div class="pg" id="pg-owner-salary-slip" style="display:none">
           <div class="ph">
             <div>
-              <div class="ph-t">📋 Salary Slip</div>
-              <div class="ph-s">Driver weekly salary breakdown</div>
+              <div class="ph-t">📋 Owner Salary Slip</div>
+              <div class="ph-s">Owner weekly salary breakdown per driver</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
               <select id="slip-drv-sel2" onchange="renderDriverSlipPage()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;background:var(--surface);color:var(--navy);cursor:pointer">
@@ -918,7 +918,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <!-- DRIVER SALARY SLIP SECTION -->
           <div style="margin-top:28px">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)">
-              <div style="font-size:16px;font-weight:800;color:var(--navy)">📋 Driver Salary Slip</div>
+              <div style="font-size:16px;font-weight:800;color:var(--navy)">📋 Owner Salary Slip</div>
               <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
                 <select id="slip-drv-sel" onchange="renderDriverSlip()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;background:var(--surface);color:var(--navy);cursor:pointer">
                   <option value="">— Select Driver —</option>
@@ -1539,9 +1539,9 @@ function buildNavItems(){
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
     accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
-    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},...(CP.salarySlipEnabled?[{id:'owner-salary-slip',i:'📋',l:'Salary Slip'}]:[]),{id:'owner-stats',i:'🏢',l:'Company Stats'}],
+    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},...(CP.salarySlipEnabled?[{id:'owner-salary-slip',i:'📋',l:'Owner Slip'}]:[]),{id:'owner-stats',i:'🏢',l:'Company Stats'}],
     accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
-    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'owner-salary-slip',i:'📋',l:'Salary Slip'},{id:'own',i:'🏢',l:'OWN Company'},{id:'admin',i:'⚙️',l:'Admin'}],
+    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'owner-salary-slip',i:'📋',l:'Owner Slip'},{id:'own',i:'🏢',l:'OWN Company'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
   return maps[ROLE]||maps.dispatcher;
 }
@@ -1644,7 +1644,7 @@ function subTrips(){
 }
 
 /* ══ ROUTING ══ */
-const pgTitles={dispatch:'My Drivers',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary','owner-salary-slip':'Driver Salary Slip',own:'OWN Company',admin:'Admin Panel',driver:'Driver Loads'};
+const pgTitles={dispatch:'My Drivers',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary','owner-salary-slip':'Owner Salary Slip',own:'OWN Company',admin:'Admin Panel',driver:'Driver Loads'};
 function showPg(pg,opts={}){
   // acc-urgent/bond/problem/tasks are virtual pages — map to pg-accounting or pg-acc-tasks
   // owner-kpi / owner-stats are separate pages
