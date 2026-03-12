@@ -4044,8 +4044,12 @@ function renderOwnerDriverCards(myDrivers,myLoads){
   body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:4px 0">
     ${myDrivers.map(d=>{
       const dLoads=myLoads.filter(l=>l.driver===d.name);
-      const pending=dLoads.filter(l=>!l.ownerConfirmed).reduce((s,l)=>s+(+l.rate||0),0);
-      const pendingCount=dLoads.filter(l=>!l.ownerConfirmed).length;
+      const pending=d.ownerConfirmEnabled
+        ? dLoads.filter(l=>!l.ownerConfirmed).reduce((s,l)=>s+(+l.rate||0),0)
+        : dLoads.filter(l=>!l.paid).reduce((s,l)=>s+(+l.rate||0),0);
+      const pendingCount=d.ownerConfirmEnabled
+        ? dLoads.filter(l=>!l.ownerConfirmed).length
+        : dLoads.filter(l=>!l.paid).length;
       const av=avL(d.name);
       return`<div onclick="owSelDriver='${d.id}';renderOwner()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:18px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='var(--navy)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -4076,7 +4080,9 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
   const dLoads=myLoads.filter(l=>l.driver===drv.name).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const totalGross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
-  const pending=dLoads.filter(l=>!l.ownerConfirmed).reduce((s,l)=>s+(+l.rate||0),0);
+  const pending=drv.ownerConfirmEnabled
+    ? dLoads.filter(l=>!l.ownerConfirmed).reduce((s,l)=>s+(+l.rate||0),0)
+    : dLoads.filter(l=>!l.paid).reduce((s,l)=>s+(+l.rate||0),0);
 
   // Group loads by week
   const weekMap={};
