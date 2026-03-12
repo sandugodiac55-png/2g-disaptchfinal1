@@ -5440,17 +5440,20 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
   const drv=DRIVERS.find(d=>d.id===drvId);
   if(!drv){body.innerHTML='';return;}
 
-  // Load paid status from Firestore
+  // Always reload paid status fresh from Firestore (don't use cache)
+  const key=_slipKey(drvId,week);
+  delete _slipPaid[key]; // invalidate cache so loadSlipStatus fetches fresh
   const paidData=await loadSlipStatus(drvId,week);
   const isPaid=!!(paidData?.paid);
 
   const {start,end}=wRange(week);
+  // ALWAYS use live loads — slip recalculates from current load data even when paid
   const wLoads=LOADS.filter(l=>l.driver===drv.name&&(l.week===week||inW(l.date,week)));
-  const key=_slipKey(drvId,week);
-  // If paid, use saved values from Firestore; else use in-memory manual
-  const man=isPaid
-    ?{insurance:paidData.insurance||0, logbook:paidData.logbook||0, superDispatch:paidData.superDispatch||0, ifta:paidData.ifta||0}
-    :(_slipManual[key]||{});
+  // Restore saved manual values into memory if not already there (e.g. after page reload)
+  if(isPaid && paidData && !_slipManual[key]){
+    _slipManual[key]={insurance:paidData.insurance||0, logbook:paidData.logbook||0, superDispatch:paidData.superDispatch||0, ifta:paidData.ifta||0};
+  }
+  const man=_slipManual[key]||{};
 
   const isCopCod=l=>{const pm=(l.payMethod||'').toLowerCase();return pm==='cod'||pm==='cop'||pm==='c.o.d.'||pm==='c.o.p.';};
   const isCashToDriver=l=>{
