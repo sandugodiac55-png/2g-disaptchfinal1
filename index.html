@@ -2608,11 +2608,13 @@ async function advStat(id,next){
 }
 async function doAdvStat(id,next){
   const{updateDoc,doc}=window._fb;
-  const ts=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const now=new Date();
+  const ts=now.toLocaleDateString('en-US',{month:'short',day:'numeric'}); // display label e.g. "Mar 11"
+  const isoDate=now.toISOString().substring(0,10); // YYYY-MM-DD for KPI calculations
   const upd={status:next};
-  if(next==='Delivered')upd.deliveredDate=ts;
-  if(next==='Invoiced')upd.invoicedDate=ts;
-  if(next==='Picked Up')upd.pickedDate=ts;
+  if(next==='Delivered'){upd.deliveredDate=isoDate;upd.deliveredLabel=ts;}
+  if(next==='Invoiced'){upd.invoicedDate=isoDate;upd.invoicedLabel=ts;}
+  if(next==='Picked Up'){upd.pickedDate=isoDate;upd.pickedLabel=ts;}
   await updateDoc(doc(window._db,'loads',id),upd);
   notify('→ '+next+' ('+ts+')');
 }
@@ -2895,11 +2897,22 @@ function renderKPI(){
             const hasDelivered=statuses.some(s=>s==='delivered'||s==='invoiced');
             const hasPickedUp=!hasDelivered&&statuses.some(s=>s==='picked up'||s==='pickedup');
 
-            // Convert any date format to YYYY-MM-DD string (handles Firestore Timestamps too)
+            // Convert any date format to YYYY-MM-DD string (handles all formats)
             const toDateStr=v=>{
               if(!v) return null;
-              if(typeof v==='string') return v.length>10?v.substring(0,10):v;
+              if(typeof v==='string'){
+                // Already YYYY-MM-DD
+                if(/^\d{4}-\d{2}-\d{2}/.test(v)) return v.substring(0,10);
+                // ISO with time: "2026-03-11T..."
+                if(v.length>10&&v.includes('T')) return v.substring(0,10);
+                // Old format "Mar 11" or "Mar 11, 2026" — parse it
+                const parsed=new Date(v+(/\d{4}/.test(v)?'':','+new Date().getFullYear()));
+                if(!isNaN(parsed)) return parsed.toISOString().substring(0,10);
+                return null;
+              }
+              // Firestore Timestamp {seconds, nanoseconds}
               if(v.seconds) return new Date(v.seconds*1000).toISOString().substring(0,10);
+              // JS Date
               if(v instanceof Date) return v.toISOString().substring(0,10);
               return null;
             };
@@ -3212,13 +3225,21 @@ function accLoadRow(l,canEdit,cols){
       <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
         <span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span>
         ${(()=>{
-          const toD=v=>{if(!v)return null;if(typeof v==='string')return v.substring(0,10);if(v.seconds)return new Date(v.seconds*1000).toISOString().substring(0,10);return null;};
-          const statusDate=l.status==='Invoiced'?toD(l.invoicedDate):l.status==='Delivered'?toD(l.deliveredDate):l.status==='Picked Up'?toD(l.pickedDate):null;
-          const delivDate=toD(l.deliveredDate);
+          const toD=v=>{
+            if(!v)return null;
+            if(typeof v==='string'){
+              if(/^\d{4}-\d{2}-\d{2}/.test(v))return v.substring(0,10);
+              if(v.includes('T'))return v.substring(0,10);
+              return v; // "Mar 11" — show as-is
+            }
+            if(v.seconds)return new Date(v.seconds*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            return null;
+          };
+          const statusDate=l.status==='Invoiced'?toD(l.invoicedDate||l.invoicedLabel):l.status==='Delivered'?toD(l.deliveredDate||l.deliveredLabel):l.status==='Picked Up'?toD(l.pickedDate||l.pickedLabel):null;
+          const delivDate=toD(l.deliveredDate||l.deliveredLabel);
           let html='';
           if(statusDate) html+=`<span style="font-size:9px;color:var(--text3);font-family:var(--mono)">${statusDate}</span>`;
-          // Under Invoiced: show delivered date separately
-          if(l.status==='Invoiced'&&delivDate) html+=`<br><span style="font-size:8px;color:#059669;font-family:var(--mono)">📦 del: ${delivDate}</span>`;
+          if(l.status==='Invoiced'&&delivDate) html+=`<br><span style="font-size:8px;color:#059669;font-family:var(--mono)">📦 ${delivDate}</span>`;
           return html;
         })()}
       </div>
