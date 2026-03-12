@@ -4119,7 +4119,9 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
               const wLoads=weekMap[w];
               const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
               // Week header row
-              const wLabel=w.includes('-W')?`Week ${w.split('-W')[1]} · ${w}`:(w||'Unknown week');
+              const wNum=w.split('-W')[1]||'?';
+              const isActive=w===curW;
+              const wLabel=`Week ${wNum}${isActive?' (active)':''} — ${wLbl(w)}`;
               const wRows=wLoads.map(l=>{
                 const oid=(l.orderId||'—');
                 const oidDisplay=oid.length>10?oid.substring(0,10)+'…':oid;
@@ -4169,11 +4171,10 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
               }).join('');
 
               return`
-                <!-- Week header -->
-                <tr style="background:var(--bg2)">
-                  <td colspan="11" style="padding:7px 14px;font-size:11px;font-weight:800;color:var(--navy);border-bottom:1px solid var(--border);border-top:2px solid var(--border)">
-                    🗓 ${wLabel}
-                    <span style="margin-left:8px;font-size:10px;color:var(--text3);font-weight:600">${wLoads.length} loads</span>
+                <tr style="background:#eff6ff">
+                  <td colspan="11" style="padding:8px 14px;font-size:12px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #bfdbfe;border-top:2px solid #bfdbfe">
+                    📅 ${wLabel}
+                    <span style="margin-left:8px;font-size:10px;color:#3b82f6;font-weight:600">${wLoads.length} loads</span>
                   </td>
                 </tr>
                 ${wRows}
