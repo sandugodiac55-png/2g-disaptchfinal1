@@ -5419,6 +5419,9 @@ function _populateSlipSelectors(drvSelId, weekSelId){
 }
 
 async function renderDriverSlipPage(){
+  // Don't interrupt user while they're typing in a slip input
+  const active=document.activeElement;
+  if(active&&active.closest&&active.closest('#slip-body2, #pg-owner-salary-slip')) return;
   _populateSlipSelectors('slip-drv-sel2','slip-week-sel2');
   const body=document.getElementById('slip-body2');
   if(!body)return;
@@ -5428,6 +5431,8 @@ async function renderDriverSlipPage(){
 }
 
 async function renderDriverSlip(){
+  const active=document.activeElement;
+  if(active&&active.closest&&active.closest('#slip-body, #pg-salary')) return;
   const body=document.getElementById('slip-body');
   if(!body)return;
   const drvId=document.getElementById('slip-drv-sel')?.value;
