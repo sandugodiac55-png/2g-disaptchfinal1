@@ -1539,7 +1539,7 @@ function buildNavItems(){
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
     accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
-    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},{id:'owner-salary-slip',i:'📋',l:'Salary Slip'},{id:'owner-stats',i:'🏢',l:'Company Stats'}],
+    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},...(CP.salarySlipEnabled?[{id:'owner-salary-slip',i:'📋',l:'Salary Slip'}]:[]),{id:'owner-stats',i:'🏢',l:'Company Stats'}],
     accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'owner-salary-slip',i:'📋',l:'Salary Slip'},{id:'own',i:'🏢',l:'OWN Company'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
@@ -4342,6 +4342,17 @@ async function toggleOwnerConfirmFeature(drvId,drvName,currentState){
   renderAdmin();
 }
 
+async function toggleOwnerSalarySlip(userId,userName,currentState){
+  if(ROLE!=='admin'){notify('Only admin can change this','err');return;}
+  const newState=!currentState;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'users',userId),{salarySlipEnabled:newState});
+  const u=USERS.find(u=>u.id===userId);
+  if(u) u.salarySlipEnabled=newState;
+  notify(`${userName}: Salary Slip ${newState?'ACTIVAT ✅':'DEZACTIVAT'}`);
+  renderAdmin();
+}
+
 function renderOwnerKpiPage(){
   const{myDrivers}=owGetData();
   const body=document.getElementById('ow-kpi-body');
@@ -5365,14 +5376,14 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
   const slipId='slip-print-'+drvId.replace(/[^a-z0-9]/gi,'');
 
   body.innerHTML=`
-  <div id="${slipId}" style="background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:1200px;box-shadow:var(--shadow)">
+  <div id="${slipId}" style="background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)">
     <div style="text-align:center;padding:18px;border-bottom:2px solid var(--border);background:#f8fafc">
       <div style="font-size:18px;font-weight:900;color:var(--navy)">Salary Slip <span style="font-size:14px;font-weight:600;color:var(--text3)">(${slipRange})</span></div>
       <div style="font-size:12px;color:var(--text3);margin-top:2px">${drv.name} · ${wLbl(week)}</div>
     </div>
-    <div style="display:flex;gap:0;flex-wrap:wrap">
+    <div style="display:flex;gap:0">
       <!-- Expense table -->
-      <div style="min-width:290px;border-right:2px solid var(--border)">
+      <div style="width:320px;flex-shrink:0;border-right:2px solid var(--border)">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <tbody>
             ${[
@@ -5416,7 +5427,6 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
           <thead>
             <tr style="background:#1e293b;color:#fff">
               <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DRIVER</th>
-              <th style="padding:9px 8px;text-align:center;font-size:9px;letter-spacing:.5px">%</th>
               <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DATE</th>
               <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">LOAD ID</th>
               <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px">CAR</th>
@@ -5427,7 +5437,7 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
             </tr>
           </thead>
           <tbody>
-            ${wLoads.length===0?`<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text3)">No loads for this week</td></tr>`
+            ${wLoads.length===0?`<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--text3)">No loads for this week</td></tr>`
             :wLoads.map((l,i)=>{
               const isCod=isCopCod(l);
               const isCash=isCashToDriver(l);
@@ -5437,26 +5447,25 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
               const oid=l.orderId||'—';
               const oidShort=oid.length>16?oid.substring(0,16)+'…':oid;
               const car=(l.car||'—');
-              const carShort=car.length>20?car.substring(0,20)+'…':car;
+              const carShort=car.length>22?car.substring(0,22)+'…':car;
               const from=(l.origin||'?').split(',')[0];
               const to=(l.dest||'?').split(',')[0];
               const comment=l.accComment||l.notes||l.driverPayNote||'';
               return`<tr style="border-bottom:1px solid #e5e7eb;background:${bg}">
                 <td style="padding:7px 10px;font-weight:600;color:var(--navy);white-space:nowrap">${drv.name}</td>
-                <td style="padding:7px 8px;text-align:center;font-weight:700;color:var(--text3)">${pct}</td>
                 <td style="padding:7px 10px;white-space:nowrap;color:var(--text2)">${l.date||'—'}</td>
                 <td style="padding:7px 10px;font-family:var(--mono);font-weight:700;color:var(--navy);white-space:nowrap" title="${oid}">${oidShort}</td>
-                <td style="padding:7px 10px;color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${car}">${carShort}</td>
+                <td style="padding:7px 10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${car}">${carShort}</td>
                 <td style="padding:7px 10px;color:var(--text2);white-space:nowrap">${from} → ${to}</td>
                 <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--green);white-space:nowrap">$${fmt(+l.rate||0)}</td>
                 <td style="padding:7px 10px;text-align:center">
                   <span style="font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;background:${payBg};color:${payCol}">${l.payMethod||'—'}</span>
                 </td>
-                <td style="padding:7px 10px;color:var(--text3);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${comment}">${comment||'—'}</td>
+                <td style="padding:7px 10px;color:var(--text3);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${comment}">${comment||'—'}</td>
               </tr>`;
             }).join('')}
             <tr style="background:#f97316;border-top:2px solid #ea580c">
-              <td colspan="6" style="padding:9px 10px;font-weight:800;color:#fff;font-size:12px">${drv.name}</td>
+              <td colspan="5" style="padding:9px 10px;font-weight:800;color:#fff;font-size:12px">${drv.name}</td>
               <td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:13px">$${fmt(totalGross)}</td>
               <td colspan="2"></td>
             </tr>
@@ -6443,6 +6452,9 @@ function renderAdmin(){
         <div class="ue">${u.email||'—'}${u.company?` · <span style="color:var(--orange);font-weight:600">${u.company}</span>`:''}</div>
       </div>
       <span class="rt ${u.role||'dispatcher'}">${u.role||'dispatcher'}</span>
+      ${u.role==='owner'?`<button onclick="toggleOwnerSalarySlip('${u.id}','${escQ(u.name)}',${!!u.salarySlipEnabled})"
+        style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid ${u.salarySlipEnabled?'#bbf7d0':'#e5e7eb'};background:${u.salarySlipEnabled?'#f0fdf4':'#f9fafb'};color:${u.salarySlipEnabled?'#065f46':'#6b7280'}">
+        ${u.salarySlipEnabled?'📋 Slip ON':'📋 Slip OFF'}</button>`:''}
       <button onclick="openEditUserModal('${u.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;font-weight:700">✏ Edit</button>
       ${u.email!==CU.email?`<button onclick="deleteUser('${u.id}','${escQ(u.name)}')" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700">🗑</button>`:`<span style="font-size:10px;color:var(--text3);padding:3px 8px">(you)</span>`}
     </div>`).join(''):`<div class="em" style="padding:20px"><p>No users.</p></div>`;
