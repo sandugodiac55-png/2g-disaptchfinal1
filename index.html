@@ -2941,6 +2941,7 @@ function renderKPI(){
             const single=active.filter(r=>r.startDate===ds&&r.endDate===ds);
             const mid=active.filter(r=>r.startDate<ds&&r.endDate>ds);
             const hasSplit=ending.length>0&&starting.length>0;
+            if(active.length>0) console.log(`DAY ${ds} active:${active.map(r=>r.t.id+'['+r.startDate+'→'+r.endDate+']').join(' | ')} ending:${ending.length} starting:${starting.length} single:${single.length} mid:${mid.length} hasSplit:${hasSplit}`);
 
             // Build one bar block
             const mkBar=(r,side)=>{
