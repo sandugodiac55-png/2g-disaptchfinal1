@@ -844,6 +844,26 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div id="ow-kpi-month-body"></div>
         </div>
 
+        <!-- SALARY SLIP STANDALONE PAGE -->
+        <div class="pg" id="pg-owner-salary-slip" style="display:none">
+          <div class="ph">
+            <div>
+              <div class="ph-t">📋 Salary Slip</div>
+              <div class="ph-s">Driver weekly salary breakdown</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="slip-drv-sel2" onchange="renderDriverSlipPage()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;background:var(--surface);color:var(--navy);cursor:pointer">
+                <option value="">— Select Driver —</option>
+              </select>
+              <select id="slip-week-sel2" onchange="renderDriverSlipPage()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;background:var(--surface);color:var(--navy);cursor:pointer">
+                <option value="">— Select Week —</option>
+              </select>
+              <button onclick="printDriverSlip2()" style="padding:7px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer">🖨 Print</button>
+            </div>
+          </div>
+          <div id="slip-body2"></div>
+        </div>
+
         <!-- PASSWORDS PAGE -->
         <div class="pg" id="pg-passwords">
           <div class="ph">
@@ -1519,9 +1539,9 @@ function buildNavItems(){
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
     accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
-    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},{id:'owner-stats',i:'🏢',l:'Company Stats'}],
+    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},{id:'owner-salary-slip',i:'📋',l:'Salary Slip'},{id:'owner-stats',i:'🏢',l:'Company Stats'}],
     accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
-    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'own',i:'🏢',l:'OWN Company'},{id:'admin',i:'⚙️',l:'Admin'}],
+    admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'owner-salary-slip',i:'📋',l:'Salary Slip'},{id:'own',i:'🏢',l:'OWN Company'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
   return maps[ROLE]||maps.dispatcher;
 }
@@ -1624,7 +1644,7 @@ function subTrips(){
 }
 
 /* ══ ROUTING ══ */
-const pgTitles={dispatch:'My Drivers',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary',own:'OWN Company',admin:'Admin Panel',driver:'Driver Loads'};
+const pgTitles={dispatch:'My Drivers',accounting:'Accounting',kpi:'KPI Leaderboard',owner:'Owner Dashboard',passwords:'Passwords',salary:'Salary','owner-salary-slip':'Driver Salary Slip',own:'OWN Company',admin:'Admin Panel',driver:'Driver Loads'};
 function showPg(pg,opts={}){
   // acc-urgent/bond/problem/tasks are virtual pages — map to pg-accounting or pg-acc-tasks
   // owner-kpi / owner-stats are separate pages
@@ -1848,6 +1868,7 @@ function renderPg(pg){
   if(pg==='owner')renderOwner();
   if(pg==='owner-kpi')renderOwnerKpiPage();
   if(pg==='owner-kpi-month')renderOwnerKpiMonth();
+  if(pg==='owner-salary-slip')renderDriverSlipPage();
   if(pg==='owner-stats')renderOwnerStats();
   if(pg==='passwords')renderPasswords();
   if(pg==='salary'){if(!salMonth)salInit();else renderSalary();}
@@ -5249,13 +5270,57 @@ let _slipManual={}; // {drvId_week: {insurance, logbook, superDispatch, ifta}}
 
 function _slipKey(drvId,week){return`${drvId}__${week}`;}
 
+function slipSetManual(drvId,week,field,val){
+  const key=_slipKey(drvId,week);
+  if(!_slipManual[key]) _slipManual[key]={};
+  _slipManual[key][field]=parseFloat(val)||0;
+  // Re-render whichever slip is visible
+  if(document.getElementById('slip-body')&&document.getElementById('slip-drv-sel')?.value) renderDriverSlip();
+  if(document.getElementById('slip-body2')&&document.getElementById('slip-drv-sel2')?.value) renderDriverSlipPage();
+}
+
+function _populateSlipSelectors(drvSelId, weekSelId){
+  const drvSel=document.getElementById(drvSelId);
+  const weekSel=document.getElementById(weekSelId);
+  if(drvSel){
+    const prev=drvSel.value;
+    // Use owGetData() for owner — same company filter used everywhere
+    let drvList=DRIVERS;
+    if(ROLE==='owner'){
+      const{myDrivers}=owGetData();
+      drvList=myDrivers;
+    }
+    drvSel.innerHTML=`<option value="">— Select Driver —</option>`+
+      drvList.map(d=>`<option value="${d.id}" ${d.id===prev?'selected':''}>${d.name}</option>`).join('');
+  }
+  if(weekSel){
+    const prev=weekSel.value;
+    const allLoadWeeks=[...new Set(LOADS.map(l=>l.week).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+    weekSel.innerHTML=`<option value="">— Select Week —</option>`+
+      allLoadWeeks.map(w=>`<option value="${w}" ${w===prev?'selected':''}>${wLbl(w)}</option>`).join('');
+    if(!prev&&allLoadWeeks.includes(curW)){weekSel.value=curW;}
+  }
+}
+
+function renderDriverSlipPage(){
+  _populateSlipSelectors('slip-drv-sel2','slip-week-sel2');
+  const body=document.getElementById('slip-body2');
+  if(!body)return;
+  const drvId=document.getElementById('slip-drv-sel2')?.value;
+  const week=document.getElementById('slip-week-sel2')?.value;
+  _renderSlipInto(body,'slip-drv-sel2','slip-week-sel2',drvId,week);
+}
+
 function renderDriverSlip(){
   const body=document.getElementById('slip-body');
   if(!body)return;
   const drvId=document.getElementById('slip-drv-sel')?.value;
   const week=document.getElementById('slip-week-sel')?.value;
-  if(!drvId||!week){body.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Selectează șoferul și săptămâna pentru a genera Salary Slip.</div>`;return;}
+  _renderSlipInto(body,'slip-drv-sel','slip-week-sel',drvId,week);
+}
 
+function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
+  if(!drvId||!week){body.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Selectează șoferul și săptămâna.</div>`;return;}
   const drv=DRIVERS.find(d=>d.id===drvId);
   if(!drv){body.innerHTML='';return;}
 
@@ -5264,8 +5329,6 @@ function renderDriverSlip(){
   const key=_slipKey(drvId,week);
   const man=_slipManual[key]||{};
 
-  // Payment method categories
-  // COD/COP loads — dispatcher collects, driver gets cash
   const isCopCod=l=>{const pm=(l.payMethod||'').toLowerCase();return pm==='cod'||pm==='cop'||pm==='c.o.d.'||pm==='c.o.p.';};
   const isCashToDriver=l=>{
     const note=(l.accComment||l.notes||'').toLowerCase();
@@ -5281,11 +5344,9 @@ function renderDriverSlip(){
   const totalGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const cashByDriver=cashDriverLoads.reduce((s,l)=>s+(+l.rate||0),0);
 
-  // Dispatch fees
   const disp12=regularGross*0.12;
   const disp10=copCodGross*0.10;
 
-  // Manual entries
   const insurance=+(man.insurance||0);
   const logbook=+(man.logbook||0);
   const superDispatch=+(man.superDispatch||0);
@@ -5297,51 +5358,34 @@ function renderDriverSlip(){
   const slipRange=`${start.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}–${end.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}`;
   const pct=+(drv.salaryPct||65);
 
-  const inp=(field,val,placeholder='0.00')=>`
-    <input type="number" step="0.01" min="0" value="${val||''}" placeholder="${placeholder}"
-      style="width:90px;border:1.5px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy)"
-      onblur="slipSetManual('${drvId}','${week}','${field}',this.value)"
-      onfocus="this.select()">`;
+  const inp=(field,val)=>`<input type="number" step="0.01" min="0" value="${val||''}" placeholder="0.00"
+    style="width:90px;border:1.5px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy)"
+    onblur="slipSetManual('${drvId}','${week}','${field}',this.value)" onfocus="this.select()">`;
+
+  const slipId='slip-print-'+drvId.replace(/[^a-z0-9]/gi,'');
 
   body.innerHTML=`
-  <div id="slip-printable" style="background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:1100px;box-shadow:var(--shadow)">
-
-    <!-- Header -->
-    <div style="text-align:center;padding:20px;border-bottom:2px solid var(--border);background:#f8fafc">
+  <div id="${slipId}" style="background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:1200px;box-shadow:var(--shadow)">
+    <div style="text-align:center;padding:18px;border-bottom:2px solid var(--border);background:#f8fafc">
       <div style="font-size:18px;font-weight:900;color:var(--navy)">Salary Slip <span style="font-size:14px;font-weight:600;color:var(--text3)">(${slipRange})</span></div>
       <div style="font-size:12px;color:var(--text3);margin-top:2px">${drv.name} · ${wLbl(week)}</div>
     </div>
-
     <div style="display:flex;gap:0;flex-wrap:wrap">
-
-      <!-- LEFT: Expense Summary -->
-      <div style="min-width:280px;border-right:2px solid var(--border)">
+      <!-- Expense table -->
+      <div style="min-width:290px;border-right:2px solid var(--border)">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <tbody>
-            <tr style="background:#fafafa">
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">Dispatch Services 12%</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(disp12)}</td>
-            </tr>
-            <tr>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">Dispatch Services 10%</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(disp10)}</td>
-            </tr>
-            <tr style="background:#fafafa">
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">Insurance</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right">${inp('insurance',man.insurance)}</td>
-            </tr>
-            <tr>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">Loogbook</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right">${inp('logbook',man.logbook)}</td>
-            </tr>
-            <tr style="background:#fafafa">
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">SuperDispatch</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right">${inp('superDispatch',man.superDispatch)}</td>
-            </tr>
-            <tr>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">Ifta</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right">${inp('ifta',man.ifta)}</td>
-            </tr>
+            ${[
+              {label:'Dispatch Services 12%', val:`<span style="font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(disp12)}</span>`, bg:'#fafafa'},
+              {label:'Dispatch Services 10%', val:`<span style="font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(disp10)}</span>`, bg:'#fff'},
+              {label:'Insurance', val:inp('insurance',man.insurance), bg:'#fafafa'},
+              {label:'Loogbook', val:inp('logbook',man.logbook), bg:'#fff'},
+              {label:'SuperDispatch', val:inp('superDispatch',man.superDispatch), bg:'#fafafa'},
+              {label:'Ifta', val:inp('ifta',man.ifta), bg:'#fff'},
+            ].map(r=>`<tr style="background:${r.bg}">
+              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">${r.label}</td>
+              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right">${r.val}</td>
+            </tr>`).join('')}
             <tr style="background:#fef3c7">
               <td style="padding:9px 16px;border-bottom:1px solid #fde68a;font-weight:700;color:#92400e">Interest 10–12% and all expenses</td>
               <td style="padding:9px 16px;border-bottom:1px solid #fde68a;text-align:right;font-family:var(--mono);font-weight:800;color:#92400e">$${fmt(totalExpenses)}</td>
@@ -5351,71 +5395,70 @@ function renderDriverSlip(){
               <td style="padding:9px 16px;border-bottom:1px solid #bbf7d0;text-align:right;font-family:var(--mono);font-weight:800;color:#065f46">$${fmt(cashByDriver)}</td>
             </tr>
             <tr style="background:#f97316">
-              <td style="padding:9px 16px;border-bottom:1px solid #ea580c;font-weight:800;color:#fff;font-size:13px">Total Gross</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #ea580c;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:14px">$${fmt(totalGross)}</td>
+              <td style="padding:10px 16px;font-weight:800;color:#fff;font-size:13px;border-bottom:1px solid #ea580c">Total Gross</td>
+              <td style="padding:10px 16px;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:14px;border-bottom:1px solid #ea580c">$${fmt(totalGross)}</td>
             </tr>
             <tr style="background:#1e293b">
-              <td style="padding:11px 16px;font-weight:800;color:#fff;font-size:13px">Net Gross</td>
-              <td style="padding:11px 16px;text-align:right;font-family:var(--mono);font-weight:900;color:#34d399;font-size:15px">$${fmt(netGross)}</td>
+              <td style="padding:12px 16px;font-weight:800;color:#fff;font-size:13px">Net Gross</td>
+              <td style="padding:12px 16px;text-align:right;font-family:var(--mono);font-weight:900;color:#34d399;font-size:16px">$${fmt(netGross)}</td>
             </tr>
           </tbody>
         </table>
-        <div style="padding:10px 16px;border-top:1px solid var(--border);background:#f8fafc;font-size:10px;color:var(--text3)">
-          <div>12% applied to: <strong>${regularLoads.length} loads</strong> ($${fmt(regularGross)}) — non COD/COP</div>
-          <div style="margin-top:2px">10% applied to: <strong>${copCodLoads.length} loads</strong> ($${fmt(copCodGross)}) — COD/COP</div>
-          <div style="margin-top:2px">Cash by driver: <strong>${cashDriverLoads.length} loads</strong> with cash/zelle</div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border);background:#f8fafc;font-size:10px;color:var(--text3);line-height:1.7">
+          <div>12% → <strong>${regularLoads.length} loads</strong> ($${fmt(regularGross)}) non COD/COP</div>
+          <div>10% → <strong>${copCodLoads.length} loads</strong> ($${fmt(copCodGross)}) COD/COP</div>
+          <div>Cash by driver → <strong>${cashDriverLoads.length} loads</strong></div>
         </div>
       </div>
-
-      <!-- RIGHT: Load Table -->
+      <!-- Load rows -->
       <div style="flex:1;overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px">
           <thead>
             <tr style="background:#1e293b;color:#fff">
-              <th style="padding:8px 10px;text-align:left;font-size:9px;letter-spacing:.5px">DRIVER</th>
-              <th style="padding:8px 8px;text-align:center;font-size:9px;letter-spacing:.5px">%</th>
-              <th style="padding:8px 10px;text-align:left;font-size:9px;letter-spacing:.5px">DATE</th>
-              <th style="padding:8px 10px;text-align:left;font-size:9px;letter-spacing:.5px">LOAD ID</th>
-              <th style="padding:8px 10px;text-align:left;font-size:9px;letter-spacing:.5px">CAR</th>
-              <th style="padding:8px 10px;text-align:left;font-size:9px;letter-spacing:.5px">FROM → TO</th>
-              <th style="padding:8px 10px;text-align:right;font-size:9px;letter-spacing:.5px">AMOUNT</th>
-              <th style="padding:8px 10px;text-align:center;font-size:9px;letter-spacing:.5px">PAY METHOD</th>
-              <th style="padding:8px 10px;text-align:left;font-size:9px;letter-spacing:.5px">COMMENT</th>
+              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DRIVER</th>
+              <th style="padding:9px 8px;text-align:center;font-size:9px;letter-spacing:.5px">%</th>
+              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DATE</th>
+              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">LOAD ID</th>
+              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px">CAR</th>
+              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">FROM → TO</th>
+              <th style="padding:9px 10px;text-align:right;font-size:9px;letter-spacing:.5px;white-space:nowrap">AMOUNT</th>
+              <th style="padding:9px 10px;text-align:center;font-size:9px;letter-spacing:.5px;white-space:nowrap">PAY METHOD</th>
+              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px">COMMENT</th>
             </tr>
           </thead>
           <tbody>
-            ${wLoads.map((l,i)=>{
+            ${wLoads.length===0?`<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text3)">No loads for this week</td></tr>`
+            :wLoads.map((l,i)=>{
               const isCod=isCopCod(l);
               const isCash=isCashToDriver(l);
               const bg=isCash?'#dcfce7':isCod?'#fef9c3':i%2===0?'#f9fafb':'#fff';
               const payBg=isCod?'#fef3c7':'#f0fdf4';
               const payCol=isCod?'#92400e':'#065f46';
               const oid=l.orderId||'—';
-              const oidShort=oid.length>14?oid.substring(0,14)+'…':oid;
-              const car=l.car||'—';
-              const carShort=car.length>18?car.substring(0,18)+'…':car;
-              const from=(l.origin||'?').split(',').slice(0,2).join(',');
-              const to=(l.dest||'?').split(',').slice(0,2).join(',');
+              const oidShort=oid.length>16?oid.substring(0,16)+'…':oid;
+              const car=(l.car||'—');
+              const carShort=car.length>20?car.substring(0,20)+'…':car;
+              const from=(l.origin||'?').split(',')[0];
+              const to=(l.dest||'?').split(',')[0];
               const comment=l.accComment||l.notes||l.driverPayNote||'';
               return`<tr style="border-bottom:1px solid #e5e7eb;background:${bg}">
                 <td style="padding:7px 10px;font-weight:600;color:var(--navy);white-space:nowrap">${drv.name}</td>
                 <td style="padding:7px 8px;text-align:center;font-weight:700;color:var(--text3)">${pct}</td>
                 <td style="padding:7px 10px;white-space:nowrap;color:var(--text2)">${l.date||'—'}</td>
                 <td style="padding:7px 10px;font-family:var(--mono);font-weight:700;color:var(--navy);white-space:nowrap" title="${oid}">${oidShort}</td>
-                <td style="padding:7px 10px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${car}">${carShort}</td>
-                <td style="padding:7px 10px;color:var(--text2);white-space:nowrap">${from.split(',')[0]} → ${to.split(',')[0]}</td>
+                <td style="padding:7px 10px;color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${car}">${carShort}</td>
+                <td style="padding:7px 10px;color:var(--text2);white-space:nowrap">${from} → ${to}</td>
                 <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--green);white-space:nowrap">$${fmt(+l.rate||0)}</td>
                 <td style="padding:7px 10px;text-align:center">
-                  <span style="font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;background:${payBg};color:${payCol}">${l.payMethod||'—'}</span>
+                  <span style="font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;background:${payBg};color:${payCol}">${l.payMethod||'—'}</span>
                 </td>
-                <td style="padding:7px 10px;color:var(--text3);font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${comment}">${comment||'—'}</td>
+                <td style="padding:7px 10px;color:var(--text3);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${comment}">${comment||'—'}</td>
               </tr>`;
             }).join('')}
-            <!-- Total row -->
             <tr style="background:#f97316;border-top:2px solid #ea580c">
               <td colspan="6" style="padding:9px 10px;font-weight:800;color:#fff;font-size:12px">${drv.name}</td>
               <td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:13px">$${fmt(totalGross)}</td>
-              <td colspan="2" style="padding:9px 10px"></td>
+              <td colspan="2"></td>
             </tr>
           </tbody>
         </table>
@@ -5424,30 +5467,26 @@ function renderDriverSlip(){
   </div>`;
 }
 
-function slipSetManual(drvId,week,field,val){
-  const key=_slipKey(drvId,week);
-  if(!_slipManual[key]) _slipManual[key]={};
-  _slipManual[key][field]=parseFloat(val)||0;
-  renderDriverSlip();
+function printDriverSlip2(){
+  const drvId=document.getElementById('slip-drv-sel2')?.value;
+  const slipId='slip-print-'+( drvId||'').replace(/[^a-z0-9]/gi,'');
+  _printSlip(slipId);
 }
-
 function printDriverSlip(){
-  const el=document.getElementById('slip-printable');
+  const drvId=document.getElementById('slip-drv-sel')?.value;
+  const slipId='slip-print-'+( drvId||'').replace(/[^a-z0-9]/gi,'');
+  _printSlip(slipId);
+}
+function _printSlip(elId){
+  const el=document.getElementById(elId);
   if(!el){notify('No slip to print','err');return;}
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><title>Salary Slip</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:11px;color:#111;background:#fff}
-    table{width:100%;border-collapse:collapse}
-    td,th{padding:6px 10px;border-bottom:1px solid #e5e7eb}
-    th{background:#1e293b;color:#fff;font-size:9px;letter-spacing:.5px;text-align:left}
-    input{display:none}
-    .no-print{display:none}
-  </style></head><body>${el.outerHTML}</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(()=>{w.print();},400);
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#111;background:#fff}
+  table{width:100%;border-collapse:collapse}td,th{padding:6px 10px;border-bottom:1px solid #e5e7eb}
+  th{background:#1e293b;color:#fff;font-size:9px;letter-spacing:.5px;text-align:left}input{display:none}</style>
+  </head><body>${el.outerHTML}</body></html>`);
+  w.document.close();w.focus();setTimeout(()=>{w.print();},400);
 }
 
 function renderSalFounders(){
