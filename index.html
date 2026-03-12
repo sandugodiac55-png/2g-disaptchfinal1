@@ -833,6 +833,17 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div id="ow-stats-body"></div>
         </div>
 
+        <!-- OWNER PAGE — KPI MONTHLY -->
+        <div class="pg" id="pg-owner-kpi-month" style="display:none">
+          <div class="ph">
+            <div>
+              <div class="ph-t">KPI Monthly</div>
+              <div class="ph-s" id="ow-kpi-month-sub">Monthly driver performance</div>
+            </div>
+          </div>
+          <div id="ow-kpi-month-body"></div>
+        </div>
+
         <!-- PASSWORDS PAGE -->
         <div class="pg" id="pg-passwords">
           <div class="ph">
@@ -1490,7 +1501,7 @@ function buildNavItems(){
     dispatcher:[{id:'dispatch',i:'🚛',l:'My Drivers'},{id:'kpi',i:'📊',l:'KPI'},{id:'passwords',i:'🔐',l:'Passwords'}],
     accounting:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'owner',i:'🏠',l:'Dashboard'}],
-    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Drivers'},{id:'owner-stats',i:'🏢',l:'Company Stats'}],
+    owner:[{id:'owner',i:'📦',l:'Loads'},{id:'owner-kpi',i:'📊',l:'KPI Weekly'},{id:'owner-kpi-month',i:'📅',l:'KPI Monthly'},{id:'owner-stats',i:'🏢',l:'Company Stats'}],
     accounting_manager:[{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'}],
     admin:[{id:'dispatch',i:'🚛',l:'Loads'},{id:'accounting',i:'💰',l:'Accounting'},{id:'acc-urgent',i:'🚨',l:'Urgent'},{id:'acc-bond',i:'🔒',l:'Bond'},{id:'acc-problem',i:'🤝',l:'Manager Inv.'},{id:'acc-tasks',i:'📋',l:'Daily Tasks'},{id:'kpi',i:'📊',l:'KPI'},{id:'owner',i:'🏠',l:'Owner'},{id:'passwords',i:'🔐',l:'Passwords'},{id:'salary',i:'💵',l:'Salary'},{id:'own',i:'🏢',l:'OWN Company'},{id:'admin',i:'⚙️',l:'Admin'}],
   };
@@ -1818,6 +1829,7 @@ function renderPg(pg){
   }
   if(pg==='owner')renderOwner();
   if(pg==='owner-kpi')renderOwnerKpiPage();
+  if(pg==='owner-kpi-month')renderOwnerKpiMonth();
   if(pg==='owner-stats')renderOwnerStats();
   if(pg==='passwords')renderPasswords();
   if(pg==='salary'){if(!salMonth)salInit();else renderSalary();}
@@ -4438,6 +4450,278 @@ function renderOwnerKpiPage(){
 
   html+=`</tbody></table></div>`;
   body.innerHTML=html;
+}
+
+let owKpiMonth=null; // "2026-03" format
+
+function renderOwnerKpiMonth(){
+  const{myDrivers}=owGetData();
+  const body=document.getElementById('ow-kpi-month-body');
+  if(!myDrivers.length){body.innerHTML=`<div class="em"><div class="e">📅</div><p>No drivers.</p></div>`;return;}
+
+  // Determine current month
+  const now=new Date();
+  if(!owKpiMonth) owKpiMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const [yr,mo]=owKpiMonth.split('-').map(Number);
+  const monthStart=new Date(yr,mo-1,1);
+  const monthEnd=new Date(yr,mo,0); // last day of month
+  const monthName=monthStart.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+
+  // Build all days in month
+  const allDays=[];
+  for(let d=new Date(monthStart);d<=monthEnd;d.setDate(d.getDate()+1)){
+    allDays.push(new Date(d));
+  }
+
+  // Group days into ISO weeks that overlap with this month
+  const weeksMap={};
+  allDays.forEach(d=>{
+    const w=CWfrom(d);
+    if(!weeksMap[w]) weeksMap[w]=[];
+    weeksMap[w].push(new Date(d));
+  });
+  const sortedWeeks=Object.keys(weeksMap).sort();
+
+  // Get all trips and loads for the month
+  const monthLoads=LOADS.filter(l=>{
+    if(!l.date) return false;
+    const ld=new Date(l.date+'T00:00:00');
+    return ld>=monthStart&&ld<=monthEnd;
+  });
+  const monthTrips=TRIPS.filter(t=>{
+    const td=t.weekDate||t.createdDate||'';
+    if(!td) return false;
+    const d=new Date(td+'T00:00:00');
+    return d>=monthStart&&d<=monthEnd;
+  });
+
+  // Day name header
+  const dayNames=['M','T','W','T','F','S','S'];
+
+  // Build week columns header
+  let weekColHeaders='';
+  let dayColHeaders='';
+  sortedWeeks.forEach((w,wi)=>{
+    const wDays=weeksMap[w];
+    const{start}=wRange(w);
+    const wEnd=new Date(start);wEnd.setDate(start.getDate()+6);
+    const wLabel=`Week ${wi+1} ${start.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}/${wEnd.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}`;
+    weekColHeaders+=`<th colspan="${wDays.length}" style="background:#1e293b;color:#fff;font-size:10px;font-weight:700;padding:5px 4px;text-align:center;border-right:2px solid #334155;white-space:nowrap">${wLabel}</th>`;
+    wDays.forEach((d,di)=>{
+      const isToday=d.toDateString()===now.toDateString();
+      const dayOfWeek=((d.getDay()+6)%7); // 0=Mon
+      const isWeekend=dayOfWeek>=5;
+      dayColHeaders+=`<th style="background:${isToday?'#f97316':isWeekend?'#374151':'#2d3748'};color:${isToday?'#fff':isWeekend?'#94a3b8':'#e2e8f0'};font-size:9px;font-weight:700;padding:3px 2px;text-align:center;min-width:28px;border-right:${di===wDays.length-1?'2px solid #334155':'1px solid #475569'}">${dayNames[dayOfWeek]}<br><span style="font-size:10px">${d.getDate()}</span></th>`;
+    });
+  });
+
+  // toDateStr helper
+  const toDS=v=>{
+    if(!v)return null;
+    if(typeof v==='string'){
+      if(/^\d{4}-\d{2}-\d{2}/.test(v))return v.substring(0,10);
+      if(v.includes('T'))return v.substring(0,10);
+      const p=new Date(v+(/\d{4}/.test(v)?'':','+yr));
+      if(!isNaN(p))return p.toISOString().substring(0,10);
+      return null;
+    }
+    if(v.seconds)return new Date(v.seconds*1000).toISOString().substring(0,10);
+    if(v instanceof Date)return v.toISOString().substring(0,10);
+    return null;
+  };
+
+  // Build rows per driver
+  let driverRows='';
+  myDrivers.forEach((drv,drvIdx)=>{
+    const dLoads=monthLoads.filter(l=>l.driver===drv.name);
+    const dTrips=monthTrips.filter(t=>t.driverName===drv.name);
+    const dGross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const dMiles=dTrips.reduce((s,t)=>s+(+t.miles||0),0);
+    const dRpm=dMiles>0?dGross/dMiles:0;
+    const minR=+(drv.minRate||0);
+
+    // Build trip bars — map each trip to start/end date range
+    const tripBars=dTrips.map(t=>{
+      const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date);
+      const dates=tLoads.map(l=>l.date).filter(Boolean).sort();
+      if(!dates.length)return null;
+      const tg=+(t.gross||0)||tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+      const trpm=t.miles>0?tg/t.miles:0;
+      const rpmOk=minR>0?trpm>=minR:true;
+      const startDate=dates[0];
+      const statuses=tLoads.map(l=>(l.status||'').toLowerCase());
+      const hasDelivered=statuses.some(s=>s==='delivered'||s==='invoiced');
+      const hasPickedUp=!hasDelivered&&statuses.some(s=>s==='picked up'||s==='pickedup');
+      const explicitEnd=tLoads.reduce((best,l)=>{const d=toDS(l.deliveredDate);if(!d)return best;return(!best||d>best)?d:best;},null);
+      const todayStr=new Date().toISOString().split('T')[0];
+      let endDate;
+      if(hasDelivered){endDate=explicitEnd||startDate;}
+      else if(hasPickedUp){endDate=todayStr;}
+      else{endDate=startDate;}
+      if(endDate<startDate)endDate=startDate;
+      const pickup=(t.pickup||tLoads[0]?.origin||'').split(',')[0].substring(0,5);
+      const delivery=(t.delivery||tLoads[tLoads.length-1]?.dest||'').split(',')[0].substring(0,5);
+      return{t,tg,trpm,rpmOk,startDate,endDate,pickup,delivery};
+    }).filter(Boolean);
+
+    // Build workday counter per week (only count days within a trip)
+    const workdayCells={};
+    let workdayCounterInTrip=0;
+    let currentTripId=null;
+
+    // For each day, find active trip
+    const getDayTrip=(ds)=>tripBars.find(r=>ds>=r.startDate&&ds<=r.endDate)||null;
+
+    // Track running workday number per trip
+    const tripWorkdays={};
+    allDays.forEach(d=>{
+      const ds=d.toISOString().split('T')[0];
+      const tr=getDayTrip(ds);
+      if(tr){
+        if(!tripWorkdays[tr.t.id]) tripWorkdays[tr.t.id]=0;
+        tripWorkdays[tr.t.id]++;
+        workdayCells[ds]={num:tripWorkdays[tr.t.id],trip:tr};
+      } else {
+        workdayCells[ds]=null;
+      }
+    });
+
+    // Build 3 rows: Work days, Trip, Gros
+    let wdCells='',tripCells='',grosCells='';
+
+    sortedWeeks.forEach(w=>{
+      const wDays=weeksMap[w];
+      // Group consecutive days in same trip for colspan
+      let i=0;
+      while(i<wDays.length){
+        const d=wDays[i];
+        const ds=d.toISOString().split('T')[0];
+        const cell=workdayCells[ds];
+        const dayOfWeek=((d.getDay()+6)%7);
+        const isWeekend=dayOfWeek>=5;
+        const borderR=i===wDays.length-1?'border-right:2px solid #334155;':'border-right:1px solid #e2e8f0;';
+
+        if(!cell){
+          // OFF day
+          wdCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px;color:#9ca3af"></td>`;
+          // Check if this starts an OFF span within week
+          // Find consecutive OFF days
+          let offSpan=1;
+          while(i+offSpan<wDays.length){
+            const nextDs=wDays[i+offSpan].toISOString().split('T')[0];
+            if(!workdayCells[nextDs]) offSpan++;
+            else break;
+          }
+          if(offSpan>1){
+            // Replace last cell and merge — simpler: just render individually
+          }
+          tripCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px;color:#be185d;font-weight:700">OFF</td>`;
+          grosCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px"></td>`;
+          i++;
+        } else {
+          // Active trip day — find span of same trip in this week
+          const tr=cell.trip;
+          let span=1;
+          while(i+span<wDays.length){
+            const nDs=wDays[i+span].toISOString().split('T')[0];
+            const nc=workdayCells[nDs];
+            if(nc&&nc.trip.t.id===tr.t.id) span++;
+            else break;
+          }
+          const isFirst=(ds===tr.startDate||(i===0&&wDays[0].toISOString().split('T')[0]===ds));
+          const lastDs=wDays[i+span-1].toISOString().split('T')[0];
+          const spanBorderR=i+span===wDays.length?'border-right:2px solid #334155;':'border-right:1px solid #cbd5e1;';
+          const rpmOk=tr.rpmOk;
+          const bg=rpmOk?'#d1fae5':'#fee2e2';
+          const textCol=rpmOk?'#065f46':'#dc2626';
+          const bgDark=rpmOk?'#6ee7b7':'#fca5a5';
+
+          // Work days row — individual numbers
+          for(let s=0;s<span;s++){
+            const sd=wDays[i+s].toISOString().split('T')[0];
+            const sc=workdayCells[sd];
+            const sb=s===span-1?spanBorderR:'border-right:1px solid #a7f3d0;';
+            wdCells+=`<td style="background:${bg};${sb}padding:2px;text-align:center;font-size:10px;font-weight:800;color:${textCol}">${sc?sc.num:''}</td>`;
+          }
+
+          // Trip row — show route only on first cell of span, colspan
+          tripCells+=`<td colspan="${span}" style="background:${bg};${spanBorderR}padding:2px 4px;text-align:center;font-size:9px;font-weight:700;color:${textCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0">${tr.pickup}-${tr.delivery}</td>`;
+
+          // Gros row — show amount+rpm on first cell of span, colspan
+          const rpmStr=tr.trpm>0?` ${tr.trpm.toFixed(2)}$/M`:'';
+          grosCells+=`<td colspan="${span}" style="background:${bg};${spanBorderR}padding:2px 4px;text-align:center;font-size:9px;font-weight:700;color:${textCol};white-space:nowrap">\$${fmt(tr.tg)}${rpmStr}</td>`;
+
+          i+=span;
+        }
+      }
+    });
+
+    // SUMM cell
+    const rpmOkAll=minR>0?dRpm>=minR:true;
+    const summBg=dGross>0?'#d1fae5':'#f1f5f9';
+    const summCol=dGross>0?'#065f46':'#94a3b8';
+    const drvBg=drvIdx%2===0?'#f8fafc':'#fff';
+    const nameRowBg='#e0f2fe';
+
+    driverRows+=`
+      <tr style="background:${nameRowBg};border-top:2px solid #0284c7">
+        <td rowspan="3" style="background:${nameRowBg};padding:6px 10px;font-weight:800;font-size:13px;color:#0c4a6e;border-right:1px solid #bae6fd;vertical-align:middle;white-space:nowrap">
+          <div>${drv.name}</div>
+          <div style="font-size:9px;font-weight:400;color:#0369a1">min $${drv.minRate||'—'}/mi</div>
+        </td>
+        <td style="background:#dbeafe;padding:3px 6px;font-size:9px;font-weight:700;color:#1e40af;border-right:1px solid #93c5fd;white-space:nowrap">Work days</td>
+        ${wdCells}
+        <td style="background:${summBg};padding:3px 6px;font-size:10px;font-weight:800;color:${summCol};border-left:2px solid #cbd5e1;text-align:center">SUMM</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="background:#dbeafe;padding:3px 6px;font-size:9px;font-weight:700;color:#1e40af;border-right:1px solid #93c5fd;white-space:nowrap">Trip</td>
+        ${tripCells}
+        <td style="background:${summBg};padding:3px 6px;font-size:9px;color:${summCol};text-align:center">${dTrips.length} trips</td>
+      </tr>
+      <tr style="background:#fff;border-bottom:3px solid #cbd5e1">
+        <td style="background:#dbeafe;padding:3px 6px;font-size:9px;font-weight:700;color:#1e40af;border-right:1px solid #93c5fd;white-space:nowrap">Gros</td>
+        ${grosCells}
+        <td style="background:${summBg};padding:3px 6px;font-size:11px;font-weight:800;color:${summCol};text-align:center;white-space:nowrap">\$${fmt(dGross)}</td>
+      </tr>`;
+  });
+
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <button onclick="owKpiMonth=prevMonth(owKpiMonth);renderOwnerKpiMonth()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 14px;cursor:pointer;font-size:15px;font-weight:700">‹</button>
+      <span style="font-size:15px;font-weight:800;color:var(--navy)">${monthName}</span>
+      <button onclick="owKpiMonth=nextMonth(owKpiMonth);renderOwnerKpiMonth()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 14px;cursor:pointer;font-size:15px;font-weight:700">›</button>
+      <button onclick="owKpiMonth=null;renderOwnerKpiMonth()" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;color:#1d4ed8">This Month</button>
+    </div>
+    <div style="overflow-x:auto;border-radius:12px;box-shadow:var(--shadow)">
+      <table style="border-collapse:collapse;font-size:11px;background:#fff;min-width:100%">
+        <thead>
+          <tr>
+            <th style="background:#0f172a;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;text-align:left;border-right:1px solid #334155;white-space:nowrap;min-width:110px">Driver</th>
+            <th style="background:#1e293b;color:#94a3b8;padding:8px 6px;font-size:9px;font-weight:700;border-right:1px solid #334155;white-space:nowrap;min-width:60px"></th>
+            ${weekColHeaders}
+            <th style="background:#0f172a;color:#fff;padding:8px 8px;font-size:10px;font-weight:700;text-align:center;border-left:2px solid #334155;white-space:nowrap">SUMM</th>
+          </tr>
+          <tr>
+            <th style="background:#1e293b;border-right:1px solid #334155"></th>
+            <th style="background:#1e293b;border-right:1px solid #334155"></th>
+            ${dayColHeaders}
+            <th style="background:#1e293b;border-left:2px solid #334155"></th>
+          </tr>
+        </thead>
+        <tbody>${driverRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function prevMonth(m){
+  const[y,mo]=m.split('-').map(Number);
+  const d=new Date(y,mo-2,1);
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function nextMonth(m){
+  const[y,mo]=m.split('-').map(Number);
+  const d=new Date(y,mo,1);
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
 function renderOwnerStats(){
