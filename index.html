@@ -2330,8 +2330,10 @@ function renderDrvTrips(allDrvLoads){
 function showTripCreate(){
   tripSelLoads=[];
   document.getElementById('trip-create-ui').classList.remove('hidden');
-  document.getElementById('trip-miles').value='';
-  document.getElementById('trip-rpm').value='';
+  ['trip-miles','trip-rpm','trip-pickup','trip-delivery','trip-maps-url','trip-maps-url2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.value='';el.style.borderColor='';}
+  });
   document.getElementById('trip-sel-count').textContent='0';
   document.getElementById('trip-sel-gross').textContent='$0';
   renderTripSelLoads();
@@ -2422,11 +2424,13 @@ async function saveTrip(data){
 }
 function cancelTripCreate(){
   tripSelLoads=[];
-  document.getElementById('trip-create-ui').classList.add('hidden');
+  const ui=document.getElementById('trip-create-ui');
+  if(ui)ui.classList.add('hidden');
   pendingTripData=null;
-  const fields=['trip-maps-url','trip-maps-url2','trip-pickup','trip-delivery'];
-  fields.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const mu=document.getElementById('trip-maps-url');if(mu)mu.style.borderColor='';
+  ['trip-maps-url','trip-maps-url2','trip-pickup','trip-delivery','trip-miles','trip-rpm'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.value='';el.style.borderColor='';}
+  });
 }
 
 /* ══ TRIP EDIT ══ */
