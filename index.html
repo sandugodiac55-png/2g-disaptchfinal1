@@ -2891,39 +2891,36 @@ function renderKPI(){
 
             // Determine statuses across all loads in trip
             const statuses=tLoads.map(l=>(l.status||'').toLowerCase());
+            // Invoiced = payment status only — trip ends at Delivered, not Invoiced
             const hasDelivered=statuses.some(s=>s==='delivered'||s==='invoiced');
-            const hasPickedUp=statuses.some(s=>s==='picked up'||s==='pickedup');
+            const hasPickedUp=!hasDelivered&&statuses.some(s=>s==='picked up'||s==='pickedup');
 
-
-
-            // Convert any date format to YYYY-MM-DD string
+            // Convert any date format to YYYY-MM-DD string (handles Firestore Timestamps too)
             const toDateStr=v=>{
               if(!v) return null;
               if(typeof v==='string') return v.length>10?v.substring(0,10):v;
-              // Firestore Timestamp object {seconds, nanoseconds}
               if(v.seconds) return new Date(v.seconds*1000).toISOString().substring(0,10);
-              // JS Date object
               if(v instanceof Date) return v.toISOString().substring(0,10);
               return null;
             };
+
+            // endDate = ONLY deliveredDate — Invoiced is payment, doesn't define when trip ended
             const explicitDeliveredDate=tLoads.reduce((best,l)=>{
-              const d=toDateStr(l.deliveredDate)||toDateStr(l.invoicedDate)||null;
-              if(!d)return best;
+              const d=toDateStr(l.deliveredDate); // deliveredDate only, NOT invoicedDate
+              if(!d) return best;
               return(!best||d>best)?d:best;
             },null);
 
             let endDate;
             if(hasDelivered){
-              // Use deliveredDate/invoicedDate. If missing, use load date (day it was invoiced/delivered)
+              // deliveredDate is set when "Delivered" button was clicked
+              // If somehow missing, fallback to load.date of the delivered load
               endDate=explicitDeliveredDate||toDateStr(tLoads.find(l=>['delivered','invoiced'].includes((l.status||'').toLowerCase()))?.date)||todayStr;
             } else if(hasPickedUp){
-              // In transit — only up to today
               endDate=todayStr;
             } else {
-              // Only Assigned — single day
               endDate=startDate;
             }
-            // Clamp: never before startDate
             if(endDate<startDate) endDate=startDate;
 
             const pickup=(t.pickup||tLoads[0]?.origin||'?').split(',')[0];
@@ -3214,7 +3211,16 @@ function accLoadRow(l,canEdit,cols){
     <td>
       <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
         <span class="pill ${sC(l.status)}">${l.status||'Assigned'}</span>
-        ${(()=>{const d=l.status==='Invoiced'?l.invoicedDate:l.status==='Delivered'?l.deliveredDate:l.status==='Picked Up'?l.pickedDate:null;return d?`<span style="font-size:9px;color:var(--text3);font-family:var(--mono)">${d.split('T')[0]||d}</span>`:''})()}
+        ${(()=>{
+          const toD=v=>{if(!v)return null;if(typeof v==='string')return v.substring(0,10);if(v.seconds)return new Date(v.seconds*1000).toISOString().substring(0,10);return null;};
+          const statusDate=l.status==='Invoiced'?toD(l.invoicedDate):l.status==='Delivered'?toD(l.deliveredDate):l.status==='Picked Up'?toD(l.pickedDate):null;
+          const delivDate=toD(l.deliveredDate);
+          let html='';
+          if(statusDate) html+=`<span style="font-size:9px;color:var(--text3);font-family:var(--mono)">${statusDate}</span>`;
+          // Under Invoiced: show delivered date separately
+          if(l.status==='Invoiced'&&delivDate) html+=`<br><span style="font-size:8px;color:#059669;font-family:var(--mono)">📦 del: ${delivDate}</span>`;
+          return html;
+        })()}
       </div>
     </td>
     <td style="font-size:11px;color:var(--text3);font-family:var(--mono);white-space:nowrap">${l.date||'—'}</td>
