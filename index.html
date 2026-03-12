@@ -2873,11 +2873,15 @@ function renderKPI(){
             const rpmOk=minR>0?trpm>=minR:true;
             const col=rpmOk?'#0d9488':'#ef4444';
             const startDate=dates[0];
+            const weekEndStr=days[6].toISOString().split('T')[0];
             const isDelivered=tLoads.some(l=>l.status==='Delivered'||l.status==='Invoiced');
             const isPickedUp=tLoads.some(l=>l.status==='Picked Up');
             const deliveredLoad=tLoads.find(l=>l.status==='Delivered'||l.status==='Invoiced');
-            const endDate=isDelivered?(deliveredLoad?.deliveredDate||deliveredLoad?.date||startDate)
+            // If delivered/invoiced: end at deliveredDate. If picked up: end at today (capped to week end). If assigned: just start day.
+            const rawEnd=isDelivered?(deliveredLoad?.deliveredDate||deliveredLoad?.date||startDate)
               :(isPickedUp?todayStr:startDate);
+            // Cap to week boundaries
+            const endDate=rawEnd>weekEndStr?weekEndStr:(rawEnd<startDate?startDate:rawEnd);
             const pickup=(t.pickup||tLoads[0]?.origin||'?').split(',')[0];
             const delivery=(t.delivery||tLoads[tLoads.length-1]?.dest||'?').split(',')[0];
             return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery,isTrip:true};
@@ -2889,26 +2893,64 @@ function renderKPI(){
           return days.map((d,di)=>{
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
-            const activeBars=allBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
+
+            // Bars that START on this day
+            const startingBars=allBars.filter(r=>ds===r.startDate);
+            // Bars that are in-progress through this day (started before, ends on or after)
+            const continuingBars=allBars.filter(r=>ds>r.startDate&&ds<=r.endDate);
+            // Bars that END on this day (not start = same day)
+            const endingBars=allBars.filter(r=>ds===r.endDate&&ds!==r.startDate);
+
+            // Detect split: a bar ends here AND another bar starts here
+            const hasSplitDeliveryPickup=endingBars.length>0&&startingBars.length>0;
+
+            const renderChip=(r,opts={})=>{
+              const{topHalf=false,bottomHalf=false,fullHeight=false}=opts;
+              const isStart=ds===r.startDate;
+              const isEnd=ds===r.endDate;
+              const isSingle=isStart&&isEnd&&!topHalf&&!bottomHalf;
+              const borderR=isSingle?'6px':(isStart||bottomHalf?'6px 0 0 6px':(isEnd||topHalf?'0 6px 6px 0':'0'));
+              const marginL=(isStart||bottomHalf)?'3px':'-1px';
+              const marginR=(isEnd||topHalf)?'3px':'-1px';
+              const height=topHalf||bottomHalf?'24px':'52px';
+              const marginT=bottomHalf?'2px':'0';
+              const onclick=r.isTrip
+                ?`event.stopPropagation();showTripPopover(event,'${r.t.id}')`
+                :`event.stopPropagation();showLoadCard('${r.l.id}')`;
+              return`<div style="background:${r.col};border-radius:${borderR};margin:${marginT} ${marginR} 0 ${marginL};padding:4px 8px;cursor:pointer;height:${height};box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="${onclick}">
+                ${(isStart||isSingle||bottomHalf)?`
+                  <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
+                  ${!topHalf&&!bottomHalf?`<div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>`:''}
+                  ${r.trpm>0&&!topHalf?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}
+                `:''}
+              </div>`;
+            };
+
+            if(hasSplitDeliveryPickup){
+              // Top half = ending trip(s), bottom half = starting trip(s)
+              return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:top;height:70px">
+                <div style="display:flex;flex-direction:column;gap:0;height:52px;margin-top:6px">
+                  ${endingBars.map(r=>renderChip(r,{topHalf:true})).join('')}
+                  ${startingBars.map(r=>renderChip(r,{bottomHalf:true})).join('')}
+                </div>
+              </td>`;
+            }
+
+            const activeBars=[
+              ...startingBars,
+              ...allBars.filter(r=>ds>r.startDate&&ds<r.endDate),
+              ...allBars.filter(r=>ds===r.endDate&&ds!==r.startDate)
+            ];
+            // dedupe
+            const seen=new Set();
+            const uniqueBars=activeBars.filter(r=>{
+              if(seen.has(r.t?.id||r.l?.id))return false;
+              seen.add(r.t?.id||r.l?.id);
+              return true;
+            });
+
             return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px">
-              ${activeBars.map(r=>{
-                const isStart=ds===r.startDate;
-                const isEnd=ds===r.endDate;
-                const isSingle=isStart&&isEnd;
-                const borderR=isSingle?'6px':(isStart?'6px 0 0 6px':(isEnd?'0 6px 6px 0':'0'));
-                const marginL=isStart?'3px':'-1px';
-                const marginR=isEnd?'3px':'-1px';
-                const onclick=r.isTrip
-                  ?`event.stopPropagation();showTripPopover(event,'${r.t.id}')`
-                  :`event.stopPropagation();showLoadCard('${r.l.id}')`;
-                return`<div style="background:${r.col};border-radius:${borderR};margin:3px ${marginR} 3px ${marginL};padding:5px 8px;cursor:pointer;height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="${onclick}">
-                  ${isStart?`
-                    <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}${!r.isTrip?'<span style="font-size:9px;opacity:.7"> #'+(r.l.orderId||'')+'</span>':''}</div>
-                    <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
-                    ${r.trpm>0?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}
-                  `:''}
-                </div>`;
-              }).join('')}
+              ${uniqueBars.map(r=>renderChip(r,{})).join('')}
             </td>`;
           }).join('');
         })()}
