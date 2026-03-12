@@ -5744,7 +5744,57 @@ let ownMonth=null;
 let ownTab='fee';
 let ownSelectedWeeks=new Set();
 
-function ownInit(){
+function renderOwn(){
+  const lbl=document.getElementById('own-month-lbl');
+  if(lbl){
+    const [y,m]=ownMonth.split('-').map(Number);
+    lbl.textContent=new Date(y,m-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  }
+  const allWeeks=getOwnMonthWeeks();
+  // Restore saved selection for this month from SALARY_CONFIG
+  const savedSel=(SALARY_CONFIG._ownWeekSel||{})[ownMonth];
+  if(savedSel&&ownSelectedWeeks.size===0){
+    savedSel.forEach(w=>ownSelectedWeeks.add(w));
+  }
+  // Weeks in month selector — saved per month
+  const savedCount=(SALARY_CONFIG._ownWeeksInMonth||{})[ownMonth]||allWeeks.length;
+  const picker=document.getElementById('own-week-picker');
+  if(picker){
+    picker.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:5px 12px">
+          <span style="font-size:11px;font-weight:700;color:var(--text3)">Săptămâni în lună:</span>
+          ${[3,4,5].map(n=>`<button onclick="setOwnWeeksInMonth(${n})"
+            style="padding:4px 12px;border-radius:7px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:var(--font);
+              background:${savedCount===n?'var(--navy)':'var(--surface2)'};
+              color:${savedCount===n?'#fff':'var(--text3)'}">
+            ${n}
+          </button>`).join('')}
+        </div>
+        <div style="width:1px;height:24px;background:var(--border)"></div>
+        ${allWeeks.map(w=>{
+          const sel=ownSelectedWeeks.has(w)||(ownSelectedWeeks.size===0);
+          const{start,end}=wRange(w);
+          const lbl=`${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})}–${end.toLocaleDateString('en-US',{day:'numeric'})}`;
+          return `<button onclick="toggleOwnWeek('${w}')"
+            style="padding:5px 14px;border-radius:8px;border:1.5px solid ${sel?'var(--navy)':'var(--border)'};
+              background:${sel?'var(--navy)':'var(--surface)'};color:${sel?'#fff':'var(--text3)'};
+              font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)">${lbl}</button>`;
+        }).join('')}
+      </div>`;
+  }
+  const weeks=getOwnWeeks();
+  renderOwnContent(weeks);
+}
+
+async function setOwnWeeksInMonth(n){
+  if(!SALARY_CONFIG._ownWeeksInMonth) SALARY_CONFIG._ownWeeksInMonth={};
+  SALARY_CONFIG._ownWeeksInMonth[ownMonth]=n;
+  await saveSalaryConfig();
+  renderOwn();
+}
+
+
   const now=new Date();
   ownMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   ownSelectedWeeks=new Set();
@@ -6077,7 +6127,7 @@ function renderOwnProfit(weeks,el){
   const ownCfg=(SALARY_CONFIG._own)||{};
   const cfg=SALARY_CONFIG||{};
   const dispatchers=USERS.filter(u=>u.role==='dispatcher');
-  const weeksInMonth=getOwnMonthWeeks().length||4;
+  const weeksInMonth=(SALARY_CONFIG._ownWeeksInMonth||{})[ownMonth]||getOwnMonthWeeks().length||4;
 
   let totalFee=0;
   COMPANIES.forEach(co=>{
