@@ -1170,6 +1170,9 @@ function wLbl(ws){try{const{start,end}=wRange(ws);return`${start.toLocaleDateStr
 function CWfrom(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dy=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-dy);const yr=new Date(Date.UTC(dt.getUTCFullYear(),0,1));return`${dt.getUTCFullYear()}-W${String(Math.ceil((((dt-yr)/86400000)+1)/7)).padStart(2,'0')}`}
 function prevWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()-7);curW=CWfrom(d);_dispatchCoView=null;updateWkLbl();renderCur()}
 function nextWeek(){const d=new Date(wRange(curW).start);d.setDate(d.getDate()+7);curW=CWfrom(d);_dispatchCoView=null;updateWkLbl();renderCur()}
+let owKpiWeek=null;
+function prevW(w){const d=new Date(wRange(w).start);d.setDate(d.getDate()-7);return CWfrom(d);}
+function nextW(w){const d=new Date(wRange(w).start);d.setDate(d.getDate()+7);return CWfrom(d);}
 function goToday(){curW=CW();updateWkLbl();renderCur()}
 function updateWkLbl(){document.getElementById('wk-lbl').textContent=wLbl(curW)}
 
@@ -4289,67 +4292,152 @@ async function toggleOwnerConfirmFeature(drvId,drvName,currentState){
 }
 
 function renderOwnerKpiPage(){
-  const{myDrivers,myLoads}=owGetData();
+  const{myDrivers}=owGetData();
   const body=document.getElementById('ow-kpi-body');
   if(!myDrivers.length){body.innerHTML=`<div class="em"><div class="e">📊</div><p>No drivers.</p></div>`;return;}
 
-  body.innerHTML=`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)">
-      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg)">
-        <div style="font-size:13px;font-weight:800;color:var(--navy)">📊 Driver Performance</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">All time · sorted by gross</div>
-      </div>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead>
-            <tr style="background:var(--bg)">
-              <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">DRIVER</th>
-              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">LOADS</th>
-              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">GROSS</th>
-              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">CONFIRMED</th>
-              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">PENDING</th>
-              <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">AVG RPM</th>
-              <th style="padding:10px 16px;text-align:right;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:1px solid var(--border)">STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${[...myDrivers].sort((a,b)=>{
-              const ag=myLoads.filter(l=>l.driver===a.name).reduce((s,l)=>s+(+l.rate||0),0);
-              const bg=myLoads.filter(l=>l.driver===b.name).reduce((s,l)=>s+(+l.rate||0),0);
-              return bg-ag;
-            }).map(d=>{
-              const dl=myLoads.filter(l=>l.driver===d.name);
-              const gross=dl.reduce((s,l)=>s+(+l.rate||0),0);
-              const confirmed=dl.filter(l=>l.ownerConfirmed).reduce((s,l)=>s+(+l.rate||0),0);
-              const miles=dl.reduce((s,l)=>s+(+l.miles||0),0);
-              const rpm=miles>0?gross/miles:0;
-              const rpmOk=d.minRate?rpm>=(+d.minRate):true;
-              return`<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-                <td style="padding:12px 16px">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <div style="width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${avL(d.name)}</div>
-                    <div>
-                      <div style="font-weight:700;color:var(--navy)">${d.name}</div>
-                      <div style="font-size:10px;color:var(--text3)">min $${d.minRate||'?'}/mi</div>
-                    </div>
-                  </div>
-                </td>
-                <td style="padding:12px;text-align:right;font-weight:700;color:var(--navy)">${dl.length}</td>
-                <td style="padding:12px;text-align:right;font-weight:800;color:var(--green);font-family:var(--mono)">$${fmt(gross)}</td>
-                <td style="padding:12px;text-align:right;font-weight:700;color:#065f46;font-family:var(--mono)">$${fmt(confirmed)}</td>
-                <td style="padding:12px;text-align:right;font-weight:700;color:${gross-confirmed>0?'var(--red)':'var(--text3)'};font-family:var(--mono)">$${fmt(gross-confirmed)}</td>
-                <td style="padding:12px;text-align:right;font-weight:700;font-family:var(--mono);color:${rpmOk?'var(--green)':'var(--red)'}">$${rpm.toFixed(2)}</td>
-                <td style="padding:12px 16px;text-align:right">
-                  <span style="font-size:10px;padding:3px 8px;border-radius:8px;font-weight:700;background:${rpmOk?'#d1fae5':'#fee2e2'};color:${rpmOk?'#065f46':'#dc2626'}">
-                    ${rpmOk?'✓ ON TARGET':'⚠ BELOW MIN'}
-                  </span>
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>`;
+  const owW=owKpiWeek||curW;
+  const{start}=wRange(owW);
+  const days=[];
+  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d);}
+  const today=new Date();today.setHours(0,0,0,0);
+  const todayStr=today.toISOString().split('T')[0];
+
+  const wLoads=LOADS.filter(l=>inW(l.date,owW)||(l.week&&l.week===owW));
+  const wTrips=TRIPS.filter(t=>t.week===owW||inW(t.weekDate||t.createdDate,owW)||inW(t.week,owW));
+  const myDrvNames=new Set(myDrivers.map(d=>d.name));
+
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const thCols=days.map((d,i)=>{
+    const isToday=d.getTime()===today.getTime();
+    return`<th class="${isToday?'today-col':''}">${dayNames[i]}<br><span style="font-size:13px;font-weight:800;color:${isToday?'var(--orange)':'var(--text)'}">${d.getDate()}</span>${isToday?'<br><span style="font-size:9px;color:var(--orange)">Today</span>':''}</th>`;
+  }).join('');
+
+  let html=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <button onclick="owKpiWeek=prevW(owKpiWeek||curW);renderOwnerKpiPage()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:700">‹</button>
+      <span style="font-size:13px;font-weight:700;color:var(--navy)">${wLbl(owW)}</span>
+      <button onclick="owKpiWeek=nextW(owKpiWeek||curW);renderOwnerKpiPage()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:700">›</button>
+      <button onclick="owKpiWeek=curW;renderOwnerKpiPage()" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;color:#1d4ed8">Today</button>
+    </div>
+    <div class="cal-wrap" style="overflow-x:auto">
+    <table class="cal-table" style="width:100%;border-collapse:collapse">
+      <thead><tr><th class="sticky-col" style="min-width:160px">Driver</th>${thCols}<th>Total</th></tr></thead>
+      <tbody>`;
+
+  myDrivers.forEach(drv=>{
+    const dLoads=wLoads.filter(l=>l.driver===drv.name);
+    const dTrips=wTrips.filter(t=>t.driverName===drv.name);
+    const dGross=dLoads.reduce((s,l)=>s+(+l.rate||0),0);
+    const dMiles=dTrips.reduce((s,t)=>s+(+t.miles||0),0);
+    const dRpm=dMiles>0?dGross/dMiles:0;
+    const dOverMin=dTrips.reduce((s,t)=>s+tripOverMin(t,drv),0);
+    const minR=+(drv.minRate||0);
+    const dayStrs=days.map(d=>d.toISOString().split('T')[0]);
+
+    const toDateStr=v=>{
+      if(!v)return null;
+      if(typeof v==='string'){
+        if(/^\d{4}-\d{2}-\d{2}/.test(v))return v.substring(0,10);
+        if(v.length>10&&v.includes('T'))return v.substring(0,10);
+        const parsed=new Date(v+(/\d{4}/.test(v)?'':','+new Date().getFullYear()));
+        if(!isNaN(parsed))return parsed.toISOString().substring(0,10);
+        return null;
+      }
+      if(v.seconds)return new Date(v.seconds*1000).toISOString().substring(0,10);
+      if(v instanceof Date)return v.toISOString().substring(0,10);
+      return null;
+    };
+
+    const tripBars=dTrips.map(t=>{
+      const tLoads=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date);
+      const dates=tLoads.map(l=>l.date).filter(Boolean).sort();
+      if(!dates.length)return null;
+      const tg=+(t.gross||0)||tLoads.reduce((s,l)=>s+(+l.rate||0),0);
+      const trpm=t.miles>0?tg/t.miles:0;
+      const rpmOk=minR>0?trpm>=minR:true;
+      const col=rpmOk?'#0d9488':'#ef4444';
+      const startDate=dates[0];
+      const statuses=tLoads.map(l=>(l.status||'').toLowerCase());
+      const hasDelivered=statuses.some(s=>s==='delivered'||s==='invoiced');
+      const hasPickedUp=!hasDelivered&&statuses.some(s=>s==='picked up'||s==='pickedup');
+      const explicitDeliveredDate=tLoads.reduce((best,l)=>{
+        const d=toDateStr(l.deliveredDate);
+        if(!d)return best;
+        return(!best||d>best)?d:best;
+      },null);
+      let endDate;
+      if(hasDelivered){endDate=explicitDeliveredDate||toDateStr(tLoads.find(l=>['delivered','invoiced'].includes((l.status||'').toLowerCase()))?.date)||todayStr;}
+      else if(hasPickedUp){endDate=todayStr;}
+      else{endDate=startDate;}
+      if(endDate<startDate)endDate=startDate;
+      const pickup=(t.pickup||tLoads[0]?.origin||'?').split(',')[0];
+      const delivery=(t.delivery||tLoads[tLoads.length-1]?.dest||'?').split(',')[0];
+      return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery};
+    }).filter(Boolean);
+
+    const getBR=(r,ds)=>{
+      const isS=ds===r.startDate,isE=ds===r.endDate;
+      if(isS&&isE)return'6px';
+      if(isS)return'6px 0 0 6px';
+      if(isE)return'0 6px 6px 0';
+      return'0';
+    };
+
+    const cellsHtml=days.map((d,di)=>{
+      const ds=dayStrs[di];
+      const isToday=d.getTime()===today.getTime();
+      const tdClass=isToday?'today-col':'';
+      const active=tripBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
+      if(!active.length)return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border)"></td>`;
+      if(active.length>=2){
+        const sorted=[...active].sort((a,b)=>a.endDate.localeCompare(b.endDate));
+        const lBar=sorted[0],rBar=sorted[sorted.length-1];
+        const lBR=ds===lBar.endDate?'0 6px 6px 0':'0';
+        const rBR=ds===rBar.startDate?'6px 0 0 6px':'0';
+        return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border);vertical-align:middle">
+          <div style="display:flex;height:58px;margin:6px 0;gap:2px">
+            <div style="flex:1;background:${lBar.col};border-radius:${lBR};cursor:pointer;min-width:0" onclick="event.stopPropagation();showTripPopover(event,'${lBar.t.id}')"></div>
+            <div style="flex:1;background:${rBar.col};border-radius:${rBR};cursor:pointer;min-width:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:3px 7px" onclick="event.stopPropagation();showTripPopover(event,'${rBar.t.id}')">
+              <div style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(rBar.tg)}</div>
+              <div style="font-size:8px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rBar.pickup}→${rBar.delivery}</div>
+              ${rBar.trpm>0?`<div style="font-size:8px;color:rgba(255,255,255,.7)">${rBar.trpm.toFixed(2)}/mi</div>`:''}
+            </div>
+          </div>
+        </td>`;
+      }
+      const r=active[0];
+      const br=getBR(r,ds);
+      const ml=ds===r.startDate?'4px':'0';
+      const mr=ds===r.endDate?'4px':'0';
+      const showText=ds===r.startDate;
+      return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border);vertical-align:middle">
+        <div style="background:${r.col};border-radius:${br};margin:6px ${mr} 6px ${ml};height:58px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden;cursor:pointer;padding:${showText?'4px 8px':'0'}" onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')">
+          ${showText?`<div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
+          ${r.trpm>0?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}`:''}
+        </div>
+      </td>`;
+    }).join('');
+
+    html+=`<tr style="height:70px">
+      <td class="sticky-col" style="padding-left:16px;vertical-align:middle;height:70px">
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">${drv.name}</div>
+        <div style="font-size:10px;color:var(--text3)">${drv.company||'—'} · Min: $${drv.minRate||'—'}/mi</div>
+      </td>
+      ${cellsHtml}
+      <td class="tot-cell">
+        <strong>$${fmt(dGross)}</strong><br>
+        ${dMiles>0?`<span style="color:var(--text3)">${dMiles.toLocaleString()}mi</span><br>`:''}
+        ${dRpm>0?`<span style="color:var(--blue);font-weight:700">$${dRpm.toFixed(2)}/mi</span><br>`:''}
+        ${dOverMin>0?`<strong class="over" style="font-size:12px">+$${fmt(dOverMin)}</strong>`:''}
+        ${dOverMin<0?`<strong class="under" style="font-size:12px;color:var(--red)">-$${fmt(Math.abs(dOverMin))}</strong>`:''}
+      </td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table></div>`;
+  body.innerHTML=html;
 }
 
 function renderOwnerStats(){
