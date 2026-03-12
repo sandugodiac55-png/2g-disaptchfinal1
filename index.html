@@ -5419,20 +5419,30 @@ function _populateSlipSelectors(drvSelId, weekSelId){
 }
 
 async function renderDriverSlipPage(){
-  // Don't interrupt user while they're typing in a slip input
+  // Don't interrupt user while they're typing in a slip input field
   const active=document.activeElement;
-  if(active&&active.closest&&active.closest('#slip-body2, #pg-owner-salary-slip')) return;
+  if(active&&active.type==='number'&&active.closest&&(active.closest('#slip-body2')||active.closest('#slip-body'))) return;
   _populateSlipSelectors('slip-drv-sel2','slip-week-sel2');
   const body=document.getElementById('slip-body2');
   if(!body)return;
-  const drvId=document.getElementById('slip-drv-sel2')?.value;
-  const week=document.getElementById('slip-week-sel2')?.value;
+  const drvSel=document.getElementById('slip-drv-sel2');
+  const weekSel=document.getElementById('slip-week-sel2');
+  // Auto-select first driver if none selected
+  if(drvSel&&!drvSel.value&&drvSel.options.length>1) drvSel.selectedIndex=1;
+  // Auto-select current week if none selected
+  if(weekSel&&!weekSel.value&&weekSel.options.length>1){
+    let best=-1;
+    for(let i=1;i<weekSel.options.length;i++){if(weekSel.options[i].value===curW){best=i;break;}}
+    weekSel.selectedIndex=best>0?best:1;
+  }
+  const drvId=drvSel?.value;
+  const week=weekSel?.value;
   await _renderSlipInto(body,'slip-drv-sel2','slip-week-sel2',drvId,week);
 }
 
 async function renderDriverSlip(){
   const active=document.activeElement;
-  if(active&&active.closest&&active.closest('#slip-body, #pg-salary')) return;
+  if(active&&active.type==='number'&&active.closest&&(active.closest('#slip-body2')||active.closest('#slip-body'))) return;
   const body=document.getElementById('slip-body');
   if(!body)return;
   const drvId=document.getElementById('slip-drv-sel')?.value;
