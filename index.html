@@ -2960,13 +2960,16 @@ function renderKPI(){
             };
 
             if(hasSplit){
-              // Left half = trip ending, Right half = trip starting
-              return`<td class="${tdClass}" style="${tdStyle}">
-                <div style="display:flex;height:70px;align-items:center">
-                  <div style="flex:1;height:58px;background:${ending[0].col};border-radius:0 6px 6px 0;margin:0 2px 0 0;cursor:pointer" onclick="event.stopPropagation();showTripPopover(event,'${ending[0].t.id}')"></div>
-                  <div style="flex:1;height:58px;background:${starting[0].col};border-radius:6px 0 0 6px;margin:0 0 0 2px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:4px 6px;cursor:pointer" onclick="event.stopPropagation();showTripPopover(event,'${starting[0].t.id}')">
-                    <div style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(starting[0].tg)}</div>
-                    <div style="font-size:8px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${starting[0].pickup}→${starting[0].delivery}</div>
+              const eBar=ending[0], sBar=starting[0];
+              return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border);vertical-align:middle">
+                <div style="display:flex;align-items:center;height:58px;margin:6px 0;gap:2px">
+                  <!-- Left: ending trip — no left margin (continues from prev cell), rounded right -->
+                  <div style="flex:1;height:100%;background:${eBar.col};border-radius:0 6px 6px 0;cursor:pointer;min-width:0" onclick="event.stopPropagation();showTripPopover(event,'${eBar.t.id}')"></div>
+                  <!-- Right: starting trip — rounded left, no right margin (continues to next cell) -->
+                  <div style="flex:1;height:100%;background:${sBar.col};border-radius:6px 0 0 6px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:3px 6px;min-width:0" onclick="event.stopPropagation();showTripPopover(event,'${sBar.t.id}')">
+                    <div style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(sBar.tg)}</div>
+                    <div style="font-size:8px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sBar.pickup}→${sBar.delivery}</div>
+                    ${sBar.trpm>0?`<div style="font-size:8px;color:rgba(255,255,255,.7)">${sBar.trpm.toFixed(2)}/mi</div>`:''}
                   </div>
                 </div>
               </td>`;
