@@ -2873,84 +2873,109 @@ function renderKPI(){
             const rpmOk=minR>0?trpm>=minR:true;
             const col=rpmOk?'#0d9488':'#ef4444';
             const startDate=dates[0];
-            const weekEndStr=days[6].toISOString().split('T')[0];
+            // endDate logic:
+            // - Delivered/Invoiced → use deliveredDate (exact day bar stops)
+            // - Picked Up (in transit) → today only (bar reaches today, not further)
+            // - Assigned → only start day (single cell)
             const isDelivered=tLoads.some(l=>l.status==='Delivered'||l.status==='Invoiced');
             const isPickedUp=tLoads.some(l=>l.status==='Picked Up');
-            const deliveredLoad=tLoads.find(l=>l.status==='Delivered'||l.status==='Invoiced');
-            // If delivered/invoiced: end at deliveredDate. If picked up: end at today (capped to week end). If assigned: just start day.
-            const rawEnd=isDelivered?(deliveredLoad?.deliveredDate||deliveredLoad?.date||startDate)
-              :(isPickedUp?todayStr:startDate);
-            // Cap to week boundaries
-            const endDate=rawEnd>weekEndStr?weekEndStr:(rawEnd<startDate?startDate:rawEnd);
+            const deliveredLoad=tLoads.find(l=>l.deliveredDate)||(tLoads.find(l=>l.status==='Delivered'||l.status==='Invoiced'));
+            let endDate;
+            if(isDelivered){
+              endDate=deliveredLoad?.deliveredDate||startDate;
+            } else if(isPickedUp){
+              endDate=todayStr; // only up to today, not future
+            } else {
+              endDate=startDate; // Assigned: single cell only
+            }
+            // Never go before startDate
+            if(endDate<startDate) endDate=startDate;
             const pickup=(t.pickup||tLoads[0]?.origin||'?').split(',')[0];
             const delivery=(t.delivery||tLoads[tLoads.length-1]?.dest||'?').split(',')[0];
             return{t,tg,trpm,col,rpmOk,startDate,endDate,pickup,delivery,isTrip:true};
           }).filter(Boolean);
 
-          // Only trip bars — no standalone loads
+          // Only trip bars
           const allBars=[...tripBars];
 
           return days.map((d,di)=>{
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
 
-            // Bars that START on this day
-            const startingBars=allBars.filter(r=>ds===r.startDate);
-            // Bars that are in-progress through this day (started before, ends on or after)
-            const continuingBars=allBars.filter(r=>ds>r.startDate&&ds<=r.endDate);
-            // Bars that END on this day (not start = same day)
-            const endingBars=allBars.filter(r=>ds===r.endDate&&ds!==r.startDate);
+            // Which bars are active on this day?
+            const activeBars=allBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
 
-            // Detect split: a bar ends here AND another bar starts here
-            const hasSplitDeliveryPickup=endingBars.length>0&&startingBars.length>0;
+            if(!activeBars.length){
+              return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px"></td>`;
+            }
 
-            const renderChip=(r,opts={})=>{
-              const{topHalf=false,bottomHalf=false,fullHeight=false}=opts;
-              const isStart=ds===r.startDate;
-              const isEnd=ds===r.endDate;
-              const isSingle=isStart&&isEnd&&!topHalf&&!bottomHalf;
-              const borderR=isSingle?'6px':(isStart||bottomHalf?'6px 0 0 6px':(isEnd||topHalf?'0 6px 6px 0':'0'));
-              const marginL=(isStart||bottomHalf)?'3px':'-1px';
-              const marginR=(isEnd||topHalf)?'3px':'-1px';
-              const height=topHalf||bottomHalf?'24px':'52px';
-              const marginT=bottomHalf?'2px':'0';
-              const onclick=r.isTrip
-                ?`event.stopPropagation();showTripPopover(event,'${r.t.id}')`
-                :`event.stopPropagation();showLoadCard('${r.l.id}')`;
-              return`<div style="background:${r.col};border-radius:${borderR};margin:${marginT} ${marginR} 0 ${marginL};padding:4px 8px;cursor:pointer;height:${height};box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden" onclick="${onclick}">
-                ${(isStart||isSingle||bottomHalf)?`
+            // Detect split: a bar ENDS here AND a DIFFERENT bar STARTS here (same-day delivery + pickup)
+            const endingHere=activeBars.filter(r=>ds===r.endDate&&ds!==r.startDate);
+            const startingHere=activeBars.filter(r=>ds===r.startDate&&ds!==r.endDate);
+            // Single-day bars (start=end=ds)
+            const singleDay=activeBars.filter(r=>ds===r.startDate&&ds===r.endDate);
+            const hasSplit=endingHere.length>0&&startingHere.length>0;
+
+            const onclick=(r)=>r.isTrip
+              ?`event.stopPropagation();showTripPopover(event,'${r.t.id}')`
+              :`event.stopPropagation();showLoadCard('${r.l.id}')`;
+
+            // Helper: render a bar segment
+            // position: 'full'|'left-half'|'right-half'|'single'
+            // isStart: show text content
+            const barSegment=(r,position,showText)=>{
+              // Border radius: left side rounded on start, right side rounded on end
+              let br;
+              if(position==='single') br='6px';
+              else if(position==='left-half') br='6px 0 0 6px'; // bar starts here, continues right
+              else if(position==='right-half') br='0 6px 6px 0'; // bar ends here, came from left
+              else {
+                // full: check if start or end day
+                const isStart=ds===r.startDate;
+                const isEnd=ds===r.endDate;
+                if(isStart&&isEnd) br='6px';
+                else if(isStart) br='6px 0 0 6px';
+                else if(isEnd) br='0 6px 6px 0';
+                else br='0';
+              }
+              const mL=(position==='left-half'||position==='single'||ds===r.startDate)?'3px':'-1px';
+              const mR=(position==='right-half'||position==='single'||ds===r.endDate)?'3px':'-1px';
+              return`<div style="background:${r.col};border-radius:${br};margin:2px ${mR} 2px ${mL};padding:4px 7px;cursor:pointer;flex:1;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden;min-height:22px" onclick="${onclick(r)}">
+                ${showText?`
                   <div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
-                  ${!topHalf&&!bottomHalf?`<div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>`:''}
-                  ${r.trpm>0&&!topHalf?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}
+                  <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
+                  ${r.trpm>0?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}
                 `:''}
               </div>`;
             };
 
-            if(hasSplitDeliveryPickup){
-              // Top half = ending trip(s), bottom half = starting trip(s)
-              return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:top;height:70px">
-                <div style="display:flex;flex-direction:column;gap:0;height:52px;margin-top:6px">
-                  ${endingBars.map(r=>renderChip(r,{topHalf:true})).join('')}
-                  ${startingBars.map(r=>renderChip(r,{bottomHalf:true})).join('')}
+            if(hasSplit){
+              // Split cell: TOP = ending bar (right half), BOTTOM = starting bar (left half)
+              return`<td class="${isToday?'today-col':''}" style="padding:0!important;vertical-align:top;height:70px">
+                <div style="display:flex;flex-direction:column;height:70px;padding:3px 0">
+                  <!-- Top half: trip ending here -->
+                  <div style="display:flex;flex:1;align-items:stretch">
+                    ${endingHere.map(r=>barSegment(r,'right-half',false)).join('')}
+                  </div>
+                  <!-- Bottom half: trip starting here -->
+                  <div style="display:flex;flex:1;align-items:stretch">
+                    ${startingHere.map(r=>barSegment(r,'left-half',true)).join('')}
+                  </div>
                 </div>
               </td>`;
             }
 
-            const activeBars=[
-              ...startingBars,
-              ...allBars.filter(r=>ds>r.startDate&&ds<r.endDate),
-              ...allBars.filter(r=>ds===r.endDate&&ds!==r.startDate)
-            ];
-            // dedupe
-            const seen=new Set();
-            const uniqueBars=activeBars.filter(r=>{
-              if(seen.has(r.t?.id||r.l?.id))return false;
-              seen.add(r.t?.id||r.l?.id);
-              return true;
-            });
-
+            // Normal cell — all active bars stacked (usually just 1)
             return`<td class="${isToday?'today-col':''}" style="padding:3px 0!important;vertical-align:middle;height:70px">
-              ${uniqueBars.map(r=>renderChip(r,{})).join('')}
+              <div style="display:flex;flex-direction:column;gap:2px;height:100%;justify-content:center">
+                ${activeBars.map(r=>{
+                  const isStart=ds===r.startDate;
+                  const isEnd=ds===r.endDate;
+                  let pos='full';
+                  if(isStart&&isEnd) pos='single';
+                  return barSegment(r,pos,isStart||isStart===isEnd);
+                }).join('')}
+              </div>
             </td>`;
           }).join('');
         })()}
