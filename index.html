@@ -5164,7 +5164,7 @@ function renderSalEmp(weeks){
             <div style="font-size:10px;color:rgba(255,255,255,.5)">TOTAL</div>
             <div style="font-size:16px;font-weight:800;color:#fff;font-family:var(--mono)" id="disp-tot-${disp.id}">$0</div>
           </div>
-          <button onclick="exportSingleDispatcher('${disp.id}','${escQ(disp.name)}')" style="padding:5px 12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer">⬇ Excel</button>
+          <button onclick="exportSalPdf('${disp.id}','${escQ(disp.name)}')" style="padding:5px 12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer">🖨 PDF</button>
         </div>
       </div>
 
@@ -5947,7 +5947,7 @@ function renderOwnEmp(weeks,el){
           <div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">SALARIU</div><div style="font-size:16px;font-weight:800;color:#34d399;font-family:var(--mono)" id="oe-sal-${disp.id}">$0.00</div></div>
           <div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">KPI BONUS</div><div style="font-size:16px;font-weight:800;color:#fbbf24;font-family:var(--mono)">$${fmt(kpiTotal)}</div></div>
           <div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">TOTAL</div><div style="font-size:16px;font-weight:800;color:#fff;font-family:var(--mono)" id="oe-tot-${disp.id}">$0.00</div></div>
-          <button onclick="exportSingleDispatcher('${disp.id}','${escQ(disp.name)}')" style="padding:6px 12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer">⬇ Excel</button>
+          <button onclick="exportSalPdf('${disp.id}','${escQ(disp.name)}')" style="padding:6px 12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer">🖨 PDF</button>
         </div>
       </div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -6208,6 +6208,68 @@ function exportSingleDispatcher(dispId,dispName){
   });
   exportToCSV(rows,`salariu-${dispName.replace(/\s/g,'-')}.csv`);
   notify('Export gata ✓');
+}
+
+function exportSalPdf(dispId,dispName){
+  const weeks=getSalWeeks().length?getSalWeeks():getOwnWeeks();
+  const disp=USERS.find(u=>u.id===dispId);
+  if(!disp)return;
+  const md=DRIVERS.filter(d=>(d.dispatcherEmail||'').trim().toLowerCase()===(disp.email||'').trim().toLowerCase());
+  if(!md.length){notify('No drivers found','err');return;}
+
+  const totalSal=md.reduce((s,dr)=>{
+    const pct=+(dr.salaryPct||0);
+    return s+weeks.reduce((ss,w)=>ss+LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w)).reduce((ll,l)=>ll+(+l.rate||0),0),0)*(pct/100);
+  },0);
+
+  const wHeaders=weeks.map(w=>`<th>${wLbl(w)}<br><span style="font-weight:400;font-size:10px">Gross / Sal</span></th>`).join('');
+  const rows=md.map(dr=>{
+    const pct=+(dr.salaryPct||0);
+    const wG=weeks.map(w=>LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w)).reduce((s,l)=>s+(+l.rate||0),0));
+    const wS=wG.map(g=>g*(pct/100));
+    const tG=wG.reduce((s,v)=>s+v,0);
+    const tS=wS.reduce((s,v)=>s+v,0);
+    const wCells=wG.map((g,i)=>`<td><span style="color:#16a34a;font-weight:700">$${fmt(g)}</span><br><span style="color:#2563eb;font-size:11px">$${fmt(wS[i])}</span></td>`).join('');
+    return `<tr>
+      <td><strong>${dr.name}</strong><br><span style="font-size:10px;color:#666">${dr.company||''}</span></td>
+      <td style="text-align:center">${pct}%</td>
+      ${wCells}
+      <td style="font-weight:800;color:#16a34a">$${fmt(tG)}</td>
+      <td style="font-weight:800;color:#2563eb">$${fmt(tS)}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Salary — ${dispName}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#1e293b}
+    h2{margin:0 0 4px;font-size:18px;color:#0f172a}
+    .sub{font-size:11px;color:#64748b;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{background:#0f172a;color:#fff;padding:8px 10px;text-align:left;font-size:11px}
+    td{padding:7px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+    tr:nth-child(even) td{background:#f8fafc}
+    .total-row td{background:#0f172a!important;color:#fff;font-weight:800;font-size:13px}
+    .total-row td span{color:#fff!important}
+    @media print{body{margin:10px}button{display:none}}
+  </style></head><body>
+  <h2>📋 Salary Report — ${dispName}</h2>
+  <div class="sub">Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} · ${weeks.length} week(s)</div>
+  <table>
+    <thead><tr><th>Driver</th><th>Sal %</th>${wHeaders}<th>Total Gross</th><th>Total Salary</th></tr></thead>
+    <tbody>${rows}
+      <tr class="total-row">
+        <td colspan="${2+weeks.length}">TOTAL SALARY — ${dispName}</td>
+        <td colspan="2">$${fmt(totalSal)}</td>
+      </tr>
+    </tbody>
+  </table>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`;
+
+  const w=window.open('','_blank','width=900,height=650');
+  w.document.write(html);
+  w.document.close();
 }
 
 function exportToCSV(rows, filename){
