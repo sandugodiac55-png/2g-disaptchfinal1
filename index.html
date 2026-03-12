@@ -5122,24 +5122,8 @@ function renderSalary(){
   }
 
   renderSalEmp(selWeeks);
-
-  // Populate Driver Salary Slip selectors
-  const slipDrvSel=document.getElementById('slip-drv-sel');
-  const slipWeekSel=document.getElementById('slip-week-sel');
-  if(slipDrvSel){
-    const prevDrv=slipDrvSel.value;
-    slipDrvSel.innerHTML=`<option value="">— Select Driver —</option>`+
-      DRIVERS.map(d=>`<option value="${d.id}" ${d.id===prevDrv?'selected':''}>${d.name}</option>`).join('');
-  }
-  if(slipWeekSel){
-    const prevWeek=slipWeekSel.value;
-    // All weeks with loads across all drivers
-    const allLoadWeeks=[...new Set(LOADS.map(l=>l.week).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
-    slipWeekSel.innerHTML=`<option value="">— Select Week —</option>`+
-      allLoadWeeks.map(w=>`<option value="${w}" ${w===prevWeek?'selected':''}>${wLbl(w)}</option>`).join('');
-  }
-  renderDriverSlip();
 }
+
 
 function renderSalEmp(weeks){
   const el=document.getElementById('sal-emp-content');
