@@ -5995,7 +5995,7 @@ function renderOwnExpenses(el){
 
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-    <span style="font-size:11px;color:var(--text3)">Cheltuielile se salvează automat în Firestore la fiecare modificare.</span>
+    <span style="font-size:11px;color:var(--text3)">Introduceți valorile și apăsați <strong>Salvează</strong> sau Enter.</span>
     <span id="own-save-ind" style="font-size:11px;font-weight:700;color:var(--green);opacity:0;transition:opacity .3s">✓ Salvat</span>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -6009,16 +6009,15 @@ function renderOwnExpenses(el){
       <div id="own-fixed-list" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
         ${fixedExp.length?fixedExp.map((e,i)=>`
         <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px">
-          <input value="${e.name||''}" placeholder="Denumire"
-            onblur="updateOwnExpense('fixed',${i},'name',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
+          <input id="own-fixed-name-${i}" value="${e.name||''}" placeholder="Denumire"
+            onkeydown="if(event.key==='Enter')saveOwnExpenseRow('fixed',${i})"
             style="flex:1;border:none;background:transparent;font-family:var(--font);font-size:13px;font-weight:600;color:var(--navy);outline:none">
           <span style="font-size:11px;color:var(--text3)">$</span>
-          <input type="number" value="${e.amount||''}" placeholder="0"
-            onblur="updateOwnExpense('fixed',${i},'amount',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
+          <input id="own-fixed-amt-${i}" type="number" value="${e.amount||''}" placeholder="0"
+            onkeydown="if(event.key==='Enter')saveOwnExpenseRow('fixed',${i})"
             style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--navy)">
           <span style="font-size:11px;color:var(--text3)">/lună</span>
+          <button onclick="saveOwnExpenseRow('fixed',${i})" style="padding:4px 10px;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">💾</button>
           <button onclick="deleteOwnExpense('fixed',${i})" style="width:24px;height:24px;border-radius:6px;border:none;background:#fef2f2;color:var(--red);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">×</button>
         </div>`).join(''):`<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px">Nicio cheltuială fixă adăugată</div>`}
       </div>
@@ -6038,15 +6037,14 @@ function renderOwnExpenses(el){
       <div id="own-var-list" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
         ${varExp.length?varExp.map((e,i)=>`
         <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px">
-          <input value="${e.name||''}" placeholder="Denumire"
-            onblur="updateOwnExpense('variable',${i},'name',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
+          <input id="own-var-name-${i}" value="${e.name||''}" placeholder="Denumire"
+            onkeydown="if(event.key==='Enter')saveOwnExpenseRow('variable',${i})"
             style="flex:1;border:none;background:transparent;font-family:var(--font);font-size:13px;font-weight:600;color:var(--navy);outline:none">
           <span style="font-size:11px;color:var(--text3)">$</span>
-          <input type="number" value="${e.amount||''}" placeholder="0"
-            onblur="updateOwnExpense('variable',${i},'amount',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
+          <input id="own-var-amt-${i}" type="number" value="${e.amount||''}" placeholder="0"
+            onkeydown="if(event.key==='Enter')saveOwnExpenseRow('variable',${i})"
             style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--navy)">
+          <button onclick="saveOwnExpenseRow('variable',${i})" style="padding:4px 10px;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">💾</button>
           <button onclick="deleteOwnExpense('variable',${i})" style="width:24px;height:24px;border-radius:6px;border:none;background:#fef2f2;color:var(--red);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">×</button>
         </div>`).join(''):`<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px">Nicio cheltuială flotantă adăugată</div>`}
       </div>
@@ -6056,6 +6054,22 @@ function renderOwnExpenses(el){
       </div>
     </div>
   </div>`;
+}
+
+async function saveOwnExpenseRow(type,idx){
+  const prefix=type==='fixed'?'own-fixed':'own-var';
+  const nameEl=document.getElementById(`${prefix}-name-${idx}`);
+  const amtEl=document.getElementById(`${prefix}-amt-${idx}`);
+  if(!nameEl||!amtEl)return;
+  const key=type==='fixed'?'_expenses':'_variableExpenses';
+  if(!SALARY_CONFIG[key])SALARY_CONFIG[key]=[];
+  if(!SALARY_CONFIG[key][idx])SALARY_CONFIG[key][idx]={name:'',amount:0};
+  SALARY_CONFIG[key][idx].name=nameEl.value;
+  SALARY_CONFIG[key][idx].amount=parseFloat(amtEl.value)||0;
+  await saveSalaryConfig();
+  const ind=document.getElementById('own-save-ind');
+  if(ind){ind.style.opacity='1';setTimeout(()=>ind.style.opacity='0',2000);}
+  renderOwnExpenses(document.getElementById('own-tab-content'));
 }
 
 function renderOwnProfit(weeks,el){
@@ -6133,7 +6147,35 @@ function renderOwnProfit(weeks,el){
         <div style="font-size:28px;font-weight:800;font-family:var(--mono);color:${net>=0?'var(--green)':'var(--red)'}">$${fmt(Math.abs(perF))}</div>
       </div>`).join('')}
     </div>
+  </div>
+  <div style="margin-top:16px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--navy)">Marchează perioada ca plătită</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Cheltuielile flotante vor fi resetate la $0 după confirmare</div>
+    </div>
+    <button onclick="markOwnProfitPaid()" style="padding:10px 24px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,.3)">
+      ✅ Marcat ca Plătit
+    </button>
   </div>`;
+}
+
+async function markOwnProfitPaid(){
+  if(!confirm('Marchezi perioada ca plătită?\nCheltuielile flotante vor fi resetate la $0.')) return;
+  // Save snapshot with paid date
+  const weeks=getOwnWeeks();
+  const paidAt=new Date().toISOString();
+  const paidBy=CP.name||CU.email;
+  if(!SALARY_CONFIG._profitHistory) SALARY_CONFIG._profitHistory=[];
+  SALARY_CONFIG._profitHistory.push({
+    paidAt, paidBy,
+    weeks,
+    variableExpenses:[...(SALARY_CONFIG._variableExpenses||[])],
+  });
+  // Reset variable expenses
+  SALARY_CONFIG._variableExpenses=[];
+  await saveSalaryConfig();
+  notify(`✅ Perioadă marcată ca plătită de ${paidBy}`,'ok');
+  renderOwnContent(weeks);
 }
 
 async function addOwnExpense(type){
