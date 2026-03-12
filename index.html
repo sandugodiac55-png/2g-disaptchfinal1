@@ -1548,7 +1548,10 @@ function subLoads(){
     LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     if(!_metaReady)return; // wait for COMPANIES/USERS/DRIVERS to load first
     buildNav();
+    // Preserve owSelDriver state when snapshot fires during owner page view
+    const _savedOwSel=owSelDriver;
     renderCur();
+    if(_savedOwSel&&typeof owSelDriver!=='undefined')owSelDriver=_savedOwSel;
   },err=>{
     console.error('subLoads error:',err);
     // Fallback: try filtered by dispEmail (dispatchers only)
@@ -4209,24 +4212,34 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
     </div>`;
 }
 
+let _blockLoadsRender=false;
+
 async function ownerConfirmLoad(loadId){
   if(ROLE!=='owner'&&ROLE!=='admin'){notify('Only owner can confirm','err');return;}
-  if(!confirm('Mark this load as received and confirmed by owner?'))return;
   const{updateDoc,doc}=window._fb;
   const now=new Date();
   const label=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email});
-  notify('✓ Load confirmed by owner');
-  renderOwner();
+  try{
+    // Optimistic update first
+    const idx=LOADS.findIndex(l=>l.id===loadId);
+    if(idx>=0){LOADS[idx]={...LOADS[idx],ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email};}
+    renderOwner();
+    // Then write to Firestore
+    await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email});
+    notify('✓ Load confirmed by owner');
+  }catch(e){notify('Error: '+e.message,'err');}
 }
 
 async function ownerUnconfirmLoad(loadId){
   if(ROLE!=='admin'){notify('Only admin can remove confirmation','err');return;}
-  if(!confirm('Remove owner confirmation from this load?'))return;
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null});
-  notify('✓ Owner confirmation removed');
-  renderOwner();
+  try{
+    const idx=LOADS.findIndex(l=>l.id===loadId);
+    if(idx>=0){LOADS[idx]={...LOADS[idx],ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null};}
+    renderOwner();
+    await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null});
+    notify('✓ Owner confirmation removed');
+  }catch(e){notify('Error: '+e.message,'err');}
 }
 
 async function toggleOwnerConfirmFeature(drvId,drvName,currentState){
