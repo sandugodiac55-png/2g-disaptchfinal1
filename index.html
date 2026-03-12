@@ -1540,12 +1540,25 @@ async function loadMeta(){
 /* ══ REALTIME ══ */
 function subLoads(){
   if(unsub)unsub();
-  const{onSnapshot,collection,query,where}=window._fb,db=window._db;
+  const{onSnapshot,collection,query,where,getDocs}=window._fb,db=window._db;
   // Load ALL loads — sort in JS to avoid needing Firestore composite index
   const q=query(collection(db,'loads'));
-  unsub=onSnapshot(q,snap=>{
+  unsub=onSnapshot(q,async snap=>{
     LOADS=snap.docs.map(d=>({id:d.id,...d.data()}));
     LOADS.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    // Merge ownerConfirmations (separate collection owner can write to)
+    try{
+      const confSnap=await getDocs(collection(db,'ownerConfirmations'));
+      confSnap.docs.forEach(cd=>{
+        const conf=cd.data();
+        if(conf.confirmed){
+          const idx=LOADS.findIndex(l=>l.id===cd.id);
+          if(idx>=0&&!LOADS[idx].ownerConfirmed){
+            LOADS[idx]={...LOADS[idx],ownerConfirmed:true,ownerConfirmedAt:conf.confirmedAt,ownerConfirmedBy:conf.confirmedBy};
+          }
+        }
+      });
+    }catch(_){}
     if(!_metaReady)return; // wait for COMPANIES/USERS/DRIVERS to load first
     buildNav();
     // Preserve owSelDriver state when snapshot fires during owner page view
@@ -4216,30 +4229,37 @@ let _blockLoadsRender=false;
 
 async function ownerConfirmLoad(loadId){
   if(ROLE!=='owner'&&ROLE!=='admin'){notify('Only owner can confirm','err');return;}
-  const{updateDoc,doc}=window._fb;
+  const{updateDoc,doc,setDoc,collection}=window._fb;
   const now=new Date();
   const label=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   try{
-    // Optimistic update first
-    const idx=LOADS.findIndex(l=>l.id===loadId);
-    if(idx>=0){LOADS[idx]={...LOADS[idx],ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email};}
-    renderOwner();
-    // Then write to Firestore
+    // Try updating loads directly first (works for admin)
     await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email});
-    notify('✓ Load confirmed by owner');
-  }catch(e){notify('Error: '+e.message,'err');}
+  }catch(e){
+    // Fallback: write to ownerConfirmations collection (owner has write access here)
+    try{
+      await setDoc(doc(window._db,'ownerConfirmations',loadId),{loadId,confirmed:true,confirmedAt:label,confirmedBy:CP.name||CU.email,ts:new Date().toISOString()});
+    }catch(e2){notify('Error: '+e2.message,'err');return;}
+  }
+  // Optimistic local update
+  const idx=LOADS.findIndex(l=>l.id===loadId);
+  if(idx>=0){LOADS[idx]={...LOADS[idx],ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email};}
+  notify('✓ Load confirmed by owner');
+  renderOwner();
 }
 
 async function ownerUnconfirmLoad(loadId){
   if(ROLE!=='admin'){notify('Only admin can remove confirmation','err');return;}
-  const{updateDoc,doc}=window._fb;
+  const{updateDoc,doc,deleteDoc,collection}=window._fb;
   try{
-    const idx=LOADS.findIndex(l=>l.id===loadId);
-    if(idx>=0){LOADS[idx]={...LOADS[idx],ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null};}
-    renderOwner();
     await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null});
-    notify('✓ Owner confirmation removed');
-  }catch(e){notify('Error: '+e.message,'err');}
+    // Also clear from ownerConfirmations if exists
+    try{await deleteDoc(doc(window._db,'ownerConfirmations',loadId));}catch(_){}
+  }catch(e){notify('Error: '+e.message,'err');return;}
+  const idx=LOADS.findIndex(l=>l.id===loadId);
+  if(idx>=0){LOADS[idx]={...LOADS[idx],ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null};}
+  renderOwner();
+  notify('✓ Owner confirmation removed');
 }
 
 async function toggleOwnerConfirmFeature(drvId,drvName,currentState){
