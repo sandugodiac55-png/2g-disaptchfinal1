@@ -5359,9 +5359,40 @@ function slipSetManual(drvId,week,field,val){
   const key=_slipKey(drvId,week);
   if(!_slipManual[key]) _slipManual[key]={};
   _slipManual[key][field]=parseFloat(val)||0;
-  // Re-render whichever slip is visible
-  if(document.getElementById('slip-body')&&document.getElementById('slip-drv-sel')?.value) renderDriverSlip();
-  if(document.getElementById('slip-body2')&&document.getElementById('slip-drv-sel2')?.value) renderDriverSlipPage();
+  // Update totals in-place without full re-render (to preserve input focus)
+  _updateSlipTotals(drvId,week);
+}
+
+function _updateSlipTotals(drvId,week){
+  const drv=DRIVERS.find(d=>d.id===drvId);
+  if(!drv) return;
+  const key=_slipKey(drvId,week);
+  const man=_slipManual[key]||{};
+  const wLoads=LOADS.filter(l=>l.driver===drv.name&&(l.week===week||inW(l.date,week)));
+  const isCopCod=l=>{const pm=(l.payMethod||'').toLowerCase();return pm==='cod'||pm==='cop'||pm==='c.o.d.'||pm==='c.o.p.';};
+  const isCashToDriver=l=>{const note=(l.accComment||l.notes||'').toLowerCase();return isCopCod(l)&&(note.includes('cash')||note.includes('zelle')||(l.driverPayMethod||'').toLowerCase().includes('cash')||(l.driverPayMethod||'').toLowerCase().includes('zelle'));};
+  const regularGross=wLoads.filter(l=>!isCopCod(l)).reduce((s,l)=>s+(+l.rate||0),0);
+  const copCodGross=wLoads.filter(l=>isCopCod(l)).reduce((s,l)=>s+(+l.rate||0),0);
+  const totalGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const cashByDriver=wLoads.filter(l=>isCashToDriver(l)).reduce((s,l)=>s+(+l.rate||0),0);
+  const disp12=regularGross*0.12;
+  const disp10=copCodGross*0.10;
+  const insurance=+(man.insurance||0);
+  const logbook=+(man.logbook||0);
+  const superDispatch=+(man.superDispatch||0);
+  const ifta=+(man.ifta||0);
+  const totalExpenses=disp12+disp10+insurance+logbook+superDispatch+ifta;
+  const netGross=totalGross-cashByDriver-totalExpenses;
+  // Update only the total cells by their data attributes
+  const slipId='slip-print-'+drvId.replace(/[^a-z0-9]/gi,'');
+  const el=document.getElementById(slipId);
+  if(!el) return;
+  const tots=el.querySelectorAll('[data-slip-total]');
+  tots.forEach(t=>{
+    const k=t.getAttribute('data-slip-total');
+    if(k==='expenses') t.textContent='$'+fmt(totalExpenses);
+    if(k==='netgross') t.textContent='$'+fmt(netGross);
+  });
 }
 
 function _populateSlipSelectors(drvSelId, weekSelId){
@@ -5472,17 +5503,27 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
   body.innerHTML=`
   <div id="${slipId}" style="background:#fff;overflow:hidden">
 
-    <!-- HEADER -->
-    <div style="text-align:center;padding:14px 14px 6px;background:${isPaid?'#f0fdf4':'#fff'}">
+    <!-- HEADER with paid button centered -->
+    <div style="text-align:center;padding:14px 14px 14px;background:${isPaid?'#f0fdf4':'#fff'}">
       <div style="font-size:16px;font-weight:900;color:var(--navy)">Salary Slip <span style="font-size:13px;font-weight:600;color:var(--text3)">(${slipRange})</span></div>
       <div style="font-size:11px;color:var(--text3);margin-top:2px">${drv.name} · ${wLbl(week)}</div>
+      <div style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:12px">
+        ${isPaid
+          ?`<span style="background:#dcfce7;border:2px solid #86efac;color:#15803d;border-radius:20px;padding:7px 22px;font-size:13px;font-weight:800">✅ PAID</span>
+            <span style="font-size:11px;color:var(--text3)">${paidData.paidAt?new Date(paidData.paidAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''} · ${paidData.paidBy||''}</span>
+            ${ROLE==='admin'?`<button onclick="unmarkSlipPaid('${drvId}','${week}')" style="font-size:11px;padding:4px 14px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700">↩ Unpay</button>`:''}`
+          :`<button onclick="markSlipPaid('${drvId}','${week}')"
+              style="padding:10px 30px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,.3)">
+              💵 Mark as Paid
+            </button>`}
+      </div>
     </div>
 
-    <!-- TOP ROW: expenses left + paid button right -->
-    <div style="display:flex;align-items:flex-start;gap:0;padding:14px;padding-top:8px">
+    <!-- TOP ROW: expenses left, empty right -->
+    <div style="padding:0 14px 14px">
 
-      <!-- LEFT: Expense Table -->
-      <div style="width:320px;flex-shrink:0">
+      <!-- Expense Table -->
+      <div style="width:320px">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <tbody>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Dispatch Services 12%</td>
@@ -5490,32 +5531,32 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Dispatch Services 10%</td>
                 <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-family:var(--mono);font-weight:700">$${fmt(disp10)}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Insurance</td>
-                <td style="padding:4px 6px;border:1px solid #ccc;text-align:right">
+                <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.insurance||0)}</span>`
                   :`<input type="number" step="0.01" min="0" value="${man.insurance||''}" placeholder="0.00"
-                    style="width:100%;border:none;outline:none;padding:2px 4px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222;background:transparent"
+                    style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','insurance',this.value)" onfocus="this.select()">`}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Loogbook</td>
-                <td style="padding:4px 6px;border:1px solid #ccc;text-align:right">
+                <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.logbook||0)}</span>`
                   :`<input type="number" step="0.01" min="0" value="${man.logbook||''}" placeholder="0.00"
-                    style="width:100%;border:none;outline:none;padding:2px 4px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222;background:transparent"
+                    style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','logbook',this.value)" onfocus="this.select()">`}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">SuperDispatch</td>
-                <td style="padding:4px 6px;border:1px solid #ccc;text-align:right">
+                <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.superDispatch||0)}</span>`
                   :`<input type="number" step="0.01" min="0" value="${man.superDispatch||''}" placeholder="0.00"
-                    style="width:100%;border:none;outline:none;padding:2px 4px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222;background:transparent"
+                    style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','superDispatch',this.value)" onfocus="this.select()">`}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Ifta</td>
-                <td style="padding:4px 6px;border:1px solid #ccc;text-align:right">
+                <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.ifta||0)}</span>`
                   :`<input type="number" step="0.01" min="0" value="${man.ifta||''}" placeholder="0.00"
-                    style="width:100%;border:none;outline:none;padding:2px 4px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222;background:transparent"
+                    style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','ifta',this.value)" onfocus="this.select()">`}</td></tr>
             <tr style="background:#fef3c7">
               <td style="padding:6px 10px;border:1px solid #ccc;font-weight:700;color:#92400e">Interest 10–12% and all expenses</td>
-              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-family:var(--mono);font-weight:800;color:#92400e">$${fmt(totalExpenses)}</td></tr>
+              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-family:var(--mono);font-weight:800;color:#92400e" data-slip-total="expenses">$${fmt(totalExpenses)}</td></tr>
             <tr style="background:#f0fdf4">
               <td style="padding:6px 10px;border:1px solid #ccc;font-weight:700;color:#065f46">Cahs by driver</td>
               <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-family:var(--mono);font-weight:800;color:#065f46">$${fmt(cashByDriver)}</td></tr>
@@ -5524,7 +5565,7 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
               <td style="padding:7px 10px;border:1px solid #ea580c;text-align:right;font-family:var(--mono);font-weight:900;color:#fff">$${fmt(totalGross)}</td></tr>
             <tr>
               <td style="padding:6px 10px;border:1px solid #ccc;font-weight:700;color:#222">Net Gross</td>
-              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-family:var(--mono);font-weight:900;color:#16a34a">$${fmt(netGross)}</td></tr>
+              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-family:var(--mono);font-weight:900;color:#16a34a" data-slip-total="netgross">$${fmt(netGross)}</td></tr>
           </tbody>
         </table>
         <div style="padding:6px 2px;font-size:10px;color:var(--text3);line-height:1.7">
@@ -5532,20 +5573,6 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
           <div>10% → <strong>${copCodLoads.length} loads</strong> ($${fmt(copCodGross)}) COD/COP</div>
           <div>Cash by driver → <strong>${cashDriverLoads.length} loads</strong></div>
         </div>
-      </div>
-
-      <!-- RIGHT: Paid button / status centered -->
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px">
-        ${isPaid
-          ?`<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-              <span style="background:#dcfce7;border:2px solid #86efac;color:#15803d;border-radius:20px;padding:8px 24px;font-size:14px;font-weight:800">✅ PAID</span>
-              <span style="font-size:11px;color:var(--text3);text-align:center">${paidData.paidAt?new Date(paidData.paidAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}<br>${paidData.paidBy||''}</span>
-              ${ROLE==='admin'?`<button onclick="unmarkSlipPaid('${drvId}','${week}')" style="font-size:11px;padding:4px 14px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700;margin-top:4px">↩ Unpay</button>`:''}
-            </div>`
-          :`<button onclick="markSlipPaid('${drvId}','${week}')"
-              style="padding:12px 32px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 8px rgba(22,163,74,.3)">
-              💵 Mark as Paid
-            </button>`}
       </div>
     </div>
 
