@@ -1182,7 +1182,7 @@ const cm=id=>{document.getElementById(id)?.classList.remove('open');if(id==='m-l
 const om=id=>document.getElementById(id)?.classList.add('open');
 const escQ=s=>(s||'').replace(/"/g,'&quot;');
 const COLORS=['#0d9488','#3b82f6','#8b5cf6','#f59e0b','#10b981','#f26522','#64748b','#ec4899','#06b6d4'];
-document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o&&o.id!=='m-load')o.classList.remove('open')}));
 ['li-e','li-p'].forEach(id=>document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
 
 function notify(msg,t='ok'){const el=document.createElement('div');el.className=`nf ${t}`;el.innerHTML=`<span>${t==='ok'?'✅':t==='err'?'❌':'ℹ️'}</span>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),4000)}
