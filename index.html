@@ -4111,7 +4111,7 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
               <th style="padding:10px 12px;text-align:center;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap">PAID</th>
               <th style="padding:10px 12px;text-align:left;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap">BROKER FEE</th>
               <th style="padding:10px 12px;text-align:left;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap">NOTES</th>
-              <th style="padding:10px 14px;text-align:center;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap">OWNER CONFIRM</th>
+              ${drv.ownerConfirmEnabled?`<th style="padding:10px 14px;text-align:center;font-size:10px;color:var(--text3);letter-spacing:1px;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap">OWNER CONFIRM</th>`:''}
             </tr>
           </thead>
           <tbody>
@@ -4134,14 +4134,17 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
               const drvActiveWeek=getDrvWeek(drv.id);
               const isActive=w===drvActiveWeek;
               const wLabel=`Week ${wNum}${isActive?' (active)':''} — ${wLbl(w)}`;
+              const showConfirmCol=!!drv.ownerConfirmEnabled;
+              const colSpanTotal=showConfirmCol?11:10;
               const wRows=wLoads.map(l=>{
                 const oid=(l.orderId||'—');
                 const oidDisplay=oid.length>10?oid.substring(0,10)+'…':oid;
                 const bf=+l.brokerFee||0;
                 const bfPaid=l.bfPaid||false;
                 const confirmed=l.ownerConfirmed||false;
-                const rowBg=confirmed?'#f0fdf4':'';
-                return`<tr style="border-bottom:1px solid var(--border);background:${rowBg}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${rowBg}'">
+                const rowBg=confirmed?'#dcfce7':'';
+                const rowBorder=confirmed?'#bbf7d0':'var(--border)';
+                return`<tr style="border-bottom:1px solid ${rowBorder};background:${rowBg}" onmouseover="this.style.background='${confirmed?'#bbf7d0':'var(--bg2)'}'" onmouseout="this.style.background='${rowBg}'">
                   <td style="padding:10px 10px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);white-space:nowrap">${l._rowNum}</td>
                   <td style="padding:10px 14px;white-space:nowrap">
                     <span onclick="copyText('${l.orderId||''}','Order ID')" title="${l.orderId||''}" style="font-weight:800;color:var(--navy);cursor:pointer;font-family:var(--mono);font-size:12px">${oidDisplay}</span>
@@ -4173,18 +4176,21 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
                   <td style="padding:10px 12px;font-size:11px;color:var(--text3);max-width:140px">
                     <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.notes||'—'}</div>
                   </td>
-                  <td style="padding:10px 14px;text-align:center">
+                  ${showConfirmCol?`<td style="padding:10px 14px;text-align:center">
                     ${confirmed
-                      ?`<span style="font-size:10px;padding:3px 10px;border-radius:8px;font-weight:700;background:#d1fae5;color:#065f46">✓ Confirmed</span>`
+                      ?`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+                          <span style="font-size:10px;padding:3px 10px;border-radius:8px;font-weight:700;background:#16a34a;color:#fff">✓ Confirmed</span>
+                          ${ROLE==='admin'?`<button onclick="ownerUnconfirmLoad('${l.id}')" style="font-size:9px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer;font-weight:700">✕ Undo</button>`:''}
+                        </div>`
                       :`<button onclick="ownerConfirmLoad('${l.id}')" style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;border:none;background:var(--navy);color:#fff;cursor:pointer;white-space:nowrap" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">✓ Confirm Receipt</button>`
                     }
-                  </td>
+                  </td>`:''}
                 </tr>`;
               }).join('');
 
               return`
                 <tr style="background:#eff6ff">
-                  <td colspan="11" style="padding:8px 14px;font-size:12px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #bfdbfe;border-top:2px solid #bfdbfe">
+                  <td colspan="${colSpanTotal}" style="padding:8px 14px;font-size:12px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #bfdbfe;border-top:2px solid #bfdbfe">
                     📅 ${wLabel}
                     <span style="margin-left:8px;font-size:10px;color:#3b82f6;font-weight:600">${wLoads.length} loads</span>
                   </td>
@@ -4194,7 +4200,7 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
                 <tr style="background:#f8fafc;border-top:2px solid var(--border)">
                   <td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:700;color:var(--text3)">Week Total</td>
                   <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--green);font-family:var(--mono);font-size:13px">$${fmt(wGross)}</td>
-                  <td colspan="6" style="padding:8px 12px"></td>
+                  <td colspan="${colSpanTotal-5}" style="padding:8px 12px"></td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -4212,6 +4218,26 @@ async function ownerConfirmLoad(loadId){
   await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:true,ownerConfirmedAt:label,ownerConfirmedBy:CP.name||CU.email});
   notify('✓ Load confirmed by owner');
   renderOwner();
+}
+
+async function ownerUnconfirmLoad(loadId){
+  if(ROLE!=='admin'){notify('Only admin can remove confirmation','err');return;}
+  if(!confirm('Remove owner confirmation from this load?'))return;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',loadId),{ownerConfirmed:false,ownerConfirmedAt:null,ownerConfirmedBy:null});
+  notify('✓ Owner confirmation removed');
+  renderOwner();
+}
+
+async function toggleOwnerConfirmFeature(drvId,drvName,currentState){
+  if(ROLE!=='admin'){notify('Only admin can change this','err');return;}
+  const newState=!currentState;
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'drivers',drvId),{ownerConfirmEnabled:newState});
+  const drv=DRIVERS.find(d=>d.id===drvId);
+  if(drv) drv.ownerConfirmEnabled=newState;
+  notify(`${drvName}: Owner Confirm ${newState?'ENABLED':'DISABLED'}`);
+  renderAdmin();
 }
 
 function renderOwnerKpiPage(){
@@ -5728,6 +5754,7 @@ function renderAdmin(){
               :`<span style="font-size:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 7px;color:var(--green);font-weight:600">✓ Current week</span>`
             }
             <button onclick="openSetWeekNumModal('${dr.id}','${escQ(dr.name)}',${dr.weekOffset||0})" style="font-size:10px;padding:2px 9px;border-radius:5px;border:1px solid #d8b4fe;background:#faf5ff;color:#7c3aed;cursor:pointer;font-weight:700;white-space:nowrap"># Week ${(dr.weekOffset||0)+1}…</button>
+            <button onclick="toggleOwnerConfirmFeature('${dr.id}','${escQ(dr.name)}',${!!dr.ownerConfirmEnabled})" style="font-size:10px;padding:2px 9px;border-radius:5px;border:1px solid ${dr.ownerConfirmEnabled?'#10b981':'#d1d5db'};background:${dr.ownerConfirmEnabled?'#ecfdf5':'#f9fafb'};color:${dr.ownerConfirmEnabled?'#065f46':'#6b7280'};cursor:pointer;font-weight:700;white-space:nowrap">${dr.ownerConfirmEnabled?'✓ Owner Confirm ON':'○ Owner Confirm OFF'}</button>
             <button onclick="openReassignDriverModal('${dr.id}','${escQ(dr.name)}','${d.id}')" style="margin-left:auto;font-size:10px;padding:2px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-weight:600;white-space:nowrap">⇄ Reassign</button>
             <button onclick="deleteDriver('${dr.id}','${escQ(dr.name)}')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700" title="Delete driver">🗑</button>
           </div>
