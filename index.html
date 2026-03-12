@@ -5794,7 +5794,7 @@ async function setOwnWeeksInMonth(n){
   renderOwn();
 }
 
-
+function ownInit(){
   const now=new Date();
   ownMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   ownSelectedWeeks=new Set();
