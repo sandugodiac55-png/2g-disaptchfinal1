@@ -5278,8 +5278,82 @@ function renderSalEmp(weeks){
 
 /* ══ DRIVER SALARY SLIP ══ */
 let _slipManual={}; // {drvId_week: {insurance, logbook, superDispatch, ifta}}
+let _slipPaid={}; // {drvId__week: {paid:true, paidAt, paidBy, ...snapshot}}
 
 function _slipKey(drvId,week){return`${drvId}__${week}`;}
+
+async function markSlipPaid(drvId,week){
+  const key=_slipKey(drvId,week);
+  const man=_slipManual[key]||{};
+  const drv=DRIVERS.find(d=>d.id===drvId);
+  if(!drv){notify('Driver not found','err');return;}
+  const{start,end}=wRange(week);
+  const wLoads=LOADS.filter(l=>l.driver===drv.name&&(l.week===week||inW(l.date,week)));
+  const isCopCod=l=>{const pm=(l.payMethod||'').toLowerCase();return pm==='cod'||pm==='cop'||pm==='c.o.d.'||pm==='c.o.p.';};
+  const isCashToDriver=l=>{const note=(l.accComment||l.notes||'').toLowerCase();return isCopCod(l)&&(note.includes('cash')||note.includes('zelle')||(l.driverPayMethod||'').toLowerCase().includes('cash')||(l.driverPayMethod||'').toLowerCase().includes('zelle'));};
+  const regularLoads=wLoads.filter(l=>!isCopCod(l));
+  const copCodLoads=wLoads.filter(l=>isCopCod(l));
+  const cashDriverLoads=wLoads.filter(l=>isCashToDriver(l));
+  const regularGross=regularLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const copCodGross=copCodLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const totalGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const cashByDriver=cashDriverLoads.reduce((s,l)=>s+(+l.rate||0),0);
+  const disp12=regularGross*0.12;
+  const disp10=copCodGross*0.10;
+  const insurance=+(man.insurance||0);
+  const logbook=+(man.logbook||0);
+  const superDispatch=+(man.superDispatch||0);
+  const ifta=+(man.ifta||0);
+  const totalExpenses=disp12+disp10+insurance+logbook+superDispatch+ifta;
+  const netGross=totalGross-cashByDriver-totalExpenses;
+
+  const slipData={
+    driverId:drvId,
+    driverName:drv.name,
+    week,
+    weekLabel:wLbl(week),
+    paid:true,
+    paidAt:new Date().toISOString(),
+    paidBy:CP.name||CU.email,
+    // expenses
+    disp12,disp10,insurance,logbook,superDispatch,ifta,
+    totalExpenses,cashByDriver,totalGross,netGross,
+    regularLoadsCount:regularLoads.length,
+    copCodLoadsCount:copCodLoads.length,
+    loadIds:wLoads.map(l=>l.id||l.orderId||''),
+  };
+
+  const{setDoc,doc}=window._fb;
+  await setDoc(doc(window._db,'salarySlips',key),slipData);
+  _slipPaid[key]=slipData;
+  notify(`✅ Salary slip PAID — ${drv.name} ${wLbl(week)}`,'ok');
+  // re-render to show paid badge
+  if(document.getElementById('slip-body2')) renderDriverSlipPage();
+  else renderDriverSlip();
+}
+
+async function loadSlipStatus(drvId,week){
+  const key=_slipKey(drvId,week);
+  if(_slipPaid[key]!==undefined) return _slipPaid[key];
+  try{
+    const{getDoc,doc}=window._fb;
+    const snap=await getDoc(doc(window._db,'salarySlips',key));
+    _slipPaid[key]=snap.exists()?snap.data():null;
+  }catch(e){_slipPaid[key]=null;}
+  return _slipPaid[key];
+}
+
+async function unmarkSlipPaid(drvId,week){
+  if(ROLE!=='admin'){notify('Only admin can unpay','err');return;}
+  if(!confirm('Remove PAID status from this slip?'))return;
+  const key=_slipKey(drvId,week);
+  const{deleteDoc,doc}=window._fb;
+  await deleteDoc(doc(window._db,'salarySlips',key));
+  _slipPaid[key]=null;
+  notify('Slip marked as unpaid');
+  if(document.getElementById('slip-body2')) renderDriverSlipPage();
+  else renderDriverSlip();
+}
 
 function slipSetManual(drvId,week,field,val){
   const key=_slipKey(drvId,week);
@@ -5313,32 +5387,39 @@ function _populateSlipSelectors(drvSelId, weekSelId){
   }
 }
 
-function renderDriverSlipPage(){
+async function renderDriverSlipPage(){
   _populateSlipSelectors('slip-drv-sel2','slip-week-sel2');
   const body=document.getElementById('slip-body2');
   if(!body)return;
   const drvId=document.getElementById('slip-drv-sel2')?.value;
   const week=document.getElementById('slip-week-sel2')?.value;
-  _renderSlipInto(body,'slip-drv-sel2','slip-week-sel2',drvId,week);
+  await _renderSlipInto(body,'slip-drv-sel2','slip-week-sel2',drvId,week);
 }
 
-function renderDriverSlip(){
+async function renderDriverSlip(){
   const body=document.getElementById('slip-body');
   if(!body)return;
   const drvId=document.getElementById('slip-drv-sel')?.value;
   const week=document.getElementById('slip-week-sel')?.value;
-  _renderSlipInto(body,'slip-drv-sel','slip-week-sel',drvId,week);
+  await _renderSlipInto(body,'slip-drv-sel','slip-week-sel',drvId,week);
 }
 
-function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
+async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
   if(!drvId||!week){body.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Selectează șoferul și săptămâna.</div>`;return;}
   const drv=DRIVERS.find(d=>d.id===drvId);
   if(!drv){body.innerHTML='';return;}
 
+  // Load paid status from Firestore
+  const paidData=await loadSlipStatus(drvId,week);
+  const isPaid=!!(paidData?.paid);
+
   const {start,end}=wRange(week);
   const wLoads=LOADS.filter(l=>l.driver===drv.name&&(l.week===week||inW(l.date,week)));
   const key=_slipKey(drvId,week);
-  const man=_slipManual[key]||{};
+  // If paid, use saved values from Firestore; else use in-memory manual
+  const man=isPaid
+    ?{insurance:paidData.insurance||0, logbook:paidData.logbook||0, superDispatch:paidData.superDispatch||0, ifta:paidData.ifta||0}
+    :(_slipManual[key]||{});
 
   const isCopCod=l=>{const pm=(l.payMethod||'').toLowerCase();return pm==='cod'||pm==='cop'||pm==='c.o.d.'||pm==='c.o.p.';};
   const isCashToDriver=l=>{
@@ -5369,17 +5450,31 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
   const slipRange=`${start.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}–${end.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}`;
   const pct=+(drv.salaryPct||65);
 
-  const inp=(field,val)=>`<input type="number" step="0.01" min="0" value="${val||''}" placeholder="0.00"
-    style="width:90px;border:1.5px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy)"
-    onblur="slipSetManual('${drvId}','${week}','${field}',this.value)" onfocus="this.select()">`;
+  const inp=(field,val)=>isPaid
+    ?`<div style="font-family:var(--mono);font-weight:700;font-size:13px;color:var(--navy);text-align:right">$${fmt(+(val||0))}</div>`
+    :`<input type="number" step="0.01" min="0" value="${val||''}" placeholder="0.00"
+      style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy);background:#fff"
+      onblur="slipSetManual('${drvId}','${week}','${field}',this.value)" onfocus="this.select()">`;
+
+  const paidBadge=isPaid
+    ?`<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <span style="background:#dcfce7;border:1.5px solid #86efac;color:#15803d;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:800">✅ PAID</span>
+        <span style="font-size:10px;color:var(--text3)">${paidData.paidAt?new Date(paidData.paidAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''} · ${paidData.paidBy||''}</span>
+        ${ROLE==='admin'?`<button onclick="unmarkSlipPaid('${drvId}','${week}')" style="font-size:10px;padding:2px 10px;border-radius:5px;border:1px solid #fecaca;background:#fef2f2;color:var(--red);cursor:pointer;font-weight:700">↩ Unpay</button>`:''}
+      </div>`
+    :`<button onclick="markSlipPaid('${drvId}','${week}')"
+        style="margin-top:6px;padding:7px 22px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.3px">
+        💵 Mark as Paid
+      </button>`;
 
   const slipId='slip-print-'+drvId.replace(/[^a-z0-9]/gi,'');
 
   body.innerHTML=`
   <div id="${slipId}" style="background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)">
-    <div style="text-align:center;padding:18px;border-bottom:2px solid var(--border);background:#f8fafc">
+    <div style="text-align:center;padding:18px;border-bottom:2px solid var(--border);background:${isPaid?'#f0fdf4':'#f8fafc'}">
       <div style="font-size:18px;font-weight:900;color:var(--navy)">Salary Slip <span style="font-size:14px;font-weight:600;color:var(--text3)">(${slipRange})</span></div>
       <div style="font-size:12px;color:var(--text3);margin-top:2px">${drv.name} · ${wLbl(week)}</div>
+      ${paidBadge}
     </div>
 
     <!-- EXPENSES ROW — all in one horizontal bar -->
@@ -5398,9 +5493,11 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
         <div style="padding:10px 12px;background:${c.bg};border-right:1px solid #e5e7eb;display:flex;flex-direction:column;gap:4px">
           <div style="font-size:9px;font-weight:700;color:${c.color||'var(--text3)'};text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">${c.label}</div>
           ${c.input
-            ?`<input type="number" step="0.01" min="0" value="${c.val||''}" placeholder="0.00"
+            ?(isPaid
+              ?`<div style="font-family:var(--mono);font-weight:700;font-size:13px;color:var(--navy);text-align:right">$${fmt(+(c.val||0))}</div>`
+              :`<input type="number" step="0.01" min="0" value="${c.val||''}" placeholder="0.00"
                 style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy);background:#fff"
-                onblur="slipSetManual('${drvId}','${week}','${c.field}',this.value)" onfocus="this.select()">`
+                onblur="slipSetManual('${drvId}','${week}','${c.field}',this.value)" onfocus="this.select()">`)
             :`<div style="font-family:var(--mono);font-weight:${c.bold?'800':'700'};font-size:${c.large?'16px':'13px'};color:${c.color||'var(--navy)'};text-align:right">${c.val}</div>`
           }
         </div>`).join('')}
