@@ -937,6 +937,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             <div class="ac" id="adm-req-panel" style="display:none"><div class="ach" style="background:#fff7ed;border-color:#fed7aa"><div class="act" style="color:var(--orange)">📨 Edit Requests</div></div><div id="adm-edit-req"></div></div>
             <div class="ac"><div class="ach"><div class="act">👥 Users</div></div><div id="adm-u"></div></div>
             <div class="ac"><div class="ach"><div class="act">🚛 Dispatchers & Drivers</div><button class="btn btn-ghost btn-sm" onclick="openDriverModal()">＋ Driver</button></div><div id="adm-d"></div></div>
+            <div class="ac"><div class="ach"><div class="act">📅 Month Weeks Config</div></div><div id="adm-mw" style="padding:16px"></div></div>
             <div class="ac"><div class="ach"><div class="act">🏢 Companies</div><button class="btn btn-ghost btn-sm" onclick="openCompModal()">＋ Add</button></div><div id="adm-c"></div></div>
             <div class="ac"><div class="ach"><div class="act">📊 Stats</div></div><div id="adm-s" style="padding:16px"></div></div>
           </div>
@@ -1164,7 +1165,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
 
 <script>
 /* ══ STATE ══ */
-let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[];
+let CU,CP,ROLE,LOADS=[],TRIPS=[],USERS=[],DRIVERS=[],COMPANIES=[],PASSWORDS=[],MONTH_CONFIGS=[];
 let unsub=null,unsubTrips=null,curDrv=null,editLoadId=null;
 let _metaReady=false; // guard: don't render until COMPANIES/USERS/DRIVERS loaded
 let accTab='pending',accSrch='',accCo='',accView='companies',accSelCo=null,accSelDrv=null;
@@ -1532,8 +1533,8 @@ async function loadMeta(){
   // Fetch each collection separately with error handling — Firestore rules
   // require user doc keyed by UID; if uid-sync hasn't propagated, some reads may fail
   const safeGet=async(col)=>{try{const s=await getDocs(collection(db,col));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){console.warn('loadMeta blocked:',col,e.code);return[];}};
-  [USERS,DRIVERS,COMPANIES,PASSWORDS]=await Promise.all([
-    safeGet('users'),safeGet('drivers'),safeGet('companies'),safeGet('passwords')
+  [USERS,DRIVERS,COMPANIES,PASSWORDS,MONTH_CONFIGS]=await Promise.all([
+    safeGet('users'),safeGet('drivers'),safeGet('companies'),safeGet('passwords'),safeGet('monthConfigs')
   ]);
   console.log('[loadMeta] USERS:',USERS.length,'COMPANIES:',COMPANIES.length,'DRIVERS:',DRIVERS.length);
   // Refresh CP week state from Firestore
@@ -4464,52 +4465,63 @@ function renderOwnerKpiMonth(){
   if(!owKpiMonth) owKpiMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const [yr,mo]=owKpiMonth.split('-').map(Number);
   const monthStart=new Date(yr,mo-1,1);
-  const monthEnd=new Date(yr,mo,0); // last day of month
+  const monthEnd=new Date(yr,mo,0);
   const monthName=monthStart.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const todayStr=now.toISOString().split('T')[0];
 
-  // Build all days in month
-  const allDays=[];
-  for(let d=new Date(monthStart);d<=monthEnd;d.setDate(d.getDate()+1)){
-    allDays.push(new Date(d));
-  }
+  // Get configured weeks for this month (admin-set or auto)
+  const configWeeks=getMonthWeeks(owKpiMonth); // array of ISO week strings e.g. ["2026-W10","2026-W11",...]
+  const cfg=MONTH_CONFIGS.find(c=>c.id===owKpiMonth);
+  const isLocked=cfg?.locked||false;
 
-  // Group days into ISO weeks that overlap with this month
+  // Build weeksMap: for each configured week, only include days that fall in the month
   const weeksMap={};
-  allDays.forEach(d=>{
-    const w=CWfrom(d);
-    if(!weeksMap[w]) weeksMap[w]=[];
-    weeksMap[w].push(new Date(d));
+  configWeeks.forEach(w=>{
+    const{start}=wRange(w);
+    const wDays=[];
+    for(let i=0;i<7;i++){
+      const d=new Date(start);d.setDate(start.getDate()+i);
+      // Only days within the month
+      if(d>=monthStart&&d<=monthEnd) wDays.push(new Date(d));
+    }
+    if(wDays.length>0) weeksMap[w]=wDays;
   });
-  const sortedWeeks=Object.keys(weeksMap).sort();
+  const sortedWeeks=configWeeks.filter(w=>weeksMap[w]);
 
-  // Get all trips and loads for the month
+  // All days in month (union of configured weeks)
+  const allDays=[];
+  sortedWeeks.forEach(w=>weeksMap[w].forEach(d=>allDays.push(d)));
+
+  // Loads & trips spanning the month
   const monthLoads=LOADS.filter(l=>{
-    if(!l.date) return false;
+    if(!l.date)return false;
     const ld=new Date(l.date+'T00:00:00');
     return ld>=monthStart&&ld<=monthEnd;
   });
   const monthTrips=TRIPS.filter(t=>{
-    const td=t.weekDate||t.createdDate||'';
-    if(!td) return false;
-    const d=new Date(td+'T00:00:00');
+    // Include trips that START in the month OR overlap with it
+    const firstLoadDate=LOADS.filter(l=>t.loadIds?.includes(l.id)&&l.date).map(l=>l.date).sort()[0];
+    if(!firstLoadDate)return false;
+    const d=new Date(firstLoadDate+'T00:00:00');
     return d>=monthStart&&d<=monthEnd;
   });
 
-  // Day name header
   const dayNames=['M','T','W','T','F','S','S'];
 
-  // Build week columns header
+  // Build week/day column headers
   let weekColHeaders='';
   let dayColHeaders='';
   sortedWeeks.forEach((w,wi)=>{
     const wDays=weeksMap[w];
     const{start}=wRange(w);
     const wEnd=new Date(start);wEnd.setDate(start.getDate()+6);
-    const wLabel=`Week ${wi+1} ${start.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}/${wEnd.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit'})}`;
-    weekColHeaders+=`<th colspan="${wDays.length}" style="background:#1e293b;color:#fff;font-size:10px;font-weight:700;padding:5px 4px;text-align:center;border-right:2px solid #334155;white-space:nowrap">${wLabel}</th>`;
+    // Format: WEEK 1 02/23/03/01
+    const s1=`${String(wDays[0].getMonth()+1).padStart(2,'0')}/${String(wDays[0].getDate()).padStart(2,'0')}`;
+    const s2=`${String(wDays[wDays.length-1].getMonth()+1).padStart(2,'0')}/${String(wDays[wDays.length-1].getDate()).padStart(2,'0')}`;
+    weekColHeaders+=`<th colspan="${wDays.length}" style="background:#1e293b;color:#fff;font-size:10px;font-weight:700;padding:5px 4px;text-align:center;border-right:2px solid #334155;white-space:nowrap">WEEK ${wi+1} ${s1}/${s2}</th>`;
     wDays.forEach((d,di)=>{
       const isToday=d.toDateString()===now.toDateString();
-      const dayOfWeek=((d.getDay()+6)%7); // 0=Mon
+      const dayOfWeek=((d.getDay()+6)%7);
       const isWeekend=dayOfWeek>=5;
       dayColHeaders+=`<th style="background:${isToday?'#f97316':isWeekend?'#374151':'#2d3748'};color:${isToday?'#fff':isWeekend?'#94a3b8':'#e2e8f0'};font-size:9px;font-weight:700;padding:3px 2px;text-align:center;min-width:28px;border-right:${di===wDays.length-1?'2px solid #334155':'1px solid #475569'}">${dayNames[dayOfWeek]}<br><span style="font-size:10px">${d.getDate()}</span></th>`;
     });
@@ -4588,38 +4600,39 @@ function renderOwnerKpiMonth(){
 
     // Build 3 rows: Work days, Trip, Gros
     let wdCells='',tripCells='',grosCells='';
+    const todayDateStr=new Date().toISOString().split('T')[0];
+
+    // OFF = dispatcher set weekStatus != 'working' for that ISO week
+    const weekStatusMap=drv.weekStatus||{};
+    const weekStatusReasonMap=drv.weekStatusReason||{};
+    const statusLabels={sick:'🤒 OFF',broken:'🔧 OFF',rest:'😴 OFF'};
+    const isOffDay=(ds)=>{
+      // Find which ISO week this day belongs to
+      const d=new Date(ds+'T12:00:00');
+      const w=CWfrom(d);
+      const st=weekStatusMap[w]||'working';
+      return st!=='working';
+    };
+    const getOffLabel=(ds)=>{
+      const d=new Date(ds+'T12:00:00');
+      const w=CWfrom(d);
+      const st=weekStatusMap[w]||'working';
+      return statusLabels[st]||'OFF';
+    };
 
     sortedWeeks.forEach(w=>{
       const wDays=weeksMap[w];
-      // Group consecutive days in same trip for colspan
       let i=0;
       while(i<wDays.length){
         const d=wDays[i];
         const ds=d.toISOString().split('T')[0];
         const cell=workdayCells[ds];
-        const dayOfWeek=((d.getDay()+6)%7);
-        const isWeekend=dayOfWeek>=5;
+        const isFuture=ds>todayDateStr;
         const borderR=i===wDays.length-1?'border-right:2px solid #334155;':'border-right:1px solid #e2e8f0;';
+        const isOff=isOffDay(ds);
 
-        if(!cell){
-          // OFF day
-          wdCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px;color:#9ca3af"></td>`;
-          // Check if this starts an OFF span within week
-          // Find consecutive OFF days
-          let offSpan=1;
-          while(i+offSpan<wDays.length){
-            const nextDs=wDays[i+offSpan].toISOString().split('T')[0];
-            if(!workdayCells[nextDs]) offSpan++;
-            else break;
-          }
-          if(offSpan>1){
-            // Replace last cell and merge — simpler: just render individually
-          }
-          tripCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px;color:#be185d;font-weight:700">OFF</td>`;
-          grosCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px"></td>`;
-          i++;
-        } else {
-          // Active trip day — find span of same trip in this week
+        if(cell){
+          // Active trip day
           const tr=cell.trip;
           let span=1;
           while(i+span<wDays.length){
@@ -4628,30 +4641,34 @@ function renderOwnerKpiMonth(){
             if(nc&&nc.trip.t.id===tr.t.id) span++;
             else break;
           }
-          const isFirst=(ds===tr.startDate||(i===0&&wDays[0].toISOString().split('T')[0]===ds));
-          const lastDs=wDays[i+span-1].toISOString().split('T')[0];
           const spanBorderR=i+span===wDays.length?'border-right:2px solid #334155;':'border-right:1px solid #cbd5e1;';
           const rpmOk=tr.rpmOk;
           const bg=rpmOk?'#d1fae5':'#fee2e2';
           const textCol=rpmOk?'#065f46':'#dc2626';
-          const bgDark=rpmOk?'#6ee7b7':'#fca5a5';
-
-          // Work days row — individual numbers
           for(let s=0;s<span;s++){
             const sd=wDays[i+s].toISOString().split('T')[0];
             const sc=workdayCells[sd];
             const sb=s===span-1?spanBorderR:'border-right:1px solid #a7f3d0;';
             wdCells+=`<td style="background:${bg};${sb}padding:2px;text-align:center;font-size:10px;font-weight:800;color:${textCol}">${sc?sc.num:''}</td>`;
           }
-
-          // Trip row — show route only on first cell of span, colspan
           tripCells+=`<td colspan="${span}" style="background:${bg};${spanBorderR}padding:2px 4px;text-align:center;font-size:9px;font-weight:700;color:${textCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0">${tr.pickup}-${tr.delivery}</td>`;
-
-          // Gros row — show amount+rpm on first cell of span, colspan
           const rpmStr=tr.trpm>0?` ${tr.trpm.toFixed(2)}$/M`:'';
           grosCells+=`<td colspan="${span}" style="background:${bg};${spanBorderR}padding:2px 4px;text-align:center;font-size:9px;font-weight:700;color:${textCol};white-space:nowrap">\$${fmt(tr.tg)}${rpmStr}</td>`;
-
           i+=span;
+        } else if(isOff){
+          // Explicitly marked OFF by dispatcher (weekStatus != working)
+          const offLbl=getOffLabel(ds);
+          wdCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px;color:#9ca3af"></td>`;
+          tripCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px;color:#be185d;font-weight:700">${offLbl}</td>`;
+          grosCells+=`<td style="background:#fce7f3;${borderR}padding:2px;text-align:center;font-size:9px"></td>`;
+          i++;
+        } else {
+          // Empty — no trip, not explicitly off (past or future)
+          const bg=isFuture?'transparent':'#f8fafc';
+          wdCells+=`<td style="background:${bg};${borderR}padding:2px"></td>`;
+          tripCells+=`<td style="background:${bg};${borderR}padding:2px"></td>`;
+          grosCells+=`<td style="background:${bg};${borderR}padding:2px"></td>`;
+          i++;
         }
       }
     });
@@ -4686,9 +4703,12 @@ function renderOwnerKpiMonth(){
   });
 
   body.innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <button onclick="owKpiMonth=prevMonth(owKpiMonth);renderOwnerKpiMonth()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 14px;cursor:pointer;font-size:15px;font-weight:700">‹</button>
-      <span style="font-size:15px;font-weight:800;color:var(--navy)">${monthName}</span>
+      <div>
+        <span style="font-size:15px;font-weight:800;color:var(--navy)">${monthName}</span>
+        <span style="margin-left:8px;font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;background:${isLocked?'#d1fae5':'#fef3c7'};color:${isLocked?'#065f46':'#92400e'}">${isLocked?'🔒 '+sortedWeeks.length+' weeks':'⏳ '+sortedWeeks.length+' weeks (not locked)'}</span>
+      </div>
       <button onclick="owKpiMonth=nextMonth(owKpiMonth);renderOwnerKpiMonth()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 14px;cursor:pointer;font-size:15px;font-weight:700">›</button>
       <button onclick="owKpiMonth=null;renderOwnerKpiMonth()" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;color:#1d4ed8">This Month</button>
     </div>
@@ -4696,7 +4716,7 @@ function renderOwnerKpiMonth(){
       <table style="border-collapse:collapse;font-size:11px;background:#fff;min-width:100%">
         <thead>
           <tr>
-            <th style="background:#0f172a;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;text-align:left;border-right:1px solid #334155;white-space:nowrap;min-width:110px">Driver</th>
+            <th style="background:#0f172a;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;text-align:left;border-right:1px solid #334155;white-space:nowrap;min-width:110px">DRIVER</th>
             <th style="background:#1e293b;color:#94a3b8;padding:8px 6px;font-size:9px;font-weight:700;border-right:1px solid #334155;white-space:nowrap;min-width:60px"></th>
             ${weekColHeaders}
             <th style="background:#0f172a;color:#fff;padding:8px 8px;font-size:10px;font-weight:700;text-align:center;border-left:2px solid #334155;white-space:nowrap">SUMM</th>
@@ -6242,6 +6262,74 @@ function renderAdmin(){
 
   document.getElementById('adm-d').innerHTML=admDHtml||`<div class="em" style="padding:20px"><p>No dispatchers or accounting users.</p></div>`;
 
+  // ── MONTH WEEKS CONFIG ──
+  const now2=new Date();
+  // Show current month + next 2 months for admin to configure
+  const monthsToShow=[];
+  for(let i=-1;i<=2;i++){
+    const d=new Date(now2.getFullYear(),now2.getMonth()+i,1);
+    monthsToShow.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  let mwHtml='<div style="display:flex;flex-direction:column;gap:10px">';
+  monthsToShow.forEach(mKey=>{
+    const[mY,mM]=mKey.split('-').map(Number);
+    const mName=new Date(mY,mM-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const cfg=MONTH_CONFIGS.find(c=>c.id===mKey);
+    const weeks=cfg?.weeks||[];
+    const isLocked=cfg?.locked||false;
+
+    // Build week list for this month using ISO weeks that overlap
+    const mStart=new Date(mY,mM-1,1);
+    const mEnd=new Date(mY,mM,0);
+    const isoWeeksInMonth=[];
+    for(let d=new Date(mStart);d<=mEnd;d.setDate(d.getDate()+1)){
+      const w=CWfrom(d);
+      if(!isoWeeksInMonth.includes(w)) isoWeeksInMonth.push(w);
+    }
+    isoWeeksInMonth.sort();
+
+    const statusColor=isLocked?'#d1fae5':'#fef3c7';
+    const statusText=isLocked?'✓ Locked':'⏳ Open';
+    const statusTextCol=isLocked?'#065f46':'#92400e';
+
+    mwHtml+=`<div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--surface)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+        <div>
+          <div style="font-weight:800;font-size:13px;color:var(--navy)">${mName}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px">${isoWeeksInMonth.length} ISO weeks overlap this month</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:700;background:${statusColor};color:${statusTextCol}">${statusText}</span>
+          ${weeks.length>0
+            ?isLocked
+              ?`<button onclick="adminUnlockMonth('${mKey}')" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer;font-weight:700">🔓 Unlock</button>`
+              :`<button onclick="adminLockMonth('${mKey}')" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;cursor:pointer;font-weight:700">🔒 Lock Month</button>`
+            :''}
+        </div>
+      </div>
+      <div style="margin-bottom:8px">
+        ${weeks.length===0
+          ?`<div style="font-size:11px;color:var(--text3);font-style:italic;padding:6px 0">No weeks configured — click weeks below to add</div>`
+          :`<div style="display:flex;gap:6px;flex-wrap:wrap">${weeks.map((w,wi)=>`
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af;display:flex;align-items:center;gap:6px">
+              <span>W${wi+1}: ${wLbl(w)}</span>
+              ${!isLocked?`<span onclick="adminRemoveWeekFromMonth('${mKey}','${w}')" style="cursor:pointer;color:#dc2626;font-size:13px;line-height:1" title="Remove">×</span>`:''}
+            </div>`).join('')}
+          </div>`
+        }
+      </div>
+      ${!isLocked?`<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-weight:600">Available ISO weeks — click to add:</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${isoWeeksInMonth.map(w=>{
+          const already=weeks.includes(w);
+          return`<button onclick="${already?'':'adminAddWeekToMonth(\''+mKey+'\',\''+w+'\')'}" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid ${already?'#bbf7d0':'var(--border)'};background:${already?'#d1fae5':'var(--bg)'};color:${already?'#065f46':'var(--text)'};cursor:${already?'default':'pointer'};font-weight:700">${already?'✓ ':''}<span style="font-size:9px">${wLbl(w)}</span></button>`;
+        }).join('')}
+      </div>`:''}
+    </div>`;
+  });
+  mwHtml+='</div>';
+  document.getElementById('adm-mw').innerHTML=mwHtml;
+
   document.getElementById('adm-c').innerHTML=COMPANIES.map(c=>`<div class="ur"><div style="font-size:20px">🏢</div><div style="flex:1"><div class="un">${c.name}</div><div class="ue">${c.email||c.mc||'—'}</div></div><button onclick="deleteCompany('${c.id}','${escQ(c.name)}')" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700" title="Delete company">🗑</button></div>`).join('')||`<div class="em" style="padding:20px"><p>No companies.</p></div>`;
   document.getElementById('adm-s').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Users</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${USERS.length}</div></div>
@@ -6250,6 +6338,64 @@ function renderAdmin(){
     <div style="background:var(--bg);border-radius:7px;padding:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:3px">Companies</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${COMPANIES.length}</div></div>
   </div>`;
 }
+/* ══ MONTH WEEKS CONFIG (ADMIN) ══ */
+async function _saveMonthConfig(mKey, data){
+  const{setDoc,doc}=window._fb;
+  await setDoc(doc(window._db,'monthConfigs',mKey),data,{merge:true});
+  await loadMeta();
+  renderAdmin();
+}
+
+function _getMonthCfg(mKey){
+  return MONTH_CONFIGS.find(c=>c.id===mKey)||{id:mKey,weeks:[],locked:false};
+}
+
+async function adminAddWeekToMonth(mKey,week){
+  const cfg=_getMonthCfg(mKey);
+  if(cfg.locked){notify('Month is locked. Unlock first.','err');return;}
+  const weeks=[...new Set([...(cfg.weeks||[]),week])].sort();
+  await _saveMonthConfig(mKey,{weeks,locked:false});
+  notify(`Week added to ${mKey}`);
+}
+
+async function adminRemoveWeekFromMonth(mKey,week){
+  const cfg=_getMonthCfg(mKey);
+  if(cfg.locked){notify('Month is locked. Unlock first.','err');return;}
+  const weeks=(cfg.weeks||[]).filter(w=>w!==week);
+  await _saveMonthConfig(mKey,{weeks,locked:false});
+  notify(`Week removed`);
+}
+
+async function adminLockMonth(mKey){
+  const cfg=_getMonthCfg(mKey);
+  if(!cfg.weeks||cfg.weeks.length===0){notify('Add at least one week first','err');return;}
+  if(!confirm(`Lock ${mKey}?\n\nWeeks: ${cfg.weeks.length}\n\nThis will finalize the weeks for KPI Monthly and salary calculation.\nYou can unlock later if needed.`))return;
+  await _saveMonthConfig(mKey,{weeks:cfg.weeks,locked:true});
+  notify(`✅ ${mKey} locked with ${cfg.weeks.length} weeks`);
+}
+
+async function adminUnlockMonth(mKey){
+  if(!confirm(`Unlock ${mKey}?\nYou can add/remove weeks again.`))return;
+  await _saveMonthConfig(mKey,{locked:false});
+  notify(`🔓 ${mKey} unlocked`);
+}
+
+/* Get weeks for a month — from config if locked, otherwise auto from ISO */
+function getMonthWeeks(mKey){
+  const cfg=MONTH_CONFIGS.find(c=>c.id===mKey);
+  if(cfg&&cfg.weeks&&cfg.weeks.length>0) return cfg.weeks;
+  // Auto: all ISO weeks overlapping month
+  const[mY,mM]=mKey.split('-').map(Number);
+  const mStart=new Date(mY,mM-1,1);
+  const mEnd=new Date(mY,mM,0);
+  const ws=[];
+  for(let d=new Date(mStart);d<=mEnd;d.setDate(d.getDate()+1)){
+    const w=CWfrom(d);
+    if(!ws.includes(w)) ws.push(w);
+  }
+  return ws.sort();
+}
+
 function openUserModal(){
   ['u-nm','u-em','u-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('u-rl').value='dispatcher';
