@@ -2929,58 +2929,51 @@ function renderKPI(){
             const ds=dayStrs[di];
             const isToday=d.getTime()===today.getTime();
             const tdClass=isToday?'today-col':'';
-            const tdStyle=`padding:0;height:70px;border-right:1px solid var(--border);vertical-align:middle`;
 
-            // Active bars for this day
+            // All bars active on this day
             const active=allBars.filter(r=>ds>=r.startDate&&ds<=r.endDate);
-            if(!active.length) return`<td class="${tdClass}" style="${tdStyle}"></td>`;
+            if(!active.length) return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border)"></td>`;
 
-            // Split: bar ending here (came from left) + bar starting here (goes right) — same cell
-            const ending=active.filter(r=>r.endDate===ds&&r.startDate!==ds);
-            const starting=active.filter(r=>r.startDate===ds&&r.endDate!==ds);
-            const single=active.filter(r=>r.startDate===ds&&r.endDate===ds);
-            const mid=active.filter(r=>r.startDate<ds&&r.endDate>ds);
-            const hasSplit=ending.length>0&&starting.length>0;
-            if(active.length>0) console.log(`DAY ${ds} active:${active.map(r=>r.t.id+'['+r.startDate+'→'+r.endDate+']').join(' | ')} ending:${ending.length} starting:${starting.length} single:${single.length} mid:${mid.length} hasSplit:${hasSplit}`);
-
-            // Build one bar block
-            const mkBar=(r,side)=>{
-              // side: 'start'|'end'|'mid'|'single'
-              const br=side==='single'?'6px 6px 6px 6px'
-                :side==='start'?'6px 0 0 6px'
-                :side==='end'?'0 6px 6px 0'
-                :'0 0 0 0';
-              const ml=side==='start'||side==='single'?'4px':'0px';
-              const mr=side==='end'||side==='single'?'4px':'0px';
-              const showText=side==='start'||side==='single';
-              return`<div style="background:${r.col};border-radius:${br};margin:6px ${mr} 6px ${ml};height:58px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden;cursor:pointer;padding:${showText?'4px 8px':'0'}" onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')">
-                ${showText?`<div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
-                <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
-                ${r.trpm>0?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}`:''}
-              </div>`;
+            // Border radius per bar based on its position in the week
+            const getBR=(r)=>{
+              const isS=ds===r.startDate, isE=ds===r.endDate;
+              if(isS&&isE) return'6px';
+              if(isS) return'6px 0 0 6px';
+              if(isE) return'0 6px 6px 0';
+              return'0';
             };
 
-            if(hasSplit){
-              const eBar=ending[0], sBar=starting[0];
+            // SPLIT: 2+ bars active in same cell → left half + right half
+            if(active.length>=2){
+              // Left = bar that ends soonest (oldest trip), Right = bar that starts latest (newest trip)
+              const sorted=[...active].sort((a,b)=>a.endDate.localeCompare(b.endDate));
+              const lBar=sorted[0], rBar=sorted[sorted.length-1];
+              const lBR=ds===lBar.endDate?'0 6px 6px 0':'0';
+              const rBR=ds===rBar.startDate?'6px 0 0 6px':'0';
               return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border);vertical-align:middle">
-                <div style="display:flex;align-items:center;height:58px;margin:6px 0;gap:2px">
-                  <!-- Left: ending trip — no left margin (continues from prev cell), rounded right -->
-                  <div style="flex:1;height:100%;background:${eBar.col};border-radius:0 6px 6px 0;cursor:pointer;min-width:0" onclick="event.stopPropagation();showTripPopover(event,'${eBar.t.id}')"></div>
-                  <!-- Right: starting trip — rounded left, no right margin (continues to next cell) -->
-                  <div style="flex:1;height:100%;background:${sBar.col};border-radius:6px 0 0 6px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:3px 6px;min-width:0" onclick="event.stopPropagation();showTripPopover(event,'${sBar.t.id}')">
-                    <div style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(sBar.tg)}</div>
-                    <div style="font-size:8px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sBar.pickup}→${sBar.delivery}</div>
-                    ${sBar.trpm>0?`<div style="font-size:8px;color:rgba(255,255,255,.7)">${sBar.trpm.toFixed(2)}/mi</div>`:''}
+                <div style="display:flex;height:58px;margin:6px 0;gap:2px">
+                  <div style="flex:1;background:${lBar.col};border-radius:${lBR};cursor:pointer;min-width:0" onclick="event.stopPropagation();showTripPopover(event,'${lBar.t.id}')"></div>
+                  <div style="flex:1;background:${rBar.col};border-radius:${rBR};cursor:pointer;min-width:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:3px 7px" onclick="event.stopPropagation();showTripPopover(event,'${rBar.t.id}')">
+                    <div style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(rBar.tg)}</div>
+                    <div style="font-size:8px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rBar.pickup}→${rBar.delivery}</div>
+                    ${rBar.trpm>0?`<div style="font-size:8px;color:rgba(255,255,255,.7)">${rBar.trpm.toFixed(2)}/mi</div>`:''}
                   </div>
                 </div>
               </td>`;
             }
 
-            return`<td class="${tdClass}" style="${tdStyle}">
-              ${single.map(r=>mkBar(r,'single')).join('')}
-              ${starting.map(r=>mkBar(r,'start')).join('')}
-              ${mid.map(r=>mkBar(r,'mid')).join('')}
-              ${ending.map(r=>mkBar(r,'end')).join('')}
+            // SINGLE bar
+            const r=active[0];
+            const br=getBR(r);
+            const ml=ds===r.startDate?'4px':'0';
+            const mr=ds===r.endDate?'4px':'0';
+            const showText=ds===r.startDate;
+            return`<td class="${tdClass}" style="padding:0;height:70px;border-right:1px solid var(--border);vertical-align:middle">
+              <div style="background:${r.col};border-radius:${br};margin:6px ${mr} 6px ${ml};height:58px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden;cursor:pointer;padding:${showText?'4px 8px':'0'}" onclick="event.stopPropagation();showTripPopover(event,'${r.t.id}')">
+                ${showText?`<div style="font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">$${fmt(r.tg)}</div>
+                <div style="font-size:9px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pickup} → ${r.delivery}</div>
+                ${r.trpm>0?`<div style="font-size:9px;color:rgba(255,255,255,.75)">${r.trpm.toFixed(2)}/mi</div>`:''}`:''}
+              </div>
             </td>`;
           }).join('');
         })()}
