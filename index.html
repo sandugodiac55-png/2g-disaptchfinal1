@@ -2420,7 +2420,14 @@ async function saveTrip(data){
   notify('Trip created ✓');
   cancelTripCreate();
 }
-function cancelTripCreate(){tripSelLoads=[];document.getElementById('trip-create-ui').classList.add('hidden');pendingTripData=null;const mu=document.getElementById('trip-maps-url');if(mu)mu.value=''}
+function cancelTripCreate(){
+  tripSelLoads=[];
+  document.getElementById('trip-create-ui').classList.add('hidden');
+  pendingTripData=null;
+  const fields=['trip-maps-url','trip-maps-url2','trip-pickup','trip-delivery'];
+  fields.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const mu=document.getElementById('trip-maps-url');if(mu)mu.style.borderColor='';
+}
 
 /* ══ TRIP EDIT ══ */
 let editTripSelLoads=[];
