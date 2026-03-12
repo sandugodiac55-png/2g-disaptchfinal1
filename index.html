@@ -712,8 +712,8 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                   <button onclick="setAccTab('overdue',this)" id="acc-tab-overdue" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">⚠️ Overdue</button>
                 </div>
               </div>
-              <div class="tw"><table style="width:100%">
-                <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th>MGR NOTE</th><th></th></tr></thead>
+              <div class="tw"><table style="width:100%;border-collapse:collapse">
+                <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th></th></tr></thead>
                 <tbody id="acc-tb"></tbody>
               </table></div>
             </div>
@@ -3265,7 +3265,6 @@ function accLoadRow(l,canEdit,cols){
           const delivDate=toD(l.deliveredDate||l.deliveredLabel);
           let html='';
           if(statusDate) html+=`<span style="font-size:9px;color:var(--text3);font-family:var(--mono)">${statusDate}</span>`;
-          if(l.status==='Invoiced'&&delivDate) html+=`<br><span style="font-size:8px;color:#059669;font-family:var(--mono)">📦 ${delivDate}</span>`;
           return html;
         })()}
       </div>
@@ -3382,7 +3381,7 @@ function renderAcc(){
   // Restore thead for driver view: ORDER ID | DISPATCHER | DRIVER | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb')?.closest('table')?.querySelector('thead tr');
   if(thead){
-    thead.innerHTML=`<th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th></th>`;
+    thead.innerHTML=`<th>ORDER ID</th><th>DISPATCHER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th></th>`;
   }
   // All loads for selected driver
   let loads=LOADS.filter(l=>accSelDrv?l.driver===accSelDrv:(accSelCo?l.company===accSelCo:true));
@@ -3428,24 +3427,23 @@ function renderAcc(){
     const isClosedWeek=false;
     // Week label row (top - minimal, just label)
     rows+=`<tr style="background:${isClosedWeek?'var(--navy)':'var(--surface2)'}">
-      <td colspan="13" style="padding:6px 16px">
+      <td colspan="13" style="padding:6px 16px;border-left:none;border-right:none;width:100%">
         <span style="font-size:11px;font-weight:700;color:${isClosedWeek?'rgba(255,255,255,.7)':'var(--text3)'};letter-spacing:.3px">${isClosedWeek?'🔒':'📅'} ${wLbl(w)}</span>
       </td></tr>`;
     // Load rows
     wLoads.forEach(l=>{
-      rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:true,overdue:false});
+      rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:false,overdue:false});
     });
     // Week summary footer row
     rows+=`<tr style="background:${isClosedWeek?'#0f2040':'#f0fdf4'};border-top:2px solid ${isClosedWeek?'rgba(255,255,255,.1)':'#bbf7d0'}">
-      <td colspan="13" style="padding:8px 16px 10px">
+      <td colspan="13" style="padding:8px 16px 10px;border-left:none;border-right:none;width:100%">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           <span style="font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)">TOTAL $${fmt(wGross)}</span>
           ${wPaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#6ee7b7':'var(--teal)'}">✓ $${fmt(wPaid)} paid</span>`:''}
           ${wUnpaid>0?`<span style="font-size:11px;font-weight:700;color:${isClosedWeek?'#fca5a5':'var(--red)'}">✗ $${fmt(wUnpaid)} pending</span>`:''}
-
         </div>
       </td></tr>
-    <tr><td colspan="13" style="padding:0;height:10px;background:var(--surface)"></td></tr>`;
+    <tr><td colspan="13" style="padding:0;height:10px;background:var(--surface);border:none"></td></tr>`;
   });
   tb.innerHTML=rows;
 }
