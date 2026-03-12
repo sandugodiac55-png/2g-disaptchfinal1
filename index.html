@@ -2367,6 +2367,7 @@ async function confirmTrip(){
   if(!miles){notify('Miles are required for trip','err');document.getElementById('trip-miles').classList.add('required-err');return}
   document.getElementById('trip-miles').classList.remove('required-err');
   const mapsUrl=document.getElementById('trip-maps-url').value.trim();
+  if(!mapsUrl){notify('Maps URL 1 is required','err');document.getElementById('trip-maps-url').style.borderColor='var(--red)';document.getElementById('trip-maps-url').focus();return;}
   document.getElementById('trip-maps-url').style.borderColor='';
   const selLoads=LOADS.filter(l=>tripSelLoads.includes(l.id));
   const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
@@ -2475,6 +2476,9 @@ async function saveEditTrip(){
   if(!editTripSelLoads.length){notify('Select at least 1 load','err');return}
   const miles=parseFloat(document.getElementById('et-miles').value)||0;
   if(!miles){notify('Miles are required','err');return}
+  const mu=document.getElementById('et-maps-url').value.trim();
+  if(!mu){notify('Maps URL 1 is required','err');document.getElementById('et-maps-url').style.borderColor='var(--red)';document.getElementById('et-maps-url').focus();return;}
+  document.getElementById('et-maps-url').style.borderColor='';
   const selLoads=LOADS.filter(l=>editTripSelLoads.includes(l.id));
   const gross=selLoads.reduce((s,l)=>s+(+l.rate||0),0);
   const rpm=miles>0?gross/miles:0;
@@ -3064,10 +3068,10 @@ function showTripPopover(e,tripId){
     (trip.dispName?`<div style="margin-top:2px;font-size:11px;color:var(--text3)">Dispatcher: ${trip.dispName}</div>`:'');
   const mapsBtn=document.getElementById('tp-maps-btn');
   const mapsBtn2=document.getElementById('tp-maps-btn2');
-  if(trip.mapsUrl){mapsBtn.href=trip.mapsUrl;mapsBtn.style.display='flex'}
-  else{mapsBtn.style.display='none'}
-  if(trip.mapsUrl2){mapsBtn2.href=trip.mapsUrl2;mapsBtn2.style.display='flex'}
-  else{mapsBtn2.style.display='none'}
+  if(trip.mapsUrl){mapsBtn.href=trip.mapsUrl;mapsBtn.style.display='flex';mapsBtn.style.opacity='1';mapsBtn.style.pointerEvents='auto';}
+  else{mapsBtn.removeAttribute('href');mapsBtn.style.display='flex';mapsBtn.style.opacity='.4';mapsBtn.style.pointerEvents='none';}
+  if(trip.mapsUrl2){mapsBtn2.href=trip.mapsUrl2;mapsBtn2.style.display='flex';}
+  else{mapsBtn2.style.display='none';}
   const pop=document.getElementById('trip-popover');
   pop.style.display='block';
   document.getElementById('trip-popover-overlay').style.display='block';
