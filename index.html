@@ -615,7 +615,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <!-- STANDALONE LOADS (not in trip) -->
           <div class="tc" id="drv-loads-tc">
             <div class="tc-top"><div class="tc-title">Individual Loads</div><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="drv-load-cnt">0</div></div>
-            <div class="tw"><table>
+            <div class="tw"><table style="width:100%;min-width:900px">
               <thead><tr><th>ORDER ID</th><th>CAR</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BROKER</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
               <tbody id="drv-load-tb"></tbody>
             </table></div>
@@ -683,7 +683,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tc-title" style="color:var(--red)">🚨 Urgent Overdue — Past 15+ Days</div>
                 <span class="cpill" id="acc-cnt-urgent" style="background:#fecaca;color:#991b1b">0</span>
               </div>
-              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th><th></th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
+              <div class="tw"><table style="width:100%"><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th><th></th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
             </div>
             <!-- SECTION: Bond -->
             <div id="acc-sec-bond" class="tc" style="margin-bottom:16px;border-left:4px solid #7c3aed">
@@ -691,7 +691,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tc-title" style="color:#7c3aed">🔒 Bond — 20+ Days Unpaid</div>
                 <span class="cpill" id="acc-cnt-bond" style="background:#ddd6fe;color:#5b21b6">0</span>
               </div>
-              <div class="tw"><table><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
+              <div class="tw"><table style="width:100%"><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
             </div>
             <!-- SECTION: Problematic — hidden, loads appear in All Loads with highlighted row -->
             <div id="acc-sec-problem" style="display:none">
@@ -712,7 +712,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                   <button onclick="setAccTab('overdue',this)" id="acc-tab-overdue" style="padding:4px 12px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">⚠️ Overdue</button>
                 </div>
               </div>
-              <div class="tw"><table>
+              <div class="tw"><table style="width:100%">
                 <thead><tr><th>ORDER ID</th><th>DISPATCHER</th><th>DRIVER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th>MGR NOTE</th><th></th></tr></thead>
                 <tbody id="acc-tb"></tbody>
               </table></div>
@@ -2157,7 +2157,7 @@ function renderDrvTrips(allDrvLoads){
   let html='';
 
   if(!sortedWeeks.length){
-    tb.innerHTML=`<tr><td colspan="10"><div class="em"><div class="e">📋</div><p>No loads yet. Click a driver card to start.</p></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="11"><div class="em"><div class="e">📋</div><p>No loads yet. Click a driver card to start.</p></div></td></tr>`;
     document.getElementById('drv-load-cnt').textContent='0 loads';
     return;
   }
@@ -2182,7 +2182,7 @@ function renderDrvTrips(allDrvLoads){
     const sepBorder=locked?'#4a5568':isActiveW?'#3b82f6':'#e2e8f0';
     const sepText=locked?'#e2e8f0':isActiveW?'#1e40af':'#374151';
     html+=`<tr style="background:${sepBg}">
-      <td colspan="10" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
+      <td colspan="11" style="padding:7px 16px;border-top:2px solid ${sepBorder}">
         <span style="font-size:12px;font-weight:800;color:${sepText}">
           ${locked?'🔒':'📅'} Week ${wNum}${isActiveW?' (active)':locked?' (closed)':''} — ${wLbl(w)}
         </span>
@@ -2291,11 +2291,11 @@ function renderDrvTrips(allDrvLoads){
       <td style="padding:7px 12px 9px">
         <span style="font-size:13px;font-weight:800;font-family:var(--mono);color:#d4581a">$${fmt(wGross)}</span>
       </td>
-      <td colspan="7" style="padding:7px 12px 9px">
+      <td colspan="8" style="padding:7px 12px 9px">
         <span style="font-size:11px;font-weight:700;font-family:var(--mono);color:rgba(242,101,34,.45);letter-spacing:.5px">TOTAL</span>
       </td>
     </tr>
-    <tr><td colspan="10" style="padding:0;height:10px;background:var(--bg)"></td></tr>`;
+    <tr><td colspan="11" style="padding:0;height:10px;background:var(--bg)"></td></tr>`;
 
   });
 
