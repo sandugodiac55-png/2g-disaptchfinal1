@@ -4120,7 +4120,11 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
               const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
               // Week header row
               const wNum=w.split('-W')[1]||'?';
-              const isActive=w===curW;
+              // Find the active week for this driver from their dispatcher's settings
+              const drvDispUser=USERS.find(u=>u.email===drv.dispatcherEmail);
+              const drvDW=drvDispUser?(drvDispUser.driverWeeks||{})[drv.id]||{}:{};
+              const drvActiveWeek=drvDW.activeWeek||curW;
+              const isActive=w===drvActiveWeek;
               const wLabel=`Week ${wNum}${isActive?' (active)':''} — ${wLbl(w)}`;
               const wRows=wLoads.map(l=>{
                 const oid=(l.orderId||'—');
