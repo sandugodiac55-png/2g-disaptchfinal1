@@ -945,43 +945,40 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       <button onclick="cm('m-load')" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
     </div>
 
-    <div style="padding:22px 28px;display:flex;flex-direction:column;gap:16px;background:#f8fafc;max-height:80vh;overflow-y:auto">
+    <div style="padding:14px 20px;display:flex;flex-direction:column;gap:10px;background:#f8fafc;max-height:72vh;overflow-y:auto">
 
       <!-- ── LOAD INFO ── -->
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-        <div style="background:linear-gradient(90deg,#fff7ed,#ffedd5);padding:10px 18px;border-bottom:1.5px solid #fed7aa;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px">📦</span>
+      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#fff7ed,#ffedd5);padding:7px 14px;border-bottom:1.5px solid #fed7aa;display:flex;align-items:center;gap:7px">
+          <span style="font-size:12px">📦</span>
           <span style="font-size:10px;font-weight:800;color:#c2410c;letter-spacing:2px">LOAD INFO</span>
         </div>
-        <div style="padding:18px 18px 14px;display:flex;flex-direction:column;gap:14px">
-          <!-- Row 1: Order ID + CAR -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">ORDER ID <span style="color:#ef4444">*</span></label>
-              <input id="fl-oid" placeholder="LD-001" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">ORDER ID <span style="color:#ef4444">*</span></label>
+              <input id="fl-oid" placeholder="LD-001" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">🚗 CAR / UNIT</label>
-              <input id="fl-car" placeholder="e.g. 2024 Mazda CX-90" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
-          </div>
-          <!-- Row 2: Pickup → Delivery -->
-          <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:6px;align-items:end">
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">📍 PICKUP</label>
-              <input id="fl-ori" placeholder="Chicago, IL" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
-            <div style="text-align:center;padding-bottom:11px;font-size:14px;color:#94a3b8">→</div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">🏁 DELIVERY</label>
-              <input id="fl-dst" placeholder="Dallas, TX" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e2e8f0'">
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">🚗 CAR / UNIT</label>
+              <input id="fl-car" placeholder="e.g. 2024 Mazda CX-90" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
           </div>
-          <!-- Row 3: Date alone (half width) -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="display:grid;grid-template-columns:1fr 22px 1fr;gap:4px;align-items:end">
             <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">📅 DATE</label>
-              <input type="date" id="fl-date" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">📍 PICKUP</label>
+              <input id="fl-ori" placeholder="Chicago, IL" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+            <div style="text-align:center;padding-bottom:8px;color:#94a3b8;font-size:13px">→</div>
+            <div>
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">🏁 DELIVERY</label>
+              <input id="fl-dst" placeholder="Dallas, TX" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">📅 DATE</label>
+              <input type="date" id="fl-date" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div></div>
           </div>
@@ -989,19 +986,19 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       </div>
 
       <!-- ── RATE & PAYMENT ── -->
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-        <div style="background:linear-gradient(90deg,#fff7ed,#fef9c3);padding:10px 18px;border-bottom:1.5px solid #fde68a;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px">⚡</span>
+      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#fff7ed,#fef9c3);padding:7px 14px;border-bottom:1.5px solid #fde68a;display:flex;align-items:center;gap:7px">
+          <span style="font-size:12px">⚡</span>
           <span style="font-size:10px;font-weight:800;color:#b45309;letter-spacing:2px">RATE & PAYMENT</span>
         </div>
-        <div style="padding:18px 18px 14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
-            <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">TOTAL RATE ($) <span style="color:#ef4444">*</span></label>
-            <input type="number" id="fl-rt" placeholder="2,500.00" step="0.01" min="0" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--mono);font-size:15px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
+            <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">TOTAL RATE ($) <span style="color:#ef4444">*</span></label>
+            <input type="number" id="fl-rt" placeholder="0.00" step="0.01" min="0" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
           </div>
           <div>
-            <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">PAYMENT METHOD <span style="color:#ef4444">*</span></label>
-            <select id="fl-pay" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer;transition:border .15s;appearance:auto" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
+            <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">PAYMENT METHOD <span style="color:#ef4444">*</span></label>
+            <select id="fl-pay" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
               <option value="">— Select —</option>
               <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
               <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
@@ -1013,54 +1010,51 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
       </div>
 
       <!-- ── BROKER ── -->
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-        <div style="background:linear-gradient(90deg,#eff6ff,#dbeafe);padding:10px 18px;border-bottom:1.5px solid #bfdbfe;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px">🏢</span>
+      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#eff6ff,#dbeafe);padding:7px 14px;border-bottom:1.5px solid #bfdbfe;display:flex;align-items:center;gap:7px">
+          <span style="font-size:12px">🏢</span>
           <span style="font-size:10px;font-weight:800;color:#1d4ed8;letter-spacing:2px">BROKER</span>
         </div>
-        <div style="padding:18px 18px 14px;display:flex;flex-direction:column;gap:14px">
-          <!-- Row 1: Name + Email -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">BROKER NAME</label>
-              <input id="fl-br" placeholder="Echo Global" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">BROKER NAME</label>
+              <input id="fl-br" placeholder="Echo Global" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">BROKER EMAIL</label>
-              <input type="email" id="fl-be" placeholder="broker@company.com" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
-          </div>
-          <!-- Row 2: Fee + Phone + Toggle -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">BROKER FEE ($)</label>
-              <input type="number" id="fl-bf" placeholder="0.00" step="0.01" min="0" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--mono);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">BROKER PHONE</label>
-              <input id="fl-bp" placeholder="+1 555 000 0000" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">BROKER EMAIL</label>
+              <input type="email" id="fl-be" placeholder="broker@company.com" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
           </div>
-          <!-- Broker Fee Paid toggle - inline compact -->
-          <div style="display:inline-flex;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:9px;padding:9px 14px;align-self:flex-start">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">BROKER FEE ($)</label>
+              <input type="number" id="fl-bf" placeholder="0.00" step="0.01" min="0" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--mono);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+            <div>
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">BROKER PHONE</label>
+              <input id="fl-bp" placeholder="+1 555 000 0000" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+          </div>
+          <div style="display:inline-flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:7px;padding:7px 12px;align-self:flex-start">
             <div class="sw" id="sw-bf" onclick="this.classList.toggle('on')"></div>
-            <span style="font-size:12px;font-weight:700;color:#166534">Broker Fee Paid</span>
+            <span style="font-size:11px;font-weight:700;color:#166534">Broker Fee Paid</span>
           </div>
         </div>
       </div>
 
       <!-- ── NOTES ── -->
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-        <label style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:7px">📝 NOTES <span style="font-weight:400;color:#94a3b8;text-transform:none">(optional)</span></label>
-        <textarea id="fl-nt" placeholder="Additional notes…" style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;resize:vertical;min-height:68px;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 14px">
+        <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:5px">📝 NOTES <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+        <textarea id="fl-nt" placeholder="Additional notes…" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:12px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;resize:vertical;min-height:52px;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
       </div>
 
     </div>
 
-    <!-- Footer -->
-    <div style="display:flex;gap:10px;padding:14px 28px;border-top:1.5px solid #e2e8f0;background:#fff;justify-content:flex-end;align-items:center">
-      <button class="btn btn-ghost" onclick="cm('m-load')" style="padding:9px 22px;font-size:13px">Cancel</button>
-      <button class="btn btn-orange" onclick="saveLoad()" style="padding:9px 24px;font-size:13px;font-weight:800">💾 Save Load</button>
+    <!-- Footer — always visible -->
+    <div style="display:flex;gap:8px;padding:10px 20px;border-top:1.5px solid #e2e8f0;background:#fff;justify-content:flex-end;align-items:center">
+      <button class="btn btn-ghost" onclick="cm('m-load')" style="padding:8px 20px;font-size:13px">Cancel</button>
+      <button class="btn btn-orange" onclick="saveLoad()" style="padding:8px 22px;font-size:13px;font-weight:800">💾 Save Load</button>
     </div>
   </div>
 </div>
@@ -2900,17 +2894,20 @@ function renderKPI(){
             const hasDelivered=statuses.some(s=>s==='delivered'||s==='invoiced');
             const hasPickedUp=statuses.some(s=>s==='picked up'||s==='pickedup');
 
-            // Find explicit deliveredDate from any load
+
+
+            // Find the delivery/invoice date — truncate ISO timestamps to YYYY-MM-DD
+            const toDateStr=v=>v?(v.length>10?v.substring(0,10):v):null;
             const explicitDeliveredDate=tLoads.reduce((best,l)=>{
-              const d=l.deliveredDate||l.invoicedDate||null;
+              const d=toDateStr(l.deliveredDate)||toDateStr(l.invoicedDate)||null;
               if(!d)return best;
               return(!best||d>best)?d:best;
             },null);
 
             let endDate;
             if(hasDelivered){
-              // Use explicit deliveredDate if available, else use today (it was delivered, just no date recorded)
-              endDate=explicitDeliveredDate||todayStr;
+              // Use deliveredDate/invoicedDate. If missing, use load date (day it was invoiced/delivered)
+              endDate=explicitDeliveredDate||toDateStr(tLoads.find(l=>['delivered','invoiced'].includes((l.status||'').toLowerCase()))?.date)||todayStr;
             } else if(hasPickedUp){
               // In transit — only up to today
               endDate=todayStr;
