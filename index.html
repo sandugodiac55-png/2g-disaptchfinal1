@@ -4798,9 +4798,6 @@ function renderOwnerStats(){
         {l:'Total Loads',v:myLoads.length,c:'var(--navy)',mono:false},
         {l:'Total Gross',v:'$'+fmt(totalGross),c:'var(--green)',mono:true},
         {l:'Paid',v:'$'+fmt(totalPaid),c:'#065f46',mono:true},
-        {l:'Owner Confirmed',v:'$'+fmt(totalConfirmed),c:'var(--teal)',mono:true},
-        {l:'Pending Confirm',v:'$'+fmt(totalGross-totalConfirmed),c:'var(--red)',mono:true},
-        {l:'Avg RPM',v:'$'+avgRpm.toFixed(2)+'/mi',c:'var(--blue)',mono:true},
       ].map(k=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow)">
         <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px">${k.l}</div>
         <div style="font-size:18px;font-weight:800;color:${k.c};${k.mono?'font-family:var(--mono)':''}">${k.v}</div>
