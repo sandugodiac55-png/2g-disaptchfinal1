@@ -4119,7 +4119,10 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
               const wLoads=weekMap[w];
               const wGross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
               // Week header row
-              const wNum=w.split('-W')[1]||'?';
+              // Calculate week number exactly like dispatch: weekOffset + index in sorted weeks
+              const allDrvWeeksSorted=[...new Set(myLoads.filter(l=>l.driver===drv.name).map(l=>l.week).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+              const wi=allDrvWeeksSorted.indexOf(w);
+              const wNum=(drv.weekOffset||0)+wi+1;
               // Find active week for this driver — search all dispatcher users
               const getDrvWeek=(drvId)=>{
                 for(const u of USERS){
