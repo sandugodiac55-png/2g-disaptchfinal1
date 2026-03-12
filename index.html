@@ -2896,8 +2896,16 @@ function renderKPI(){
 
 
 
-            // Find the delivery/invoice date — truncate ISO timestamps to YYYY-MM-DD
-            const toDateStr=v=>v?(v.length>10?v.substring(0,10):v):null;
+            // Convert any date format to YYYY-MM-DD string
+            const toDateStr=v=>{
+              if(!v) return null;
+              if(typeof v==='string') return v.length>10?v.substring(0,10):v;
+              // Firestore Timestamp object {seconds, nanoseconds}
+              if(v.seconds) return new Date(v.seconds*1000).toISOString().substring(0,10);
+              // JS Date object
+              if(v instanceof Date) return v.toISOString().substring(0,10);
+              return null;
+            };
             const explicitDeliveredDate=tLoads.reduce((best,l)=>{
               const d=toDateStr(l.deliveredDate)||toDateStr(l.invoicedDate)||null;
               if(!d)return best;
