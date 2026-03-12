@@ -5381,97 +5381,93 @@ function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
       <div style="font-size:18px;font-weight:900;color:var(--navy)">Salary Slip <span style="font-size:14px;font-weight:600;color:var(--text3)">(${slipRange})</span></div>
       <div style="font-size:12px;color:var(--text3);margin-top:2px">${drv.name} · ${wLbl(week)}</div>
     </div>
-    <div style="display:flex;gap:0">
-      <!-- Expense table -->
-      <div style="width:320px;flex-shrink:0;border-right:2px solid var(--border)">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <tbody>
-            ${[
-              {label:'Dispatch Services 12%', val:`<span style="font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(disp12)}</span>`, bg:'#fafafa'},
-              {label:'Dispatch Services 10%', val:`<span style="font-family:var(--mono);font-weight:700;color:var(--navy)">$${fmt(disp10)}</span>`, bg:'#fff'},
-              {label:'Insurance', val:inp('insurance',man.insurance), bg:'#fafafa'},
-              {label:'Loogbook', val:inp('logbook',man.logbook), bg:'#fff'},
-              {label:'SuperDispatch', val:inp('superDispatch',man.superDispatch), bg:'#fafafa'},
-              {label:'Ifta', val:inp('ifta',man.ifta), bg:'#fff'},
-            ].map(r=>`<tr style="background:${r.bg}">
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:var(--navy)">${r.label}</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #e5e7eb;text-align:right">${r.val}</td>
-            </tr>`).join('')}
-            <tr style="background:#fef3c7">
-              <td style="padding:9px 16px;border-bottom:1px solid #fde68a;font-weight:700;color:#92400e">Interest 10–12% and all expenses</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #fde68a;text-align:right;font-family:var(--mono);font-weight:800;color:#92400e">$${fmt(totalExpenses)}</td>
-            </tr>
-            <tr style="background:#f0fdf4">
-              <td style="padding:9px 16px;border-bottom:1px solid #bbf7d0;font-weight:700;color:#065f46">Cash by driver</td>
-              <td style="padding:9px 16px;border-bottom:1px solid #bbf7d0;text-align:right;font-family:var(--mono);font-weight:800;color:#065f46">$${fmt(cashByDriver)}</td>
-            </tr>
-            <tr style="background:#f97316">
-              <td style="padding:10px 16px;font-weight:800;color:#fff;font-size:13px;border-bottom:1px solid #ea580c">Total Gross</td>
-              <td style="padding:10px 16px;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:14px;border-bottom:1px solid #ea580c">$${fmt(totalGross)}</td>
-            </tr>
-            <tr style="background:#1e293b">
-              <td style="padding:12px 16px;font-weight:800;color:#fff;font-size:13px">Net Gross</td>
-              <td style="padding:12px 16px;text-align:right;font-family:var(--mono);font-weight:900;color:#34d399;font-size:16px">$${fmt(netGross)}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div style="padding:10px 16px;border-top:1px solid var(--border);background:#f8fafc;font-size:10px;color:var(--text3);line-height:1.7">
-          <div>12% → <strong>${regularLoads.length} loads</strong> ($${fmt(regularGross)}) non COD/COP</div>
-          <div>10% → <strong>${copCodLoads.length} loads</strong> ($${fmt(copCodGross)}) COD/COP</div>
-          <div>Cash by driver → <strong>${cashDriverLoads.length} loads</strong></div>
-        </div>
+
+    <!-- EXPENSES ROW — all in one horizontal bar -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;border-bottom:2px solid var(--border);background:#fff">
+      ${[
+        {label:'Dispatch 12%', val:`$${fmt(disp12)}`, input:false, bg:'#f8fafc'},
+        {label:'Dispatch 10%', val:`$${fmt(disp10)}`, input:false, bg:'#fff'},
+        {label:'Insurance',    val:man.insurance,     input:true,  field:'insurance',     bg:'#f8fafc'},
+        {label:'Logbook',      val:man.logbook,       input:true,  field:'logbook',       bg:'#fff'},
+        {label:'SuperDispatch',val:man.superDispatch, input:true,  field:'superDispatch', bg:'#f8fafc'},
+        {label:'IFTA',         val:man.ifta,          input:true,  field:'ifta',          bg:'#fff'},
+        {label:'Total Expenses',val:`$${fmt(totalExpenses)}`, input:false, bg:'#fef3c7', bold:true, color:'#92400e'},
+        {label:'Cash by Driver',val:`$${fmt(cashByDriver)}`,  input:false, bg:'#f0fdf4', bold:true, color:'#065f46'},
+        {label:'Net Gross',    val:`$${fmt(netGross)}`,       input:false, bg:'#1e293b', bold:true, color:'#34d399', large:true},
+      ].map(c=>`
+        <div style="padding:10px 12px;background:${c.bg};border-right:1px solid #e5e7eb;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:9px;font-weight:700;color:${c.color||'var(--text3)'};text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">${c.label}</div>
+          ${c.input
+            ?`<input type="number" step="0.01" min="0" value="${c.val||''}" placeholder="0.00"
+                style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy);background:#fff"
+                onblur="slipSetManual('${drvId}','${week}','${c.field}',this.value)" onfocus="this.select()">`
+            :`<div style="font-family:var(--mono);font-weight:${c.bold?'800':'700'};font-size:${c.large?'16px':'13px'};color:${c.color||'var(--navy)'};text-align:right">${c.val}</div>`
+          }
+        </div>`).join('')}
+    </div>
+
+    <!-- TOTAL GROSS bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#f97316;border-bottom:2px solid #ea580c">
+      <div style="font-size:11px;font-weight:700;color:#fff;opacity:.85">
+        12% → ${regularLoads.length} loads ($${fmt(regularGross)}) &nbsp;·&nbsp;
+        10% → ${copCodLoads.length} loads ($${fmt(copCodGross)}) COD/COP &nbsp;·&nbsp;
+        Cash by driver → ${cashDriverLoads.length} loads
       </div>
-      <!-- Load rows -->
-      <div style="flex:1;overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:11px">
-          <thead>
-            <tr style="background:#1e293b;color:#fff">
-              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DRIVER</th>
-              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DATE</th>
-              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">LOAD ID</th>
-              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px">CAR</th>
-              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">FROM → TO</th>
-              <th style="padding:9px 10px;text-align:right;font-size:9px;letter-spacing:.5px;white-space:nowrap">AMOUNT</th>
-              <th style="padding:9px 10px;text-align:center;font-size:9px;letter-spacing:.5px;white-space:nowrap">PAY METHOD</th>
-              <th style="padding:9px 10px;text-align:left;font-size:9px;letter-spacing:.5px">COMMENT</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${wLoads.length===0?`<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--text3)">No loads for this week</td></tr>`
-            :wLoads.map((l,i)=>{
-              const isCod=isCopCod(l);
-              const isCash=isCashToDriver(l);
-              const bg=isCash?'#dcfce7':isCod?'#fef9c3':i%2===0?'#f9fafb':'#fff';
-              const payBg=isCod?'#fef3c7':'#f0fdf4';
-              const payCol=isCod?'#92400e':'#065f46';
-              const oid=l.orderId||'—';
-              const oidShort=oid.length>16?oid.substring(0,16)+'…':oid;
-              const car=(l.car||'—');
-              const carShort=car.length>22?car.substring(0,22)+'…':car;
-              const from=(l.origin||'?').split(',')[0];
-              const to=(l.dest||'?').split(',')[0];
-              const comment=l.accComment||l.notes||l.driverPayNote||'';
-              return`<tr style="border-bottom:1px solid #e5e7eb;background:${bg}">
-                <td style="padding:7px 10px;font-weight:600;color:var(--navy);white-space:nowrap">${drv.name}</td>
-                <td style="padding:7px 10px;white-space:nowrap;color:var(--text2)">${l.date||'—'}</td>
-                <td style="padding:7px 10px;font-family:var(--mono);font-weight:700;color:var(--navy);white-space:nowrap" title="${oid}">${oidShort}</td>
-                <td style="padding:7px 10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${car}">${carShort}</td>
-                <td style="padding:7px 10px;color:var(--text2);white-space:nowrap">${from} → ${to}</td>
-                <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--green);white-space:nowrap">$${fmt(+l.rate||0)}</td>
-                <td style="padding:7px 10px;text-align:center">
-                  <span style="font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;background:${payBg};color:${payCol}">${l.payMethod||'—'}</span>
-                </td>
-                <td style="padding:7px 10px;color:var(--text3);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${comment}">${comment||'—'}</td>
-              </tr>`;
-            }).join('')}
-            <tr style="background:#f97316;border-top:2px solid #ea580c">
-              <td colspan="5" style="padding:9px 10px;font-weight:800;color:#fff;font-size:12px">${drv.name}</td>
-              <td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:13px">$${fmt(totalGross)}</td>
-              <td colspan="2"></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <div style="font-family:var(--mono);font-weight:900;font-size:16px;color:#fff">Total Gross: $${fmt(totalGross)}</div>
+    </div>
+
+    <!-- LOADS TABLE -->
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="background:#1e293b;color:#fff">
+            <th style="padding:9px 12px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DRIVER</th>
+            <th style="padding:9px 12px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">DATE</th>
+            <th style="padding:9px 12px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">LOAD ID</th>
+            <th style="padding:9px 12px;text-align:left;font-size:9px;letter-spacing:.5px">CAR</th>
+            <th style="padding:9px 8px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">FROM</th>
+            <th style="padding:9px 8px;text-align:left;font-size:9px;letter-spacing:.5px;white-space:nowrap">TO</th>
+            <th style="padding:9px 12px;text-align:right;font-size:9px;letter-spacing:.5px;white-space:nowrap">AMOUNT</th>
+            <th style="padding:9px 12px;text-align:center;font-size:9px;letter-spacing:.5px;white-space:nowrap">PAY METHOD</th>
+            <th style="padding:9px 12px;text-align:left;font-size:9px;letter-spacing:.5px">COMMENT</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${wLoads.length===0?`<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text3)">No loads for this week</td></tr>`
+          :wLoads.map((l,i)=>{
+            const isCod=isCopCod(l);
+            const isCash=isCashToDriver(l);
+            const bg=isCash?'#dcfce7':isCod?'#fef9c3':i%2===0?'#f9fafb':'#fff';
+            const payBg=isCod?'#fef3c7':'#f0fdf4';
+            const payCol=isCod?'#92400e':'#065f46';
+            const oid=l.orderId||'—';
+            const oidShort=oid.length>16?oid.substring(0,16)+'…':oid;
+            const car=(l.car||'—');
+            const carShort=car.length>24?car.substring(0,24)+'…':car;
+            const from=(l.origin||'?').split(',')[0];
+            const to=(l.dest||'?').split(',')[0];
+            const comment=l.accComment||l.notes||l.driverPayNote||'';
+            return`<tr style="border-bottom:1px solid #e5e7eb;background:${bg}">
+              <td style="padding:7px 12px;font-weight:600;color:var(--navy);white-space:nowrap">${drv.name}</td>
+              <td style="padding:7px 12px;white-space:nowrap;color:var(--text2)">${l.date||'—'}</td>
+              <td style="padding:7px 12px;font-family:var(--mono);font-weight:700;color:var(--navy);white-space:nowrap" title="${oid}">${oidShort}</td>
+              <td style="padding:7px 12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${car}">${carShort}</td>
+              <td style="padding:7px 8px;color:var(--text2);white-space:nowrap">${from}</td>
+              <td style="padding:7px 8px;color:var(--text2);white-space:nowrap">${to}</td>
+              <td style="padding:7px 12px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--green);white-space:nowrap">$${fmt(+l.rate||0)}</td>
+              <td style="padding:7px 12px;text-align:center">
+                <span style="font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;background:${payBg};color:${payCol}">${l.payMethod||'—'}</span>
+              </td>
+              <td style="padding:7px 12px;color:var(--text3);font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${comment}">${comment||'—'}</td>
+            </tr>`;
+          }).join('')}
+          <tr style="background:#f97316;border-top:2px solid #ea580c">
+            <td colspan="6" style="padding:9px 12px;font-weight:800;color:#fff;font-size:12px">${drv.name}</td>
+            <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:900;color:#fff;font-size:13px">$${fmt(totalGross)}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>`;
 }
