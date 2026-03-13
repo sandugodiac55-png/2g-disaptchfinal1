@@ -1027,14 +1027,13 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <span style="font-size:10px;font-weight:800;color:#b45309;letter-spacing:2px">RATE & PAYMENT</span>
         </div>
         <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
-          <!-- Primary payment -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
-              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">RATE ($) <span style="color:#ef4444">*</span></label>
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">RATE 1 ($) <span style="color:#ef4444">*</span></label>
               <input type="number" id="fl-rt" placeholder="0.00" step="0.01" min="0" oninput="updateTotalRate()" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div>
-              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">PAYMENT METHOD <span style="color:#ef4444">*</span></label>
+              <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">METHOD 1 <span style="color:#ef4444">*</span></label>
               <select id="fl-pay" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
                 <option value="">— Select —</option>
                 <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
@@ -1044,40 +1043,23 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
               </select>
             </div>
           </div>
-          <!-- Optional second payment -->
-          <div style="display:flex;align-items:center;gap:10px;margin-top:-4px">
-            <button type="button" onclick="toggleSplitPay()" id="split-pay-btn"
-              style="display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:8px;border:1.5px dashed #94a3b8;background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .15s"
-              onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'"
-              onmouseout="this.style.borderColor='#94a3b8';this.style.color='#64748b'">
-              <span style="font-size:14px;line-height:1">＋</span> Optional Payment (e.g. COD)
-            </button>
-            <span id="fl-total-rate-lbl" style="font-size:11px;color:var(--text3);display:none">
-              Total: <strong id="fl-total-rate-val" style="font-family:var(--mono);color:var(--navy)">$0.00</strong>
-            </span>
-          </div>
-          <div id="split-pay-row" style="display:none;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:12px 14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <span style="font-size:10px;font-weight:800;color:#b45309;letter-spacing:1.5px">⚡ OPTIONAL PAYMENT 2</span>
-              <button type="button" onclick="toggleSplitPay()" style="width:24px;height:24px;border-radius:6px;border:none;background:#fef2f2;color:#ef4444;cursor:pointer;font-size:16px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 12px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:9px">
+            <div>
+              <label style="font-size:9px;font-weight:700;color:#94a3b8;letter-spacing:1px;display:block;margin-bottom:3px">RATE 2 ($) <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+              <input type="number" id="fl-rt2" placeholder="0.00" step="0.01" min="0" oninput="updateTotalRate()" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div>
-                <label style="font-size:9px;font-weight:700;color:#b45309;letter-spacing:1px;display:block;margin-bottom:3px">RATE 2 ($)</label>
-                <input type="number" id="fl-rt2" placeholder="0.00" step="0.01" min="0" oninput="updateTotalRate()" style="width:100%;padding:7px 10px;border:1.5px solid #fed7aa;border-radius:7px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#fed7aa'">
-              </div>
-              <div>
-                <label style="font-size:9px;font-weight:700;color:#b45309;letter-spacing:1px;display:block;margin-bottom:3px">METHOD 2</label>
-                <select id="fl-pay2" style="width:100%;padding:7px 10px;border:1.5px solid #fed7aa;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#fed7aa'">
-                  <option value="">— Select —</option>
-                  <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
-                  <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
-                  <option>15 B. Days</option><option>21 B. Days</option><option>30 B. Days</option>
-                  <option>Factoring</option>
-                </select>
-              </div>
+            <div>
+              <label style="font-size:9px;font-weight:700;color:#94a3b8;letter-spacing:1px;display:block;margin-bottom:3px">METHOD 2 <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+              <select id="fl-pay2" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer;transition:border .15s" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
+                <option value="">— None —</option>
+                <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
+                <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
+                <option>15 B. Days</option><option>21 B. Days</option><option>30 B. Days</option>
+                <option>Factoring</option>
+              </select>
             </div>
           </div>
+          <div id="fl-total-rate-lbl" style="font-size:11px;color:var(--text3)">Total: <strong id="fl-total-rate-val" style="font-family:var(--mono);color:var(--navy)">$0.00</strong></div>
         </div>
       </div>
 
@@ -2657,9 +2639,7 @@ function openLoadModal(){
   document.getElementById('fl-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('fl-pay').value='';
   const pay2El=document.getElementById('fl-pay2');if(pay2El)pay2El.value='';
-  const splitRow=document.getElementById('split-pay-row');if(splitRow)splitRow.style.display='none';
-  const splitBtn=document.getElementById('split-pay-btn');if(splitBtn)splitBtn.style.display='';
-  const totalLbl=document.getElementById('fl-total-rate-lbl');if(totalLbl)totalLbl.style.display='none';
+  updateTotalRate();
   setSw('sw-bf',false);
   om('m-load');
 }
@@ -2680,28 +2660,11 @@ function editLoad(id){
   document.getElementById('fl-car').value=l.car||'';
   document.getElementById('fl-pay').value=l.payMethod||'';
   setSw('sw-bf',!!l.bfPaid);
-  // Split payment
-  const rt2El=document.getElementById('fl-rt2');
-  const pay2El=document.getElementById('fl-pay2');
-  const splitRow=document.getElementById('split-pay-row');
-  const splitBtn=document.getElementById('split-pay-btn');
-  const totalLbl=document.getElementById('fl-total-rate-lbl');
-  if(l.rate2&&l.payMethod2){
-    if(rt2El) rt2El.value=l.rate2||'';
-    if(pay2El) pay2El.value=l.payMethod2||'';
-    if(splitRow) splitRow.style.display='block';
-    if(splitBtn) splitBtn.style.display='none';
-    if(totalLbl) totalLbl.style.display='';
-    updateTotalRate();
-  } else {
-    if(rt2El) rt2El.value='';
-    if(pay2El) pay2El.value='';
-    if(splitRow) splitRow.style.display='none';
-    if(splitBtn) splitBtn.style.display='';
-    if(totalLbl) totalLbl.style.display='none';
-  }
-  // rate1 field should show rate1, not total
+  // Split payment fields
   document.getElementById('fl-rt').value=l.rate1||l.rate||'';
+  const rt2El=document.getElementById('fl-rt2');if(rt2El)rt2El.value=l.rate2||'';
+  const pay2El=document.getElementById('fl-pay2');if(pay2El)pay2El.value=l.payMethod2||'';
+  updateTotalRate();
   om('m-load');
 }
 async function saveLoad(){
@@ -2790,28 +2753,11 @@ async function saveDispNote(loadId, val){
   if(idx>=0) LOADS[idx].dispNotes=val;
 }
 
-function toggleSplitPay(){
-  const row=document.getElementById('split-pay-row');
-  const btn=document.getElementById('split-pay-btn');
-  const lbl=document.getElementById('fl-total-rate-lbl');
-  const show=row.style.display==='none';
-  row.style.display=show?'block':'none';
-  btn.style.display=show?'none':'';
-  lbl.style.display=show?'':'none';
-  if(!show){
-    const rt2=document.getElementById('fl-rt2');if(rt2)rt2.value='';
-    const p2=document.getElementById('fl-pay2');if(p2)p2.value='';
-    updateTotalRate();
-  }
-}
-
 function updateTotalRate(){
   const r1=parseFloat(document.getElementById('fl-rt')?.value)||0;
   const r2=parseFloat(document.getElementById('fl-rt2')?.value)||0;
   const v=document.getElementById('fl-total-rate-val');
-  const lbl=document.getElementById('fl-total-rate-lbl');
   if(v) v.textContent='$'+(r1+r2).toLocaleString('en',{minimumFractionDigits:2});
-  if(lbl&&document.getElementById('split-pay-row')?.style.display!=='none') lbl.style.display='';
 }
 
 async function tgPaid2(id,v){
