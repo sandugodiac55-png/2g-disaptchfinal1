@@ -5347,7 +5347,7 @@ function renderSalEmp(weeks){
       const pct=+(dr.salaryPct||0);
       html+=`<tr>
         <td style="font-weight:600;font-size:13px">${dr.name}<br><span style="font-size:10px;color:var(--text3)">${dr.company||''}</span></td>
-        <td style="text-align:center"><input type="number" value="${pct||''}" placeholder="%" style="width:46px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:center" onblur="saveSalPct('${dr.id}',this.value)" title="Salary %"></td>`;
+        <td style="text-align:center"><input type="number" value="${pct||0}" placeholder="%" style="width:46px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:center" onblur="saveSalPct('${dr.id}',this.value)" title="Salary %"></td>`;
       weeks.forEach(w=>{
         const wLoads=LOADS.filter(l=>l.driver===dr.name&&inW(l.date,w));
         const gross=wLoads.reduce((s,l)=>s+(+l.rate||0),0);
@@ -5609,7 +5609,7 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
 
   const inp=(field,val)=>isPaid
     ?`<div style="font-family:var(--mono);font-weight:700;font-size:13px;color:var(--navy);text-align:right">$${fmt(+(val||0))}</div>`
-    :`<input type="number" step="0.01" min="0" value="${val||''}" placeholder="0.00"
+    :`<input type="number" step="0.01" min="0" value="${val||0}" placeholder="0.00"
       style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--navy);background:#fff"
       onblur="slipSetManual('${drvId}','${week}','${field}',this.value)" onfocus="this.select()">`;
 
@@ -5659,25 +5659,25 @@ async function _renderSlipInto(body,drvSelId,weekSelId,drvId,week){
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Insurance</td>
                 <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.insurance||0)}</span>`
-                  :`<input type="number" step="0.01" min="0" value="${man.insurance||''}" placeholder="0.00"
+                  :`<input type="number" step="0.01" min="0" value="${man.insurance||0}" placeholder="0.00"
                     style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','insurance',this.value)" onfocus="this.select()">`}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Loogbook</td>
                 <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.logbook||0)}</span>`
-                  :`<input type="number" step="0.01" min="0" value="${man.logbook||''}" placeholder="0.00"
+                  :`<input type="number" step="0.01" min="0" value="${man.logbook||0}" placeholder="0.00"
                     style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','logbook',this.value)" onfocus="this.select()">`}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">SuperDispatch</td>
                 <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.superDispatch||0)}</span>`
-                  :`<input type="number" step="0.01" min="0" value="${man.superDispatch||''}" placeholder="0.00"
+                  :`<input type="number" step="0.01" min="0" value="${man.superDispatch||0}" placeholder="0.00"
                     style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','superDispatch',this.value)" onfocus="this.select()">`}</td></tr>
             <tr><td style="padding:6px 10px;border:1px solid #ccc;font-weight:600;color:#222">Ifta</td>
                 <td style="padding:3px 6px;border:1px solid #ccc;text-align:right">
                   ${isPaid?`<span style="font-family:var(--mono);font-weight:700">$${fmt(man.ifta||0)}</span>`
-                  :`<input type="number" step="0.01" min="0" value="${man.ifta||''}" placeholder="0.00"
+                  :`<input type="number" step="0.01" min="0" value="${man.ifta||0}" placeholder="0.00"
                     style="width:110px;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:#222"
                     onblur="slipSetManual('${drvId}','${week}','ifta',this.value)" onfocus="this.select()">`}</td></tr>
             <tr style="background:#fef3c7">
@@ -5774,7 +5774,11 @@ function _printSlip(elId){
   table{width:100%;border-collapse:collapse}td,th{padding:6px 10px;border-bottom:1px solid #e5e7eb}
   th{background:#1e293b;color:#fff;font-size:9px;letter-spacing:.5px;text-align:left}input{display:none}</style>
   </head><body>${el.outerHTML}
-<script>
+
+</body></html>`);
+  w.document.close();w.focus();setTimeout(()=>{w.print();},400);
+}
+
 /* ── NOTES TOOLTIP (universal) ── */
 function showNoteTooltip(el, text){
   if(!text||text==='—')return;
@@ -5782,7 +5786,6 @@ function showNoteTooltip(el, text){
   if(!tip){
     tip=document.createElement('div');
     tip.id='_global_note_tip';
-    tip.className='notes-wrap nt';
     tip.style.cssText='position:fixed;background:#1e293b;color:#fff;font-size:11px;padding:8px 12px;border-radius:8px;white-space:pre-wrap;max-width:320px;word-break:break-word;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none;line-height:1.6;border:1px solid rgba(255,255,255,.1);display:none';
     document.body.appendChild(tip);
   }
@@ -5801,10 +5804,6 @@ function showNoteTooltip(el, text){
 function hideNoteTooltip(){
   const tip=document.getElementById('_global_note_tip');
   if(tip) tip.style.display='none';
-}
-</script>
-</body></html>`);
-  w.document.close();w.focus();setTimeout(()=>{w.print();},400);
 }
 
 function renderSalFounders(){
@@ -5838,7 +5837,7 @@ function renderSalFounders(){
           <span style="font-size:11px;color:var(--text3);font-weight:600">Salariu ${new Date(y,m-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'})}:</span>
           <div style="position:relative">
             <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3)">$</span>
-            <input type="number" value="${amt||''}" placeholder="0" style="border:1.5px solid var(--border);border-radius:8px;padding:6px 10px 6px 22px;font-size:14px;font-weight:700;font-family:var(--mono);width:120px;color:var(--navy)" onblur="setFounderSalary(${i},'${monthKey}',this.value)">
+            <input type="number" value="${amt||0}" placeholder="0" style="border:1.5px solid var(--border);border-radius:8px;padding:6px 10px 6px 22px;font-size:14px;font-weight:700;font-family:var(--mono);width:120px;color:var(--navy)" onblur="setFounderSalary(${i},'${monthKey}',this.value)">
           </div>
         </div>
         <button onclick="removeFounder(${i})" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px">🗑</button>
@@ -5877,7 +5876,7 @@ function renderSalExpenses(){
       <div style="flex:1"><input value="${escQ(e.name||'')}" placeholder="Denumire cheltuială" style="border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box" onblur="updateExpName(${globalIdx},this.value)"></div>
       <div style="position:relative">
         <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">$</span>
-        <input type="number" value="${amt||''}" placeholder="0" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 9px 5px 20px;font-size:13px;font-weight:700;font-family:var(--mono);width:110px" onblur="setExpAmount(${globalIdx},'${monthKey}',this.value)" title="${type==='fixed'?'Sumă fixă (se aplică lunar)':'Sumă pentru această lună'}">
+        <input type="number" value="${amt||0}" placeholder="0" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 9px 5px 20px;font-size:13px;font-weight:700;font-family:var(--mono);width:110px" onblur="setExpAmount(${globalIdx},'${monthKey}',this.value)" title="${type==='fixed'?'Sumă fixă (se aplică lunar)':'Sumă pentru această lună'}">
       </div>
       <button onclick="removeExpense(${globalIdx})" style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">🗑</button>
     </div>`;
@@ -6082,7 +6081,7 @@ function renderOwnFee(weeks,el){
           <div style="text-align:right">
             <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">FEE %</div>
             <div style="display:flex;align-items:center;gap:4px">
-              <input type="number" value="${r.feePct||''}" placeholder="%" min="0" max="100" step="0.1"
+              <input type="number" value="${r.feePct||0}" placeholder="%" min="0" max="100" step="0.1"
                 style="width:52px;border:1.5px solid rgba(255,255,255,.3);border-radius:7px;padding:4px 6px;font-size:12px;font-family:var(--mono);font-weight:700;text-align:center;color:#fff;background:rgba(255,255,255,.1)"
                 onblur="saveOwnFee('${r.co.id}','${r.co.name}',this.value)">
               <span style="font-size:11px;color:rgba(255,255,255,.5)">%</span>
@@ -6234,7 +6233,7 @@ function renderOwnExpenses(el){
             onkeydown="if(event.key==='Enter')saveOwnExpenseRow('fixed',${i})"
             style="flex:1;border:none;background:transparent;font-family:var(--font);font-size:13px;font-weight:600;color:var(--navy);outline:none">
           <span style="font-size:11px;color:var(--text3)">$</span>
-          <input id="own-fixed-amt-${i}" type="number" value="${e.amount||''}" placeholder="0"
+          <input id="own-fixed-amt-${i}" type="number" value="${e.amount||0}" placeholder="0"
             onkeydown="if(event.key==='Enter')saveOwnExpenseRow('fixed',${i})"
             style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--navy)">
           <span style="font-size:11px;color:var(--text3)">/lună</span>
@@ -6262,7 +6261,7 @@ function renderOwnExpenses(el){
             onkeydown="if(event.key==='Enter')saveOwnExpenseRow('variable',${i})"
             style="flex:1;border:none;background:transparent;font-family:var(--font);font-size:13px;font-weight:600;color:var(--navy);outline:none">
           <span style="font-size:11px;color:var(--text3)">$</span>
-          <input id="own-var-amt-${i}" type="number" value="${e.amount||''}" placeholder="0"
+          <input id="own-var-amt-${i}" type="number" value="${e.amount||0}" placeholder="0"
             onkeydown="if(event.key==='Enter')saveOwnExpenseRow('variable',${i})"
             style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--navy)">
           <button onclick="saveOwnExpenseRow('variable',${i})" style="padding:4px 10px;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">💾</button>
