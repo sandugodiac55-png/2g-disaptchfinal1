@@ -703,7 +703,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tc-title" style="color:var(--red)">🚨 Urgent Overdue — Past 15+ Days</div>
                 <span class="cpill" id="acc-cnt-urgent" style="background:#fecaca;color:#991b1b">0</span>
               </div>
-              <div class="tw"><table style="width:100%"><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th><th></th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
+              <div class="tw"><table style="width:100%"><thead><tr><th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>OVERDUE</th><th>COMMENT</th><th>DISPATCH NOTES</th><th></th></tr></thead><tbody id="acc-tb-urgent"></tbody></table></div>
             </div>
             <!-- SECTION: Bond -->
             <div id="acc-sec-bond" class="tc" style="margin-bottom:16px;border-left:4px solid #7c3aed">
@@ -711,7 +711,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 <div class="tc-title" style="color:#7c3aed">🔒 Bond — 20+ Days Unpaid</div>
                 <span class="cpill" id="acc-cnt-bond" style="background:#ddd6fe;color:#5b21b6">0</span>
               </div>
-              <div class="tw"><table style="width:100%"><thead><tr><th>ORDER ID</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
+              <div class="tw"><table style="width:100%"><thead><tr><th>ORDER ID</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>DUE</th><th>COMMENT</th><th>DISPATCH NOTES</th></tr></thead><tbody id="acc-tb-bond"></tbody></table></div>
             </div>
             <!-- SECTION: Problematic — hidden, loads appear in All Loads with highlighted row -->
             <div id="acc-sec-problem" style="display:none">
@@ -733,7 +733,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                 </div>
               </div>
               <div class="tw"><table style="width:100%;border-collapse:collapse">
-                <thead><tr><th style="width:32px">ROW</th><th>ORDER ID</th><th>DISPATCHER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th></th></tr></thead>
+                <thead><tr><th style="width:32px">ROW</th><th>ORDER ID</th><th>DISPATCHER</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th>DISPATCH NOTES</th><th></th></tr></thead>
                 <tbody id="acc-tb"></tbody>
               </table></div>
             </div>
@@ -2397,7 +2397,7 @@ function renderDrvTrips(allDrvLoads){
         })()}</td>
         <td style="min-width:120px;max-width:180px;position:relative">
           <div class="notes-wrap" style="position:relative">
-            <input value="${(l.dispNotes||'').replace(/"/g,'&quot;')}" placeholder="Notes…"
+            <input value="${(l.notes||'').replace(/"/g,'&quot;')}" placeholder="Notes…"
               style="width:100%;border:1px solid transparent;border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);color:var(--navy);background:transparent;outline:none;box-sizing:border-box"
               onfocus="this.style.borderColor='var(--border)';this.style.background='#fff';hideNoteTooltip()"
               onblur="this.style.borderColor='transparent';this.style.background='transparent';saveDispNote('${l.id}',this.value)"
@@ -2786,9 +2786,9 @@ async function doAdvStat(id,next){
 }
 async function saveDispNote(loadId, val){
   const{updateDoc,doc}=window._fb;
-  await updateDoc(doc(window._db,'loads',loadId),{dispNotes:val});
+  await updateDoc(doc(window._db,'loads',loadId),{notes:val});
   const idx=LOADS.findIndex(l=>l.id===loadId);
-  if(idx>=0) LOADS[idx].dispNotes=val;
+  if(idx>=0) LOADS[idx].notes=val;
 }
 
 function updateTotalRate(){
@@ -3413,7 +3413,6 @@ function accLoadRow(l,canEdit,cols){
     ${cols.disp?`<td style="color:var(--blue);font-size:11px">${l.dispName||'—'}</td>`:''}
     ${cols.driver?`<td style="font-weight:600;font-size:12px">${l.driver||'—'}</td>`:''}
     ${cols.company?`<td style="font-size:11px;color:var(--text3)">${l.company||'—'}</td>`:''}
-    ${cols.route?`<td style="font-size:11px">${l.origin||'—'} → ${l.dest||'—'}</td>`:''}
     <td class="money">${l.payMethod2&&l.rate1&&l.rate2
       ?`<div>$${fmt(+l.rate||0)}</div><div style="font-size:9px;color:var(--text3);white-space:nowrap">$${fmt(+l.rate1)}+$${fmt(+l.rate2)}</div>`
       :`$${fmt(+l.rate||0)}`}</td>
@@ -3455,6 +3454,7 @@ function accLoadRow(l,canEdit,cols){
     })()}</td>
     <td style="position:relative">${canEdit?`<div class="notes-wrap" style="position:relative"><input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()" onmouseenter="if(document.activeElement!==this)showNoteTooltip(this,this.value)" onmouseleave="hideNoteTooltip()" onfocus="hideNoteTooltip()"></div>`:`<div class="notes-wrap" style="position:relative"><span style="font-size:11px;color:var(--text3)" onmouseenter="showNoteTooltip(this,this.textContent!=='—'?this.textContent:'')" onmouseleave="hideNoteTooltip()">${l.accComment||'—'}</span></div>`}</td>
     ${mgrNoteCell}
+    <td style="font-size:11px;min-width:140px;max-width:200px"><div class="notes-wrap" style="position:relative"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;color:var(--text2)" data-note="${(l.notes||'').replace(/"/g,'&quot;')}" onmouseenter="showNoteTooltip(this,this.dataset.note)" onmouseleave="hideNoteTooltip()">${l.notes||'—'}</div></div></td>
     <td style="white-space:nowrap">${canSolve
       ?`<button onclick="openSolveModal('${l.id}')" style="background:linear-gradient(135deg,#d97706,#f59e0b);border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,.35)">🤝 Solve</button>`
       :canEdit&&!isProblem?`<button onclick="openEscalateModal()" title="Escalate" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🆘 Escalate</button>`
@@ -3490,7 +3490,7 @@ function renderAccSections(loads,canEdit){
   uSec.style.display=urgent.length?'':'none';
   bSec.style.display=bond.length?'':'none';
 
-  const cols={route:true,driver:true,company:true,disp:false,overdue:true};
+  const cols={route:false,driver:true,company:true,disp:false,overdue:true};
   document.getElementById('acc-tb-urgent').innerHTML=urgent.map(l=>accLoadRow(l,canEdit,{...cols,mgrNote:false,flagBtn:true})).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No urgent items</td></tr>';
   document.getElementById('acc-tb-bond').innerHTML=bond.map(l=>accLoadRow(l,canEdit,{...cols,mgrNote:false})).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:12px">No bond items</td></tr>';
   // Problem section hidden — loads appear in main table with highlight
@@ -3532,13 +3532,13 @@ function renderAccByFlag(pg){
   const thead=document.querySelector('#acc-tb').closest('table').querySelector('thead tr');
   if(thead){
     const mgrCol=pg==='acc-problem'?'<th>MGR NOTE</th>':'';
-    thead.innerHTML=`<th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>${pg==='acc-urgent'?'OVERDUE':'DUE'}</th><th>PAID</th><th>COMMENT</th>${mgrCol}<th></th>`;
+    thead.innerHTML=`<th>ORDER ID</th><th>DRIVER</th><th>COMPANY</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>${pg==='acc-urgent'?'OVERDUE':'DUE'}</th><th>PAID</th><th>COMMENT</th>${mgrCol}<th>DISPATCH NOTES</th><th></th>`;
   }
   if(!loads.length){
     tb.innerHTML=`<tr><td colspan="13"><div class="em" style="padding:20px;text-align:center;color:var(--text3)"><p>No items in this category.</p></div></td></tr>`;
     return;
   }
-  const cols={route:true,driver:true,company:true,overdue:pg==='acc-urgent',mgrNote:pg==='acc-problem'};
+  const cols={route:false,driver:true,company:true,overdue:pg==='acc-urgent',mgrNote:pg==='acc-problem'};
   tb.innerHTML=loads.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(l=>accLoadRow(l,canEdit,cols)).join('');
 }
 
@@ -3562,7 +3562,7 @@ function renderAcc(){
   // Restore thead for driver view: ORDER ID | DISPATCHER | DRIVER | ROUTE | RATE | PAY METHOD | BROKER EMAIL | STATUS | PAID | DATE | DUE | COMMENT | (action)
   const thead=document.querySelector('#acc-tb')?.closest('table')?.querySelector('thead tr');
   if(thead){
-    thead.innerHTML=`<th style="width:32px">ROW</th><th>ORDER ID</th><th>DISPATCHER</th><th>ROUTE</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th></th>`;
+    thead.innerHTML=`<th style="width:32px">ROW</th><th>ORDER ID</th><th>DISPATCHER</th><th>RATE</th><th>PAY METHOD</th><th>BROKER EMAIL</th><th>STATUS</th><th>DATE</th><th>DUE / OVERDUE</th><th>PAID</th><th>COMMENT</th><th>MGR NOTE</th><th>DISPATCH NOTES</th><th></th>`;
   }
   // All loads for selected driver
   let loads=LOADS.filter(l=>accSelDrv?l.driver===accSelDrv:(accSelCo?l.company===accSelCo:true));
@@ -3613,7 +3613,7 @@ function renderAcc(){
       </td></tr>`;
     wLoads.forEach(l=>{
       _rowNum++;
-      rows+=accLoadRow(l,canEdit,{route:true,disp:true,driver:false,overdue:false,rowNum:_rowNum});
+      rows+=accLoadRow(l,canEdit,{route:false,disp:true,driver:false,overdue:false,rowNum:_rowNum});
     });
     rows+=`<tr style="background:${isClosedWeek?'#0f2040':'#f0fdf4'};border-top:2px solid ${isClosedWeek?'rgba(255,255,255,.1)':'#bbf7d0'}">
       <td colspan="14" style="padding:8px 16px 10px;border-left:none;border-right:none;width:100%">
