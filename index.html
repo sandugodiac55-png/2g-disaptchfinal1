@@ -2332,8 +2332,8 @@ function renderDrvTrips(allDrvLoads){
       // Build status HTML
       let statusHtml;
       if(ns&&canEdit){
-        const curPill=`<span class="pill ${sC(effectiveStatus)}" style="margin-right:4px">${effectiveStatus}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
-        statusHtml=curPill+`<button class="sf-btn sf-${ns.toLowerCase().replace(/ /g,'-')}" onclick="advStat('${l.id}','${ns}')">${ns} →</button>`;
+        const curPill=`<span class="pill ${sC(effectiveStatus)}">${effectiveStatus}</span>`;
+        statusHtml=`<div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px">${curPill}<button class="sf-btn sf-${ns.toLowerCase().replace(/ /g,'-')}" onclick="advStat('${l.id}','${ns}')" style="margin:0">${ns} →</button></div>`;
       } else {
         statusHtml=`<span class="pill ${sC(effectiveStatus)}">${effectiveStatus}${dateLabel?'<span style="font-size:9px;opacity:.7;margin-left:3px">'+dateLabel+'</span>':''}</span>`;
       }
@@ -2769,7 +2769,9 @@ async function advStat(id,next){
     om('m-pay');
     return;
   }
-  if(!confirm('Mark as "'+next+'"? Cannot undo.'))return;
+  if(next==='Invoiced'){
+    if(!confirm('Mark as Invoiced? Cannot undo.'))return;
+  }
   await doAdvStat(id,next);
 }
 async function doAdvStat(id,next){
