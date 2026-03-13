@@ -2299,7 +2299,7 @@ function renderDrvTrips(allDrvLoads){
         <td class="money">$${fmt(+l.rate||0)}</td>
         <td style="font-size:11px">${l.payMethod||'—'}</td>
         <td style="font-size:11px">
-          ${l.broker?`<div style="font-weight:700;color:var(--navy);font-size:11px">${l.broker}</div>`:''}
+          ${l.broker?`<div style="font-weight:700;color:var(--navy);font-size:11px" title="${l.broker}">${l.broker.length>20?l.broker.substring(0,20)+'…':l.broker}</div>`:''}
           ${l.brokerEmail?`<div onclick="copyText('${l.brokerEmail}','Email')" title="Click to copy email" style="font-size:9px;color:var(--blue);cursor:pointer;margin-top:2px;display:inline-flex;align-items:center;gap:3px">${l.brokerEmail}<span style="opacity:.5">⎘</span></div>`:''}
           ${!l.broker&&!l.brokerEmail?'<span style="color:var(--text3)">—</span>':''}
         </td>
@@ -2325,13 +2325,18 @@ function renderDrvTrips(allDrvLoads){
           ?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="tgPaid('${l.id}',${!l.paid},false)">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
           :`<span class="pb ${l.paid?'paid':'unpaid'}" style="cursor:default;pointer-events:none">${l.paid?'✓ PAID':'✗ UNPAID'}</span>`
         }</td>
-        <td style="min-width:120px;max-width:180px">
-          <input value="${(l.dispNotes||'').replace(/"/g,'&quot;')}" placeholder="Notes…"
-            style="width:100%;border:1px solid transparent;border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);color:var(--navy);background:transparent;outline:none;box-sizing:border-box"
-            onfocus="this.style.borderColor='var(--border)';this.style.background='#fff'"
-            onblur="this.style.borderColor='transparent';this.style.background='transparent';saveDispNote('${l.id}',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
-          >
+        <td style="min-width:120px;max-width:180px;position:relative">
+          <div class="notes-wrap" style="position:relative">
+            <input value="${(l.dispNotes||'').replace(/"/g,'&quot;')}" placeholder="Notes…"
+              style="width:100%;border:1px solid transparent;border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);color:var(--navy);background:transparent;outline:none;box-sizing:border-box"
+              onfocus="this.style.borderColor='var(--border)';this.style.background='#fff';this.nextElementSibling.style.display='none'"
+              onblur="this.style.borderColor='transparent';this.style.background='transparent';saveDispNote('${l.id}',this.value);if(this.value)this.nextElementSibling.style.display=''"
+              onkeydown="if(event.key==='Enter')this.blur()"
+              onmouseenter="if(!document.activeElement||document.activeElement!==this){const t=this.nextElementSibling;if(this.value&&this.value.length>0){t.textContent=this.value;t.style.display='block'}}"
+              onmouseleave="this.nextElementSibling.style.display='none'"
+            >
+            <div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1e293b;color:#fff;font-size:11px;padding:6px 10px;border-radius:7px;white-space:pre-wrap;max-width:260px;word-break:break-word;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;line-height:1.5"></div>
+          </div>
         </td>
         <td><div style="display:flex;gap:4px">${(()=>{
           if(ROLE==='admin'){
@@ -3336,7 +3341,7 @@ function accLoadRow(l,canEdit,cols){
     <td style="font-size:11px;color:var(--text3);font-family:var(--mono);white-space:nowrap">${l.date||'—'}</td>
     <td style="white-space:nowrap">${days}</td>
     <td>${canEdit?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="accPaid('${l.id}',${!l.paid})">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid?'var(--green)':'var(--red)'}">${l.paid?'PAID':'UNPAID'}</span>`}</td>
-    <td>${canEdit?`<input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()">`:`<span style="font-size:11px;color:var(--text3)">${l.accComment||'—'}</span>`}</td>
+    <td style="position:relative">${canEdit?`<div class="notes-wrap" style="position:relative"><input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()" onmouseenter="if(document.activeElement!==this){const t=this.nextElementSibling;if(this.value){t.textContent=this.value;t.style.display='block'}}" onmouseleave="this.nextElementSibling.style.display='none'" onfocus="this.nextElementSibling.style.display='none'"><div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1e293b;color:#fff;font-size:11px;padding:6px 10px;border-radius:7px;white-space:pre-wrap;max-width:260px;word-break:break-word;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;line-height:1.5"></div></div>`:`<div class="notes-wrap" style="position:relative"><span style="font-size:11px;color:var(--text3)" onmouseenter="if(this.textContent!=='—'){const t=this.nextElementSibling;t.textContent=this.textContent;t.style.display='block'}" onmouseleave="this.nextElementSibling.style.display='none'">${l.accComment||'—'}</span><div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1e293b;color:#fff;font-size:11px;padding:6px 10px;border-radius:7px;white-space:pre-wrap;max-width:260px;word-break:break-word;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;line-height:1.5"></div></div>`}</td>
     ${mgrNoteCell}
     <td style="white-space:nowrap">${canSolve
       ?`<button onclick="openSolveModal('${l.id}')" style="background:linear-gradient(135deg,#d97706,#f59e0b);border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,.35)">🤝 Solve</button>`
