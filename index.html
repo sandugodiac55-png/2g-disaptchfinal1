@@ -5753,32 +5753,6 @@ function _printSlip(elId){
   table{width:100%;border-collapse:collapse}td,th{padding:6px 10px;border-bottom:1px solid #e5e7eb}
   th{background:#1e293b;color:#fff;font-size:9px;letter-spacing:.5px;text-align:left}input{display:none}</style>
   </head><body>${el.outerHTML}
-<!-- EDIT DRIVER MODAL -->
-<div class="ov" id="m-edit-driver">
-  <div class="md" style="max-width:400px;width:95%;padding:0;overflow:hidden;border-radius:18px">
-    <div style="background:linear-gradient(135deg,#1a2744 0%,#243156 100%);padding:24px 24px 20px;position:relative">
-      <button onclick="cm('m-edit-driver')" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
-      <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;font-weight:700;margin-bottom:6px">EDIT DRIVER</div>
-      <div style="font-size:20px;font-weight:800;color:#fff" id="edrv-name">Driver</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:3px" id="edrv-company"></div>
-    </div>
-    <div style="padding:24px;display:flex;flex-direction:column;gap:18px;background:var(--surface)">
-      <input type="hidden" id="edrv-id">
-      <div>
-        <label style="font-size:10px;font-weight:800;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px">💰 Rate per Mile ($/mi)</label>
-        <div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg);transition:border .15s" onfocusin="this.style.borderColor='var(--orange)'" onfocusout="this.style.borderColor='var(--border)'">
-          <span style="padding:10px 14px;background:var(--bg2);font-size:13px;font-weight:700;color:var(--text3);border-right:1px solid var(--border)">$</span>
-          <input id="edrv-rate" type="number" step="0.01" min="0" placeholder="e.g. 3.75" style="flex:1;padding:10px 14px;border:none;font-family:var(--mono);font-size:15px;font-weight:700;color:var(--navy);background:transparent;outline:none" onkeydown="if(event.key==='Enter')saveEditDriver()">
-          <span style="padding:10px 14px;background:var(--bg2);font-size:13px;font-weight:700;color:var(--text3);border-left:1px solid var(--border)">/mi</span>
-        </div>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface)">
-      <button onclick="cm('m-edit-driver')" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;color:var(--text2)">Cancel</button>
-      <button onclick="saveEditDriver()" style="flex:2;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#243156'" onmouseout="this.style.background='var(--navy)'">💾 Save Rate</button>
-    </div>
-  </div>
-</div>
 
 
 <!-- OWNER PAGES PERMISSIONS MODAL -->
@@ -5837,6 +5811,33 @@ function _printSlip(elId){
   </div>
 </div>
 
+
+<!-- EDIT DRIVER MODAL -->
+<div class="ov" id="m-edit-driver">
+  <div class="md" style="max-width:400px;width:95%;padding:0;overflow:hidden;border-radius:18px">
+    <div style="background:linear-gradient(135deg,#1a2744 0%,#243156 100%);padding:24px 24px 20px;position:relative">
+      <button onclick="cm('m-edit-driver')" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;font-weight:700;margin-bottom:6px">EDIT DRIVER</div>
+      <div style="font-size:20px;font-weight:800;color:#fff" id="edrv-name">Driver</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:3px" id="edrv-company"></div>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:18px;background:var(--surface)">
+      <input type="hidden" id="edrv-id">
+      <div>
+        <label style="font-size:10px;font-weight:800;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px">💰 Rate per Mile ($/mi)</label>
+        <div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg);transition:border .15s" onfocusin="this.style.borderColor='var(--orange)'" onfocusout="this.style.borderColor='var(--border)'">
+          <span style="padding:10px 14px;background:var(--bg2);font-size:13px;font-weight:700;color:var(--text3);border-right:1px solid var(--border)">$</span>
+          <input id="edrv-rate" type="number" step="0.01" min="0" placeholder="e.g. 3.75" style="flex:1;padding:10px 14px;border:none;font-family:var(--mono);font-size:15px;font-weight:700;color:var(--navy);background:transparent;outline:none" onkeydown="if(event.key==='Enter')saveEditDriver()">
+          <span style="padding:10px 14px;background:var(--bg2);font-size:13px;font-weight:700;color:var(--text3);border-left:1px solid var(--border)">/mi</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface)">
+      <button onclick="cm('m-edit-driver')" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;color:var(--text2)">Cancel</button>
+      <button onclick="saveEditDriver()" style="flex:2;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#243156'" onmouseout="this.style.background='var(--navy)'">💾 Save Rate</button>
+    </div>
+  </div>
+</div>
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>{w.print();},400);
 }
