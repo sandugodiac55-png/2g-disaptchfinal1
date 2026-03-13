@@ -219,6 +219,26 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .tc-title{font-size:14px;font-weight:700;color:var(--navy)}
 .mla{margin-left:auto}
 .tw{overflow-x:auto}
+/* NOTES TOOLTIP */
+.notes-wrap{position:relative}
+.notes-wrap .nt{
+  display:none;
+  position:fixed;
+  background:#1e293b;
+  color:#fff;
+  font-size:11px;
+  padding:8px 12px;
+  border-radius:8px;
+  white-space:pre-wrap;
+  max-width:320px;
+  word-break:break-word;
+  z-index:99999;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  pointer-events:none;
+  line-height:1.6;
+  border:1px solid rgba(255,255,255,.1);
+}
+
 table{width:100%;border-collapse:collapse;min-width:600px}
 thead th{padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
@@ -2379,13 +2399,12 @@ function renderDrvTrips(allDrvLoads){
           <div class="notes-wrap" style="position:relative">
             <input value="${(l.dispNotes||'').replace(/"/g,'&quot;')}" placeholder="Notes…"
               style="width:100%;border:1px solid transparent;border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);color:var(--navy);background:transparent;outline:none;box-sizing:border-box"
-              onfocus="this.style.borderColor='var(--border)';this.style.background='#fff';this.nextElementSibling.style.display='none'"
-              onblur="this.style.borderColor='transparent';this.style.background='transparent';saveDispNote('${l.id}',this.value);if(this.value)this.nextElementSibling.style.display=''"
+              onfocus="this.style.borderColor='var(--border)';this.style.background='#fff';hideNoteTooltip()"
+              onblur="this.style.borderColor='transparent';this.style.background='transparent';saveDispNote('${l.id}',this.value)"
               onkeydown="if(event.key==='Enter')this.blur()"
-              onmouseenter="if(!document.activeElement||document.activeElement!==this){const t=this.nextElementSibling;if(this.value&&this.value.length>0){t.textContent=this.value;t.style.display='block'}}"
-              onmouseleave="this.nextElementSibling.style.display='none'"
+              onmouseenter="if(document.activeElement!==this)showNoteTooltip(this,this.value)"
+              onmouseleave="hideNoteTooltip()"
             >
-            <div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1e293b;color:#fff;font-size:11px;padding:6px 10px;border-radius:7px;white-space:pre-wrap;max-width:260px;word-break:break-word;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;line-height:1.5"></div>
           </div>
         </td>
         <td><div style="display:flex;gap:4px">${(()=>{
@@ -3387,7 +3406,7 @@ function accLoadRow(l,canEdit,cols){
   const canSolve=isProblem&&(ROLE==='admin'||ROLE==='accounting_manager');
   const rowStyle=isProblem?'background:linear-gradient(90deg,rgba(251,191,36,.12),rgba(251,191,36,.05));border-left:3px solid #f59e0b;':'';
   const problemBadge=isProblem?`<span style="display:inline-flex;align-items:center;gap:3px;background:#fff7ed;border:1px solid #fcd34d;color:#b45309;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;white-space:nowrap">🤝 MGR</span> `:'';
-  const mgrNoteCell=cols.mgrNote!==false?`<td style="font-size:11px;min-width:120px">${l.mgrComment?`<span style="color:#92400e;font-weight:600;font-size:11px;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:2px 6px;display:inline-block">✓ ${l.mgrComment}</span><div style="font-size:9px;color:var(--text3);margin-top:2px">${l.mgrResolvedBy||''}</div>`:'<span style="color:var(--text3);font-size:10px">—</span>'}</td>`:'';
+  const mgrNoteCell=cols.mgrNote!==false?`<td style="font-size:11px;min-width:120px"><div class="notes-wrap" style="position:relative">${l.mgrComment?`<span style="color:#92400e;font-weight:600;font-size:11px;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:2px 6px;display:inline-block;cursor:default;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.mgrComment}" onmouseenter="showNoteTooltip(this,'${escQ(l.mgrComment||'')}')" onmouseleave="hideNoteTooltip()">✓ ${l.mgrComment.length>20?l.mgrComment.substring(0,20)+'…':l.mgrComment}</span><div style="font-size:9px;color:var(--text3);margin-top:2px">${l.mgrResolvedBy||''}</div>`:'<span style="color:var(--text3);font-size:10px">—</span>'}</div></td>`:'';
   return`<tr style="${rowStyle}">
     <td style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);width:32px;padding:8px 6px">${cols.rowNum||''}</td>
     <td class="bold" onclick="copyText('${l.orderId||''}','Order ID')" style="cursor:pointer;white-space:nowrap" title="${l.orderId||'—'}">${problemBadge}${(l.orderId||'—').length>10?`<span style="font-family:var(--mono);font-size:12px">${(l.orderId||'').substring(0,10)}…</span>`:`${l.orderId||'—'}`} <span style="font-size:9px;opacity:.4">⎘</span></td>
@@ -3434,7 +3453,7 @@ function accLoadRow(l,canEdit,cols){
       const btn2=canEdit?`<button class="pb ${l.paid2?'paid':'unpaid'}" onclick="tgPaid2('${l.id}',${!l.paid2})" style="font-size:9px;padding:3px 8px;margin-top:3px">${l.payMethod2}:${l.paid2?'✓ PAID':'✗ UNPAID'}</button>`:`<span style="font-size:11px;color:${l.paid2?'var(--green)':'var(--red)'};display:block;margin-top:2px">${l.payMethod2}:${l.paid2?'PAID':'UNPAID'}</span>`;
       return `<div style="display:flex;flex-direction:column;gap:3px">${btn1}${btn2}</div>`;
     })()}</td>
-    <td style="position:relative">${canEdit?`<div class="notes-wrap" style="position:relative"><input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()" onmouseenter="if(document.activeElement!==this){const t=this.nextElementSibling;if(this.value){t.textContent=this.value;t.style.display='block'}}" onmouseleave="this.nextElementSibling.style.display='none'" onfocus="this.nextElementSibling.style.display='none'"><div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1e293b;color:#fff;font-size:11px;padding:6px 10px;border-radius:7px;white-space:pre-wrap;max-width:260px;word-break:break-word;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;line-height:1.5"></div></div>`:`<div class="notes-wrap" style="position:relative"><span style="font-size:11px;color:var(--text3)" onmouseenter="if(this.textContent!=='—'){const t=this.nextElementSibling;t.textContent=this.textContent;t.style.display='block'}" onmouseleave="this.nextElementSibling.style.display='none'">${l.accComment||'—'}</span><div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1e293b;color:#fff;font-size:11px;padding:6px 10px;border-radius:7px;white-space:pre-wrap;max-width:260px;word-break:break-word;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;line-height:1.5"></div></div>`}</td>
+    <td style="position:relative">${canEdit?`<div class="notes-wrap" style="position:relative"><input class="ai" value="${escQ(l.accComment||'')}" placeholder="Note…" onblur="saveAccC('${l.id}',this.value)" onclick="event.stopPropagation()" onmouseenter="if(document.activeElement!==this)showNoteTooltip(this,this.value)" onmouseleave="hideNoteTooltip()" onfocus="hideNoteTooltip()"></div>`:`<div class="notes-wrap" style="position:relative"><span style="font-size:11px;color:var(--text3)" onmouseenter="showNoteTooltip(this,this.textContent!=='—'?this.textContent:'')" onmouseleave="hideNoteTooltip()">${l.accComment||'—'}</span></div>`}</td>
     ${mgrNoteCell}
     <td style="white-space:nowrap">${canSolve
       ?`<button onclick="openSolveModal('${l.id}')" style="background:linear-gradient(135deg,#d97706,#f59e0b);border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,.35)">🤝 Solve</button>`
@@ -4364,8 +4383,10 @@ function renderOwnerDriverLoads(drv,myLoads,myDrivers){
                     <div style="font-size:9px;padding:1px 6px;border-radius:4px;display:inline-block;background:${bfPaid?'#d1fae5':'#fee2e2'};color:${bfPaid?'#065f46':'#dc2626'};font-weight:700">${bfPaid?'PAID':'UNPAID'}</div>`
                     :`<span style="color:var(--text3);font-size:11px">—</span>`}
                   </td>
-                  <td style="padding:10px 12px;font-size:11px;color:var(--text3);max-width:140px">
-                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.notes||'—'}</div>
+                  <td style="padding:10px 12px;font-size:11px;color:var(--text3);max-width:160px">
+                    <div class="notes-wrap" style="position:relative">
+                      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default" data-note="${(l.accComment||l.notes||'').replace(/"/g,'&quot;')}" onmouseenter="showNoteTooltip(this,this.dataset.note)" onmouseleave="hideNoteTooltip()">${l.accComment||l.notes||'—'}</div>
+                    </div>
                   </td>
                   ${showConfirmCol?`<td style="padding:10px 14px;text-align:center">
                     ${confirmed
@@ -5753,6 +5774,35 @@ function _printSlip(elId){
   table{width:100%;border-collapse:collapse}td,th{padding:6px 10px;border-bottom:1px solid #e5e7eb}
   th{background:#1e293b;color:#fff;font-size:9px;letter-spacing:.5px;text-align:left}input{display:none}</style>
   </head><body>${el.outerHTML}
+<script>
+/* ── NOTES TOOLTIP (universal) ── */
+function showNoteTooltip(el, text){
+  if(!text||text==='—')return;
+  let tip=document.getElementById('_global_note_tip');
+  if(!tip){
+    tip=document.createElement('div');
+    tip.id='_global_note_tip';
+    tip.className='notes-wrap nt';
+    tip.style.cssText='position:fixed;background:#1e293b;color:#fff;font-size:11px;padding:8px 12px;border-radius:8px;white-space:pre-wrap;max-width:320px;word-break:break-word;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none;line-height:1.6;border:1px solid rgba(255,255,255,.1);display:none';
+    document.body.appendChild(tip);
+  }
+  tip.textContent=text;
+  const r=el.getBoundingClientRect();
+  tip.style.display='block';
+  const tipH=tip.offsetHeight;
+  const tipW=tip.offsetWidth;
+  let top=r.top - tipH - 8;
+  if(top<8) top=r.bottom+8;
+  let left=r.left;
+  if(left+tipW>window.innerWidth-12) left=window.innerWidth-tipW-12;
+  tip.style.top=top+'px';
+  tip.style.left=left+'px';
+}
+function hideNoteTooltip(){
+  const tip=document.getElementById('_global_note_tip');
+  if(tip) tip.style.display='none';
+}
+</script>
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>{w.print();},400);
 }
