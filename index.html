@@ -3390,7 +3390,7 @@ function accLoadRow(l,canEdit,cols){
       :`$${fmt(+l.rate||0)}`}</td>
     <td style="font-size:11px">${l.payMethod||'—'}${l.payMethod2?`<div style="font-size:9px;color:var(--text3);margin-top:2px">+${l.payMethod2}</div>`:''}</td>
     <td style="font-size:11px;max-width:160px">
-      ${l.broker?`<div style="font-weight:700;color:var(--navy);font-size:11px;margin-bottom:2px">${l.broker}</div>`:''}
+      ${l.broker?`<div style="font-weight:700;color:var(--navy);font-size:11px;margin-bottom:2px" title="${l.broker}">${l.broker.length>25?l.broker.substring(0,25)+'…':l.broker}</div>`:''}
       ${l.brokerEmail?`<span onclick="copyText('${l.brokerEmail}','Email')" style="cursor:pointer;color:var(--blue);font-size:10px;display:inline-flex;align-items:center;gap:2px">${l.brokerEmail} <span style="opacity:.4">⎘</span></span>`:''}
       ${!l.broker&&!l.brokerEmail?'—':''}
     </td>
