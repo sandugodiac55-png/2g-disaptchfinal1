@@ -1045,23 +1045,30 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
             </div>
           </div>
           <!-- Optional second payment -->
-          <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;margin-top:-4px">
             <button type="button" onclick="toggleSplitPay()" id="split-pay-btn"
-              style="padding:4px 12px;border-radius:7px;border:1.5px dashed #cbd5e1;background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">
-              ＋ Add Optional Payment (e.g. COD)
+              style="display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:8px;border:1.5px dashed #94a3b8;background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .15s"
+              onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'"
+              onmouseout="this.style.borderColor='#94a3b8';this.style.color='#64748b'">
+              <span style="font-size:14px;line-height:1">＋</span> Optional Payment (e.g. COD)
             </button>
-            <span id="fl-total-rate-lbl" style="font-size:11px;color:var(--text3);display:none">Total: <strong id="fl-total-rate-val" style="font-family:var(--mono);color:var(--navy)">$0.00</strong></span>
+            <span id="fl-total-rate-lbl" style="font-size:11px;color:var(--text3);display:none">
+              Total: <strong id="fl-total-rate-val" style="font-family:var(--mono);color:var(--navy)">$0.00</strong>
+            </span>
           </div>
-          <div id="split-pay-row" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px">
-            <div style="font-size:9px;font-weight:800;color:#64748b;letter-spacing:1px;margin-bottom:8px">OPTIONAL PAYMENT 2</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;align-items:end">
+          <div id="split-pay-row" style="display:none;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:12px 14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:10px;font-weight:800;color:#b45309;letter-spacing:1.5px">⚡ OPTIONAL PAYMENT 2</span>
+              <button type="button" onclick="toggleSplitPay()" style="width:24px;height:24px;border-radius:6px;border:none;background:#fef2f2;color:#ef4444;cursor:pointer;font-size:16px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
               <div>
-                <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">RATE 2 ($)</label>
-                <input type="number" id="fl-rt2" placeholder="0.00" step="0.01" min="0" oninput="updateTotalRate()" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#e2e8f0'">
+                <label style="font-size:9px;font-weight:700;color:#b45309;letter-spacing:1px;display:block;margin-bottom:3px">RATE 2 ($)</label>
+                <input type="number" id="fl-rt2" placeholder="0.00" step="0.01" min="0" oninput="updateTotalRate()" style="width:100%;padding:7px 10px;border:1.5px solid #fed7aa;border-radius:7px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--navy);background:#fff;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#fed7aa'">
               </div>
               <div>
-                <label style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:1px;display:block;margin-bottom:3px">METHOD 2</label>
-                <select id="fl-pay2" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer">
+                <label style="font-size:9px;font-weight:700;color:#b45309;letter-spacing:1px;display:block;margin-bottom:3px">METHOD 2</label>
+                <select id="fl-pay2" style="width:100%;padding:7px 10px;border:1.5px solid #fed7aa;border-radius:7px;font-family:var(--font);font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;cursor:pointer" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='#fed7aa'">
                   <option value="">— Select —</option>
                   <option>COD</option><option>COP</option><option>SuperPay</option><option>QP</option>
                   <option>5 B. Days</option><option>7 B. Days</option><option>10 B. Days</option>
@@ -1069,7 +1076,6 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
                   <option>Factoring</option>
                 </select>
               </div>
-              <button type="button" onclick="toggleSplitPay()" style="width:28px;height:34px;border-radius:6px;border:none;background:#fef2f2;color:var(--red);cursor:pointer;font-size:16px;font-weight:700">×</button>
             </div>
           </div>
         </div>
