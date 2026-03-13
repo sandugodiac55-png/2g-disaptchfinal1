@@ -616,7 +616,7 @@ td.money{color:var(--green);font-weight:700;font-family:var(--mono)}
           <div class="tc" id="drv-loads-tc">
             <div class="tc-top"><div class="tc-title">Individual Loads</div><div class="mla" style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="drv-load-cnt">0</div></div>
             <div class="tw"><table style="width:100%;min-width:900px">
-              <thead><tr><th>ORDER ID</th><th>CAR</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BROKER</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>DATE</th><th>ACTIONS</th></tr></thead>
+              <thead><tr><th>ORDER ID</th><th>CAR</th><th>PICKUP → DELIVERY</th><th>RATE</th><th>PAY METHOD</th><th>BROKER</th><th>BR.FEE</th><th>STATUS</th><th>PAID</th><th>NOTES</th><th>ACTIONS</th></tr></thead>
               <tbody id="drv-load-tb"></tbody>
             </table></div>
           </div>
@@ -2294,7 +2294,7 @@ function renderDrvTrips(allDrvLoads){
           <div onclick="copyText('${l.orderId||''}','Order ID')" title="${l.orderId||''}" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-family:var(--mono);font-size:12px">${(l.orderId||'—').length>10?(l.orderId||'').substring(0,10)+'…':(l.orderId||'—')}<span style="font-size:9px;color:var(--text3);opacity:.6">⎘</span></div>
           ${tripBadge?`<div style="margin-top:3px">${tripBadge}</div>`:''}
         </td>
-        <td style="white-space:nowrap">${l.car?`<span style="display:inline-flex;align-items:center;gap:3px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#0369a1">🚗 ${l.car}</span>`:'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+        <td style="white-space:nowrap">${l.car?`<span style="display:inline-flex;align-items:center;gap:3px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#0369a1" title="${l.car}">🚗 ${l.car.length>20?l.car.substring(0,20)+'…':l.car}</span>`:'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
         <td style="font-size:12px">${l.origin||'—'} → ${l.dest||'—'}</td>
         <td class="money">$${fmt(+l.rate||0)}</td>
         <td style="font-size:11px">${l.payMethod||'—'}</td>
@@ -2325,7 +2325,14 @@ function renderDrvTrips(allDrvLoads){
           ?`<button class="pb ${l.paid?'paid':'unpaid'}" onclick="tgPaid('${l.id}',${!l.paid},false)">${l.paid?'✓ PAID':'✗ UNPAID'}</button>`
           :`<span class="pb ${l.paid?'paid':'unpaid'}" style="cursor:default;pointer-events:none">${l.paid?'✓ PAID':'✗ UNPAID'}</span>`
         }</td>
-        <td style="font-size:11px;color:var(--text3)">${l.date||'—'}</td>
+        <td style="min-width:120px;max-width:180px">
+          <input value="${(l.dispNotes||'').replace(/"/g,'&quot;')}" placeholder="Notes…"
+            style="width:100%;border:1px solid transparent;border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);color:var(--navy);background:transparent;outline:none;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--border)';this.style.background='#fff'"
+            onblur="this.style.borderColor='transparent';this.style.background='transparent';saveDispNote('${l.id}',this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()"
+          >
+        </td>
         <td><div style="display:flex;gap:4px">${(()=>{
           if(ROLE==='admin'){
             return `<button class="btn btn-ghost btn-sm" onclick="editLoad('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delLoad('${l.id}')">🗑</button>`;
@@ -2693,6 +2700,13 @@ async function doAdvStat(id,next){
   await updateDoc(doc(window._db,'loads',id),upd);
   notify('→ '+next+' ('+ts+')');
 }
+async function saveDispNote(loadId, val){
+  const{updateDoc,doc}=window._fb;
+  await updateDoc(doc(window._db,'loads',loadId),{dispNotes:val});
+  const idx=LOADS.findIndex(l=>l.id===loadId);
+  if(idx>=0) LOADS[idx].dispNotes=val;
+}
+
 async function tgPaid(id,v,locked){
   if(locked){notify('Week locked','err');return}
   if(!v){
